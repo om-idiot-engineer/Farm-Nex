@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 34.29 41.18% 96.67%; /* #F7F5F2 - Earthy off-white */
+    --foreground: 147.27 47.83% 13.53%; /* #123321 - Very dark green/black */
+
+    --card: 0 0% 100%;
+    --card-foreground: 147.27 47.83% 13.53%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 147.27 47.83% 13.53%;
+
+    --primary: 142.06 70.56% 45.29%; /* #22c55e - Deep Agri-Green */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 142.06 70.56% 40%;
+ 
+    --secondary: 30 25.56% 45.49%; /* #8c5e47 - Earthy Brown */
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 36 22% 90%;
+    --muted-foreground: 36 10% 45%;
+ 
+    --accent: 36 22% 90%;
+    --accent-foreground: 147.27 47.83% 13.53%;
+ 
+    --destructive: 0 84.2% 60.2%; /* Warning Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%; /* Amber */
+    --warning-foreground: 0 0% 100%;
+
+    --info: 214 94% 50%; /* Blue */
+    --info-foreground: 0 0% 100%;
+
+    --success: 142.06 70.56% 45.29%; /* Same as primary green */
+    --success-foreground: 0 0% 100%;
+
+    --border: 36 22% 85%;
+    --input: 36 22% 85%;
+    --ring: 142.06 70.56% 45.29%;
+ 
+    --radius: 0.75rem;
+  }
+ 
+  .dark {
+    --background: 147.27 47.83% 8%;
+    --foreground: 34.29 41.18% 96.67%;
+ 
+    --card: 147.27 47.83% 11%;
+    --card-foreground: 34.29 41.18% 96.67%;
+ 
+    --popover: 147.27 47.83% 11%;
+    --popover-foreground: 34.29 41.18% 96.67%;
+ 
+    --primary: 142.06 70.56% 45.29%;
+    --primary-foreground: 147.27 47.83% 8%;
+    --primary-hover: 142.06 70.56% 50%;
+ 
+    --secondary: 30 25.56% 45.49%;
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 147.27 47.83% 15%;
+    --muted-foreground: 36 10% 65%;
+ 
+    --accent: 147.27 47.83% 15%;
+    --accent-foreground: 34.29 41.18% 96.67%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 34.29 41.18% 96.67%;
+
+    --warning: 38 92% 40%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 214 94% 40%;
+    --info-foreground: 0 0% 100%;
+
+    --success: 142.06 70.56% 45.29%;
+    --success-foreground: 147.27 47.83% 8%;
+
+    --border: 147.27 47.83% 18%;
+    --input: 147.27 47.83% 18%;
+    --ring: 142.06 70.56% 45.29%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+  }
+}

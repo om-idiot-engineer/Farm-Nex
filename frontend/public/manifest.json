@@ -1,0 +1,9 @@
+{
+  "name": "Farm-Nex",
+  "short_name": "Farm-Nex",
+  "description": "Direct farm-to-buyer sales with net realization tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5F2",
+  "theme_color": "#22c55e"
+}
