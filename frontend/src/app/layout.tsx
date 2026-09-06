@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import Navbar from "@/components/Navbar";
+import MainLayoutWrapper from "@/components/MainLayoutWrapper";
+import AppFooter from "@/components/AppFooter";
 import PWAProvider from "@/components/PWAProvider";
 import { UserProvider } from "@/lib/auth/UserContext";
 
@@ -27,21 +29,8 @@ export default function RootLayout({
           <LanguageProvider>
             <UserProvider>
               <Navbar />
-              <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-20 sm:p-6 sm:pb-6 lg:p-8">
-                {children}
-              </main>
-              <footer className="border-t border-border bg-card py-6 text-center text-xs text-muted-foreground">
-                <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 sm:flex-row">
-                  <p>FarmNex © 2026</p>
-                  <div className="flex items-center gap-3 font-medium text-primary">
-                    <span>Direct farmer realization</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>Transparent logistics</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>Market data context</span>
-                  </div>
-                </div>
-              </footer>
+              <MainLayoutWrapper>{children}</MainLayoutWrapper>
+              <AppFooter />
             </UserProvider>
           </LanguageProvider>
         </PWAProvider>

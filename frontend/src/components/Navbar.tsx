@@ -41,6 +41,25 @@ export default function Navbar() {
   const [personaOpen, setPersonaOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notifPopoverOpen, setNotifPopoverOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleOpenAuth = (role: "farmer" | "buyer" = "farmer", mode: "login" | "register" = "login") => {
+    if (typeof window !== "undefined") {
+      if (pathname === "/") {
+        window.dispatchEvent(new CustomEvent("open-farmnex-auth", { detail: { role, mode } }));
+      } else {
+        router.push(`/?auth=${role}&mode=${mode}`);
+      }
+    }
+  };
 
   const roleNav = user ? getRoleNavigation(user.role) : [];
   const mobileNav = user ? getMobileNavigation(user.role) : [];
@@ -88,9 +107,17 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur shadow-xs">
+      <header
+        className={`sticky top-0 z-40 border-b bg-card/95 backdrop-blur transition-all duration-200 ${
+          scrolled ? "border-border shadow-sm" : "border-border/60"
+        }`}
+      >
         {/* TOP BAR */}
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div
+          className={`mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 transition-all duration-200 ${
+            scrolled ? "h-14" : "h-16"
+          }`}
+        >
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
@@ -114,11 +141,46 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Center: Global Search */}
-          {user && (
+          {/* Center Navigation: Global Search when logged in, or Public Links when visitor */}
+          {user ? (
             <div className="hidden md:block flex-1 max-w-md mx-4">
               <GlobalSearch />
             </div>
+          ) : (
+            <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-xs font-bold text-muted-foreground" aria-label="Public Navigation">
+              <Link
+                href="/#how-it-works"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                How It Works
+              </Link>
+              <Link
+                href="/#for-farmers"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                For Farmers
+              </Link>
+              <Link
+                href="/#for-buyers"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                For Buyers
+              </Link>
+              <Link
+                href="/marketplace"
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  pathname === "/marketplace" ? "text-primary font-black bg-primary/5" : "hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                Marketplace
+              </Link>
+              <Link
+                href="/#trust"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                Trust &amp; Escrow
+              </Link>
+            </nav>
           )}
 
           {/* Right Action Icons */}
@@ -284,22 +346,36 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <Button asChild size="sm" className="font-bold">
-                <Link href="/">Sign in</Link>
-              </Button>
+              <div className="hidden sm:flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="font-bold text-xs hover:bg-muted/50 text-foreground"
+                  onClick={() => handleOpenAuth("farmer", "login")}
+                >
+                  Login
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="font-bold text-xs shadow-xs"
+                  onClick={() => handleOpenAuth("farmer", "login")}
+                >
+                  Get Started
+                </Button>
+              </div>
             )}
 
-            {/* Mobile Menu trigger */}
-            {user && (
-              <button
-                type="button"
-                onClick={() => setMobileOpen(!mobileOpen)}
-                className="lg:hidden p-2 rounded-md text-muted-foreground hover:text-foreground"
-                aria-label="Toggle menu"
-              >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
-            )}
+            {/* Mobile Menu trigger (for both authenticated and public visitors) */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground"
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
@@ -361,7 +437,7 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* MOBILE SLIDE-OVER DRAWER */}
+        {/* MOBILE SLIDE-OVER DRAWER (User Authenticated) */}
         {mobileOpen && user && (
           <div className="lg:hidden border-t border-border bg-card p-4 space-y-4 animate-in slide-in-from-top-2">
             <div className="mb-2">
@@ -425,6 +501,81 @@ export default function Navbar() {
                 </span>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* MOBILE SLIDE-OVER DRAWER (Public Visitor) */}
+        {mobileOpen && !user && (
+          <div className="md:hidden border-t border-border bg-card p-4 space-y-4 animate-in slide-in-from-top-2 shadow-xl">
+            <div className="space-y-1">
+              <Link
+                href="/#how-it-works"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <span>How It Works</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href="/#for-farmers"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <span>For Farmers &amp; FPOs</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href="/#for-buyers"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <span>For Food Processors &amp; Buyers</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href="/marketplace"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-bold text-primary hover:bg-primary/5 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  <span>Live Marketplace</span>
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/#trust"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <span>Trust, Assays &amp; Escrow</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </div>
+
+            <div className="pt-3 border-t border-border space-y-2">
+              <Button
+                type="button"
+                className="w-full font-bold shadow-xs justify-center"
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleOpenAuth("farmer", "login");
+                }}
+              >
+                🌾 Get Started as Farmer
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full font-bold justify-center"
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleOpenAuth("buyer", "login");
+                }}
+              >
+                🏭 Bulk Buyer / Processor Login
+              </Button>
             </div>
           </div>
         )}
