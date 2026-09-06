@@ -38,6 +38,7 @@ export default function OrderTransactionWorkspacePage() {
   const [disputeReason, setDisputeReason] = useState("Moisture percentage variance between field sample and plant gate test");
   const [disputeNote, setDisputeNote] = useState("");
   const [disputeSuccess, setDisputeSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "negotiation" | "quality" | "logistics" | "payment" | "documents">("overview");
 
   useEffect(() => {
     if (!user || !hasAccess) return;
@@ -71,6 +72,7 @@ export default function OrderTransactionWorkspacePage() {
   };
 
   const qty = agreement.quantity || agreement.agreed_quantity || 100;
+  const tonnes = (qty / 10).toFixed(1);
   const rate = agreement.price_per_quintal || agreement.agreed_price || 5000;
   const grossValue = qty * rate;
   const freightTotal = Math.round(qty * 65);
@@ -88,9 +90,10 @@ export default function OrderTransactionWorkspacePage() {
     {
       id: "DOC-1",
       title: "Legally Binding Agricultural Purchase Agreement",
-      type: "PDF Document (142 KB)",
+      type: "PDF Contract (142 KB)",
       date: agreement.created_at || "01 Mar 2026",
       verified: true,
+      hash: "SHA-256: 7f8a...9c2d",
     },
     {
       id: "DOC-2",
@@ -98,6 +101,7 @@ export default function OrderTransactionWorkspacePage() {
       type: "Slip #WB-9821 (88 KB)",
       date: "03 Mar 2026",
       verified: true,
+      hash: "Gross: 14,820 kg | Tare: 4,820 kg",
     },
     {
       id: "DOC-3",
@@ -105,6 +109,7 @@ export default function OrderTransactionWorkspacePage() {
       type: "Test Report #QC-401 (110 KB)",
       date: "03 Mar 2026",
       verified: true,
+      hash: "Moisture: 10.4% | Impurity: 1.1%",
     },
     {
       id: "DOC-4",
@@ -112,6 +117,7 @@ export default function OrderTransactionWorkspacePage() {
       type: "E-Way #EWB-8921-99 (95 KB)",
       date: "02 Mar 2026",
       verified: true,
+      hash: "Valid till 05 Mar 2026",
     }
   ];
 
@@ -127,7 +133,7 @@ export default function OrderTransactionWorkspacePage() {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-              Order #{agreement.orderNumber || agreement.id}
+              Deal #{agreement.orderNumber || agreement.id}
             </h1>
             <StatusBadge status={agreement.status} />
             {agreement.dispute?.hasDispute && (
@@ -137,7 +143,7 @@ export default function OrderTransactionWorkspacePage() {
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Contracted Trade: <strong className="text-foreground">{qty}Q {agreement.commodity}</strong> at ₹{rate.toLocaleString("en-IN")}/Q
+            B2B Commercial Agricultural Trade Agreement · Locked via Digital Contract
           </p>
         </div>
 
@@ -172,96 +178,312 @@ export default function OrderTransactionWorkspacePage() {
         </div>
       </div>
 
-      <DemoNotice>
-        Transaction workspace demonstrates live milestone progression, transparent financial deductions, and physical document verification.
-      </DemoNotice>
-
-      {/* Counterparty Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Buyer Info */}
-        <div className="rounded-xl border border-border bg-card p-5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-              <Building2 className="h-3.5 w-3.5 text-blue-600" /> Buyer Entity
+      {/* DEAL SUMMARY HEADER (Section 13) */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/10 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-primary">Commercial Trade Summary</span>
+            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
+              {agreement.commodity}
             </span>
-            <TrustBadge type="buyer" size="sm" />
           </div>
-          <h3 className="text-base font-bold text-foreground">{agreement.buyer_name || "ITC Agri Business Division"}</h3>
-          <p className="text-xs text-muted-foreground">
-            Delivery Destination: <strong className="text-foreground">{agreement.deliveryDestination || "Dewas Extraction Plant"}</strong>
-          </p>
-        </div>
-
-        {/* Seller Info */}
-        <div className="rounded-xl border border-border bg-card p-5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-              <User className="h-3.5 w-3.5 text-emerald-600" /> Producer Seller
-            </span>
-            <TrustBadge type="producer" size="sm" />
-          </div>
-          <h3 className="text-base font-bold text-foreground">{agreement.farmer_name || "Ramesh Patel"}</h3>
-          <p className="text-xs text-muted-foreground">
-            Farm Gate Origin: <strong className="text-foreground">{agreement.pickupLocation || "Sanwer Aggregation Hub, Indore"}</strong>
-          </p>
-        </div>
-      </div>
-
-      {/* 8-Stage Milestone Tracker */}
-      <OrderTimeline status={agreement.status} />
-
-      {/* Split Grid: Logistics & Settlement */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <LogisticsPanel agreement={agreement} />
-        <PaymentBreakdown 
-          breakdown={mockBreakdown}
-          quantityQuintals={qty}
-          ratePerQuintal={rate}
-        />
-      </div>
-
-      {/* Verified Deal Documents Repository */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="border-b border-border p-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-foreground">Verified Deal Documents & Compliance Proofs</h3>
-            <p className="text-xs text-muted-foreground">Immutable records required for digital escrow disbursement</p>
-          </div>
-          <span className="rounded bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            All 4 Documents Stamped
+          <span className="text-xs font-bold text-muted-foreground">
+            Created: {agreement.created_at || "01 Mar 2026"}
           </span>
         </div>
 
-        <div className="divide-y divide-border">
-          {dealDocuments.map((doc) => (
-            <div key={doc.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-3">
-                <div className="rounded-md bg-muted p-2 text-primary">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-foreground">{doc.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{doc.type} · Generated {doc.date}</p>
-                </div>
-              </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Producer / Seller</span>
+            <span className="font-bold text-sm text-foreground block mt-0.5 truncate">{agreement.farmer_name || "Ramesh Patel"}</span>
+            <span className="text-[11px] text-muted-foreground">Sanwer, Indore</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Buyer Entity</span>
+            <span className="font-bold text-sm text-foreground block mt-0.5 truncate">{agreement.buyer_name || "ITC Agri Division"}</span>
+            <span className="text-[11px] text-muted-foreground">GST Active</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Contract Quantity</span>
+            <span className="font-black text-sm text-foreground block mt-0.5">{qty} Quintals</span>
+            <span className="text-[11px] text-muted-foreground font-semibold">({tonnes} Metric Tonnes)</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Agreed Rate</span>
+            <span className="font-black text-sm text-primary block mt-0.5">₹{rate.toLocaleString("en-IN")}/Q</span>
+            <span className="text-[11px] text-muted-foreground">Farm-gate rate</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Total Deal Value</span>
+            <span className="font-black text-sm text-emerald-800 block mt-0.5">₹{grossValue.toLocaleString("en-IN")}</span>
+            <span className="text-[11px] text-muted-foreground">Protected in Escrow</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-muted-foreground">Delivery Destination</span>
+            <span className="font-bold text-sm text-foreground block mt-0.5 truncate">{agreement.deliveryDestination || "Dewas Agro Mill"}</span>
+            <span className="text-[11px] text-muted-foreground">Gate Bay #3</span>
+          </div>
+        </div>
+      </div>
 
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Verified
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => alert(`Simulating download of ${doc.title}`)}
-                  className="text-xs h-7"
-                >
-                  <Download className="mr-1 h-3 w-3" /> Download
-                </Button>
-              </div>
-            </div>
+      {/* 6-Stage Milestone Tracker (Section 12) */}
+      <OrderTimeline status={agreement.status} />
+
+      {/* WORKSPACE NAVIGATION TABS (Section 13) */}
+      <div className="border-b border-border">
+        <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
+          {[
+            { id: "overview", label: "1. Overview & Parties" },
+            { id: "negotiation", label: "2. Negotiation History" },
+            { id: "quality", label: "3. Quality / Assay" },
+            { id: "logistics", label: "4. Logistics & Tracking" },
+            { id: "payment", label: "5. Payment & Escrow" },
+            { id: "documents", label: "6. Verified Documents (4)" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`px-4 py-2.5 rounded-t-lg font-bold transition-colors whitespace-nowrap border-b-2 -mb-[2px] ${
+                activeTab === t.id
+                  ? "border-primary text-primary bg-primary/5 font-black"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/20"
+              }`}
+            >
+              {t.label}
+            </button>
           ))}
         </div>
       </div>
+
+      {/* TAB 1: OVERVIEW */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-blue-600" /> Buyer Entity
+                </span>
+                <TrustBadge type="buyer" size="sm" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">{agreement.buyer_name || "ITC Agri Business Division"}</h3>
+              <p className="text-xs text-muted-foreground">
+                Delivery Destination: <strong className="text-foreground">{agreement.deliveryDestination || "Dewas Extraction Plant"}</strong>
+              </p>
+              <div className="pt-2 text-xs border-t border-border mt-3 grid grid-cols-2 gap-2 text-muted-foreground">
+                <div>GSTIN: <strong className="text-foreground">23AAACI1234F1Z5</strong></div>
+                <div>Payment Terms: <strong className="text-foreground">Escrow 24h Release</strong></div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <User className="h-3.5 w-3.5 text-emerald-600" /> Producer Seller
+                </span>
+                <TrustBadge type="producer" size="sm" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">{agreement.farmer_name || "Ramesh Patel"}</h3>
+              <p className="text-xs text-muted-foreground">
+                Farm Gate Origin: <strong className="text-foreground">{agreement.pickupLocation || "Sanwer Aggregation Hub, Indore"}</strong>
+              </p>
+              <div className="pt-2 text-xs border-t border-border mt-3 grid grid-cols-2 gap-2 text-muted-foreground">
+                <div>Farmer KYC: <strong className="text-emerald-700">Aadhaar Verified</strong></div>
+                <div>Bank Account: <strong className="text-foreground">SBI Sanwer (Active)</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg border border-border bg-card space-y-1">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground">Contract Terms</span>
+              <p className="font-bold text-sm text-foreground">Firm Delivery Contract</p>
+              <p className="text-xs text-muted-foreground">Direct pickup scheduled with zero intermediary deductions.</p>
+            </div>
+            <div className="p-4 rounded-lg border border-border bg-card space-y-1">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground">Escrow Security</span>
+              <p className="font-bold text-sm text-emerald-800">100% Funds Secured</p>
+              <p className="text-xs text-muted-foreground">Buyer deposited ₹{grossValue.toLocaleString("en-IN")} into trusted bank escrow.</p>
+            </div>
+            <div className="p-4 rounded-lg border border-border bg-card space-y-1">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground">Arbitration Desk</span>
+              <p className="font-bold text-sm text-foreground">FarmNex Mandi Guarantee</p>
+              <p className="text-xs text-muted-foreground">Impartial electronic slip inspection within 4 hours if disputed.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: NEGOTIATION */}
+      {activeTab === "negotiation" && (
+        <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+          <div>
+            <h3 className="text-base font-black text-foreground">Terms Negotiation & Counteroffer Log</h3>
+            <p className="text-xs text-muted-foreground">
+              Formal audit trail of price proposals and terms agreed prior to binding contract lock.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-primary uppercase tracking-wider text-[10px]">Initial Buyer Offer</span>
+                <span className="text-muted-foreground">01 Mar 2026, 09:30 AM</span>
+              </div>
+              <p className="text-sm font-bold text-foreground">
+                Offered ₹{(rate - 150).toLocaleString("en-IN")}/quintal for {qty}Q delivered Dewas
+              </p>
+              <p className="text-muted-foreground">
+                Terms: Mill unloading within 48h, moisture threshold &lt; 12.0%.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-emerald-700 uppercase tracking-wider text-[10px]">Farmer Counter Offer</span>
+                <span className="text-muted-foreground">01 Mar 2026, 11:15 AM</span>
+              </div>
+              <p className="text-sm font-bold text-foreground">
+                Countered ₹{rate.toLocaleString("en-IN")}/quintal with farm-gate pickup
+              </p>
+              <p className="text-muted-foreground">
+                Reason: Premium Grade A harvest with certified 10.4% moisture assay from Sanwer hub.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg border border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-emerald-800 dark:text-emerald-300 uppercase tracking-wider text-[10px] flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Mutually Accepted & Locked
+                </span>
+                <span className="text-muted-foreground">01 Mar 2026, 02:40 PM</span>
+              </div>
+              <p className="text-sm font-bold text-foreground">
+                Final Contract Rate: ₹{rate.toLocaleString("en-IN")}/quintal · Total: ₹{grossValue.toLocaleString("en-IN")}
+              </p>
+              <p className="text-emerald-800 dark:text-emerald-300">
+                Buyer accepted counter terms. Transporter dispatched for farm-gate collection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: QUALITY / ASSAY */}
+      {activeTab === "quality" && (
+        <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+            <div>
+              <h3 className="text-base font-black text-foreground">Certified Quality Assay & Laboratory Test</h3>
+              <p className="text-xs text-muted-foreground">
+                NABL Accredited test specifications compared against processor procurement benchmark.
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 text-xs font-bold shrink-0">
+              Grade A · Meets Mill Specs
+            </span>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Moisture Level</span>
+              <p className="text-lg font-black text-emerald-800">10.4%</p>
+              <p className="text-muted-foreground text-[11px]">Benchmark: &le; 12.0% (Safe for storage)</p>
+            </div>
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Foreign Matter</span>
+              <p className="text-lg font-black text-foreground">1.1%</p>
+              <p className="text-muted-foreground text-[11px]">Allowable: &le; 2.0%</p>
+            </div>
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Oil / Protein Content</span>
+              <p className="text-lg font-black text-primary">19.2%</p>
+              <p className="text-muted-foreground text-[11px]">Industry Standard: 18.0%</p>
+            </div>
+            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Damaged / Weeviled Grain</span>
+              <p className="text-lg font-black text-foreground">0.6%</p>
+              <p className="text-muted-foreground text-[11px]">Allowable: &le; 3.0%</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg border border-border bg-card space-y-2 text-xs">
+            <h4 className="font-bold text-foreground">Weighbridge Assay Verification</h4>
+            <div className="grid sm:grid-cols-3 gap-3 text-muted-foreground pt-1">
+              <div>Tare Weight: <strong className="text-foreground">4,820 kg</strong></div>
+              <div>Gross Weight: <strong className="text-foreground">14,820 kg</strong></div>
+              <div>Net Produce Weight: <strong className="text-foreground">10,000 kg (100 Quintals)</strong></div>
+            </div>
+            <p className="text-[11px] text-muted-foreground pt-2 border-t border-border">
+              Recorded at Sanwer Digital Electronic Weighbridge #9821. Zero tare variance detected.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: LOGISTICS */}
+      {activeTab === "logistics" && (
+        <div className="space-y-6">
+          <LogisticsPanel agreement={agreement} />
+        </div>
+      )}
+
+      {/* TAB 5: PAYMENT & ESCROW */}
+      {activeTab === "payment" && (
+        <div className="space-y-6">
+          <PaymentBreakdown
+            breakdown={mockBreakdown}
+            quantityQuintals={qty}
+            ratePerQuintal={rate}
+          />
+        </div>
+      )}
+
+      {/* TAB 6: DOCUMENTS */}
+      {activeTab === "documents" && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="border-b border-border p-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Verified Deal Documents & Compliance Proofs</h3>
+              <p className="text-xs text-muted-foreground">Immutable records required for digital escrow disbursement</p>
+            </div>
+            <span className="rounded bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              All 4 Documents Stamped
+            </span>
+          </div>
+
+          <div className="divide-y divide-border">
+            {dealDocuments.map((doc) => (
+              <div key={doc.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-muted p-2 text-primary">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">{doc.title}</p>
+                    <p className="text-[11px] text-muted-foreground">{doc.type} · Generated {doc.date}</p>
+                    <p className="text-[10px] text-primary/80 font-mono mt-0.5">{doc.hash}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Verified
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => alert(`Simulating download of ${doc.title}`)}
+                    className="text-xs h-7"
+                  >
+                    <Download className="mr-1 h-3 w-3" /> Download
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Raise Dispute Dialog */}
       {isDisputeOpen && (

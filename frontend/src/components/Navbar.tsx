@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { DEMO_MODE } from "@/lib/api";
 import { useUser, getRoleLabel } from "@/lib/auth/UserContext";
-import { getRoleHome, getRoleNavigation, type NavLinkItem } from "@/lib/navigation";
+import { getRoleHome, getRoleNavigation, getMobileNavigation, getRolePrimaryAction, type NavLinkItem } from "@/lib/navigation";
 import { getNotifications, markNotificationsRead } from "@/lib/services/domain";
 import type { AppNotification } from "@/lib/data/demo";
 import GlobalSearch from "@/components/GlobalSearch";
@@ -43,6 +43,8 @@ export default function Navbar() {
   const [notifPopoverOpen, setNotifPopoverOpen] = useState(false);
 
   const roleNav = user ? getRoleNavigation(user.role) : [];
+  const mobileNav = user ? getMobileNavigation(user.role) : [];
+  const primaryAction = user ? getRolePrimaryAction(user.role) : null;
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   useEffect(() => {
@@ -81,29 +83,32 @@ export default function Navbar() {
 
   const isLinkActive = (item: NavLinkItem) => {
     if (item.exact) return pathname === item.href;
-    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    return pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
   };
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur shadow-sm">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur shadow-xs">
         {/* TOP BAR */}
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href={user ? getRoleHome(user.role) : "/"}
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-2.5 group"
               aria-label="FarmNex Home"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm group-hover:bg-primary/90 transition-colors">
                 <Sprout className="h-5 w-5" />
               </span>
-              <span className="text-xl font-black tracking-tight text-foreground">FarmNex</span>
+              <div className="flex flex-col leading-none">
+                <span className="text-xl font-black tracking-tight text-foreground">FarmNex</span>
+                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Agri-OS</span>
+              </div>
             </Link>
 
             {user && (
-              <span className="hidden sm:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-primary/20 bg-primary/5 text-primary">
+              <span className="hidden sm:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-primary/25 bg-primary/10 text-primary">
                 {getRoleLabel(user.role)}
               </span>
             )}
@@ -126,7 +131,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => setPersonaOpen(!personaOpen)}
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border border-border bg-muted/30 hover:bg-muted/60 transition-colors"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted/70 transition-colors"
                   title="Switch testing persona"
                 >
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -137,7 +142,7 @@ export default function Navbar() {
                 {personaOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setPersonaOpen(false)} />
-                    <div className="absolute right-0 mt-2 z-40 w-48 rounded-md border border-border bg-card shadow-xl py-1 text-xs">
+                    <div className="absolute right-0 mt-2 z-40 w-52 rounded-lg border border-border bg-card shadow-xl py-1.5 text-xs animate-in fade-in-50 zoom-in-95">
                       <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
                         Switch Persona
                       </div>
@@ -146,7 +151,7 @@ export default function Navbar() {
                           key={r}
                           type="button"
                           onClick={() => handleSwitchRole(r)}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-muted/40 transition-colors ${
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors ${
                             user.role === r ? "font-bold text-primary bg-primary/5" : "text-foreground"
                           }`}
                         >
@@ -167,7 +172,7 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={handleOpenNotifications}
-                    className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                    className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                     aria-label="Notifications"
                   >
                     <Bell className="h-5 w-5" />
@@ -224,7 +229,7 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary font-bold text-xs hover:bg-primary/20 transition-colors"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 border border-primary/25 text-primary font-bold text-xs hover:bg-primary/20 transition-colors"
                   >
                     {user.name.slice(0, 2).toUpperCase()}
                   </button>
@@ -260,7 +265,7 @@ export default function Navbar() {
                             onClick={() => setProfileOpen(false)}
                           >
                             <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                            <span>Deal Messages</span>
+                            <span>Messages</span>
                           </Link>
                         </div>
                         <div className="pt-1 border-t border-border">
@@ -300,45 +305,57 @@ export default function Navbar() {
 
         {/* DESKTOP SECONDARY WORKSPACE NAVIGATION BAR */}
         {user && (
-          <div className="hidden lg:block border-t border-border bg-muted/20">
-            <div className="mx-auto flex h-11 max-w-7xl items-center gap-1 px-4 sm:px-6 lg:px-8 overflow-x-auto">
-              {roleNav.map((item) => {
-                const Icon = item.icon;
-                const active = isLinkActive(item);
-                return (
+          <div className="hidden lg:block border-t border-border bg-card/60 backdrop-blur">
+            <div className="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center gap-1 overflow-x-auto">
+                {roleNav.map((item) => {
+                  const Icon = item.icon;
+                  const active = isLinkActive(item);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
+                        active
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Primary Role CTA + Global Portals */}
+              <div className="flex items-center gap-3 shrink-0 pl-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground border-r border-border pr-3">
                   <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors whitespace-nowrap ${
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    href="/marketplace"
+                    className={`px-2 py-1 rounded hover:text-foreground ${
+                      pathname === "/marketplace" ? "font-bold text-primary" : ""
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span>{item.label}</span>
+                    Marketplace
                   </Link>
-                );
-              })}
+                  <Link
+                    href="/community"
+                    className={`px-2 py-1 rounded hover:text-foreground ${
+                      pathname === "/community" || pathname === "/network" ? "font-bold text-primary" : ""
+                    }`}
+                  >
+                    Community
+                  </Link>
+                </div>
 
-              {/* Global direct shortcuts */}
-              <div className="ml-auto flex items-center gap-2 pl-4 border-l border-border text-xs text-muted-foreground">
-                <Link
-                  href="/marketplace"
-                  className={`px-2 py-1 rounded hover:text-foreground ${
-                    pathname === "/marketplace" ? "font-bold text-primary" : ""
-                  }`}
-                >
-                  Marketplace
-                </Link>
-                <Link
-                  href="/network"
-                  className={`px-2 py-1 rounded hover:text-foreground ${
-                    pathname === "/network" ? "font-bold text-primary" : ""
-                  }`}
-                >
-                  Network Feed
-                </Link>
+                {primaryAction && (
+                  <Button asChild size="sm" className="h-8 font-bold text-xs shadow-xs">
+                    <Link href={primaryAction.href}>
+                      {primaryAction.label}
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -350,6 +367,14 @@ export default function Navbar() {
             <div className="mb-2">
               <GlobalSearch />
             </div>
+
+            {primaryAction && (
+              <Button asChild className="w-full font-bold shadow-xs">
+                <Link href={primaryAction.href} onClick={() => setMobileOpen(false)}>
+                  {primaryAction.label}
+                </Link>
+              </Button>
+            )}
 
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2">
@@ -390,13 +415,13 @@ export default function Navbar() {
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </Link>
               <Link
-                href="/network"
+                href="/community"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center justify-between px-3 py-2 rounded-md text-sm text-foreground hover:bg-muted/40"
               >
                 <span className="flex items-center gap-2">
                   <UsersRound className="h-4 w-4 text-primary" />
-                  <span>Network Feed</span>
+                  <span>Community Network</span>
                 </span>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </Link>
@@ -405,61 +430,28 @@ export default function Navbar() {
         )}
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (Tailored per role) */}
       {user && (
         <nav
           className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur px-2 py-1.5 flex items-center justify-around shadow-lg"
           aria-label="Mobile Navigation"
         >
-          <Link
-            href={getRoleHome(user.role)}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-md text-[10px] font-bold ${
-              pathname === getRoleHome(user.role) ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Home</span>
-          </Link>
-
-          <Link
-            href="/network"
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-md text-[10px] font-bold ${
-              pathname.startsWith("/network") ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <UsersRound className="h-4 w-4" />
-            <span>Network</span>
-          </Link>
-
-          <Link
-            href="/marketplace"
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-md text-[10px] font-bold ${
-              pathname.startsWith("/marketplace") ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Store className="h-4 w-4" />
-            <span>Market</span>
-          </Link>
-
-          <Link
-            href="/messages"
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-md text-[10px] font-bold relative ${
-              pathname.startsWith("/messages") ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <MessageSquare className="h-4 w-4" />
-            <span>Messages</span>
-          </Link>
-
-          <Link
-            href="/orders"
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-md text-[10px] font-bold ${
-              pathname.startsWith("/orders") ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <ShoppingBasket className="h-4 w-4" />
-            <span>Deals</span>
-          </Link>
+          {mobileNav.map((item) => {
+            const Icon = item.icon;
+            const active = isLinkActive(item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-md text-[10px] font-bold transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
       )}
     </>

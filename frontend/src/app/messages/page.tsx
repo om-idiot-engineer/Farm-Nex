@@ -40,6 +40,11 @@ function MessagesContent() {
   const [error, setError] = useState("");
   const [counterModalOpen, setCounterModalOpen] = useState(false);
   const [counterRate, setCounterRate] = useState<number>(5380);
+  const [confirmQtyModalOpen, setConfirmQtyModalOpen] = useState(false);
+  const [confirmedQty, setConfirmedQty] = useState<number>(250);
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+  const [pickupDate, setPickupDate] = useState("2026-09-08");
+  const [pickupVehicle, setPickupVehicle] = useState("12-Wheel Heavy Truck (MP-09-GH-8214)");
   const [acceptingDeal, setAcceptingDeal] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
 
@@ -127,6 +132,64 @@ function MessagesContent() {
       setCounterModalOpen(false);
     } catch (err: any) {
       alert("Failed to submit counter offer.");
+    }
+  };
+
+  const handleConfirmQuantity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedConversation || !confirmedQty) return;
+    const confirmMsg = `Quantity Confirmation: Producer has verified and locked supply at ${confirmedQty} Quintals (${(confirmedQty / 10).toFixed(1)} MT). Available for loading.`;
+    try {
+      const result = await sendMessage(
+        selectedConversation.id,
+        user.id,
+        confirmMsg,
+        "text"
+      );
+      setConversations((current) =>
+        current.map((c) =>
+          c.id === selectedConversation.id
+            ? {
+                ...c,
+                lastMessage: confirmMsg,
+                updatedAt: result.data.createdAt,
+                messages: [...c.messages, result.data],
+              }
+            : c
+        )
+      );
+      setConfirmQtyModalOpen(false);
+    } catch (err: any) {
+      alert("Failed to confirm quantity.");
+    }
+  };
+
+  const handleSchedulePickup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedConversation) return;
+    const pickupMsg = `Consignment Scheduled: Designated vehicle "${pickupVehicle}" scheduled for loading at farm-gate origin on ${pickupDate}. Driver contact will be shared 4 hours prior.`;
+    try {
+      const result = await sendMessage(
+        selectedConversation.id,
+        user.id,
+        pickupMsg,
+        "text"
+      );
+      setConversations((current) =>
+        current.map((c) =>
+          c.id === selectedConversation.id
+            ? {
+                ...c,
+                lastMessage: pickupMsg,
+                updatedAt: result.data.createdAt,
+                messages: [...c.messages, result.data],
+              }
+            : c
+        )
+      );
+      setPickupModalOpen(false);
+    } catch (err: any) {
+      alert("Failed to schedule pickup.");
     }
   };
 
@@ -282,34 +345,53 @@ function MessagesContent() {
               </Button>
             </div>
 
-            {/* STICKY TRANSACTION CONTEXT PANEL */}
+            {/* STICKY TRANSACTION CONTEXT PANEL (Section 14) */}
             {selectedConversation.context && (
-              <div className="border-b border-primary/20 bg-primary/5 p-4 text-xs space-y-2.5">
+              <div className="border-b border-primary/20 bg-primary/5 p-4 text-xs space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-black text-primary text-xs uppercase tracking-wider">
                       {selectedConversation.context.label}
                     </span>
                     <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                      {selectedConversation.context.quantity}Q {selectedConversation.context.crop}
+                      {selectedConversation.context.quantity}Q ({((selectedConversation.context.quantity || 250) / 10).toFixed(1)} MT) {selectedConversation.context.crop}
+                    </span>
+                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded font-bold text-[11px]">
+                      ₹{selectedConversation.context.offer.toLocaleString("en-IN")}/Q
                     </span>
                   </div>
 
-                  {/* Actions in Context Header */}
-                  <div className="flex items-center gap-2">
+                  {/* QUICK COMMERCE ACTIONS (Section 14) */}
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setCounterModalOpen(true)}
-                      className="h-7 text-xs font-bold"
+                      className="h-7 text-xs font-bold bg-background"
                     >
                       Counter Offer
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => setConfirmQtyModalOpen(true)}
+                      className="h-7 text-xs font-bold bg-background"
+                    >
+                      Confirm Qty
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPickupModalOpen(true)}
+                      className="h-7 text-xs font-bold bg-background"
+                    >
+                      Schedule Pickup
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={handleAcceptDealInChat}
                       disabled={acceptingDeal}
-                      className="h-7 text-xs font-bold bg-primary"
+                      className="h-7 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
                     >
                       {acceptingDeal ? "Accepting..." : "Accept Deal"}
                     </Button>
@@ -322,17 +404,17 @@ function MessagesContent() {
                     <span className="font-bold text-foreground">{selectedConversation.context.quality}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold">Active Offer</span>
+                    <span className="block text-[10px] uppercase font-semibold">Est. Total Deal Value</span>
                     <span className="font-bold text-emerald-800">
-                      ₹{selectedConversation.context.offer.toLocaleString("en-IN")}/q
+                      ₹{((selectedConversation.context.quantity || 250) * (selectedConversation.context.offer || 5200)).toLocaleString("en-IN")}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold">Transport</span>
-                    <span className="font-bold text-foreground">{selectedConversation.context.location}</span>
+                    <span className="block text-[10px] uppercase font-semibold">Target Pickup / Delivery</span>
+                    <span className="font-bold text-foreground">08 Sep 2026</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold">Settlement</span>
+                    <span className="block text-[10px] uppercase font-semibold">Freight & Settlement</span>
                     <span className="font-bold text-foreground">{selectedConversation.context.payment}</span>
                   </div>
                 </div>
@@ -465,6 +547,103 @@ function MessagesContent() {
 
               <Button type="submit" className="w-full font-bold">
                 Submit Counter Offer
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM QUANTITY MODAL */}
+      {confirmQtyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-50">
+          <div className="relative w-full max-w-sm bg-card border border-border rounded-xl shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
+            <button
+              type="button"
+              onClick={() => setConfirmQtyModalOpen(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div>
+              <h3 className="text-base font-black text-foreground">Confirm Available Supply Volume</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Verify the exact batch volume available for this consignment.
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmQuantity} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-foreground block mb-1">Confirmed Volume (Quintals)</label>
+                <input
+                  type="number"
+                  value={confirmedQty}
+                  onChange={(e) => setConfirmedQty(Number(e.target.value))}
+                  className="w-full p-2.5 border border-input rounded font-bold text-sm outline-none focus:border-primary"
+                />
+                <span className="text-[11px] text-muted-foreground mt-1 block">
+                  Equivalent to {(confirmedQty / 10).toFixed(1)} Metric Tonnes
+                </span>
+              </div>
+
+              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground">
+                Lock & Confirm Quantity
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SCHEDULE PICKUP MODAL */}
+      {pickupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-50">
+          <div className="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
+            <button
+              type="button"
+              onClick={() => setPickupModalOpen(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div>
+              <h3 className="text-base font-black text-foreground">Schedule Farm-Gate Dispatch</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Allocate logistics vehicle and notify producer of gate arrival window.
+              </p>
+            </div>
+
+            <form onSubmit={handleSchedulePickup} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-foreground block mb-1">Target Loading Date</label>
+                <input
+                  type="date"
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                  className="w-full p-2.5 border border-input rounded font-medium text-sm outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-foreground block mb-1">Allocated Carrier / Vehicle</label>
+                <select
+                  value={pickupVehicle}
+                  onChange={(e) => setPickupVehicle(e.target.value)}
+                  className="w-full p-2.5 border border-input rounded font-medium text-sm outline-none focus:border-primary"
+                >
+                  <option value="12-Wheel Heavy Truck (MP-09-GH-8214)">12-Wheel Heavy Truck (MP-09-GH-8214) - 25 MT</option>
+                  <option value="6-Wheel Medium Truck (MP-13-BB-4102)">6-Wheel Medium Truck (MP-13-BB-4102) - 10 MT</option>
+                  <option value="Eicher LCV (MP-04-KA-9021)">Eicher LCV (MP-04-KA-9021) - 4 MT</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-muted/20 rounded text-[11px] text-muted-foreground space-y-1">
+                <p>Origin: Sanwer Aggregation Hub, Indore (Farm Gate)</p>
+                <p>Destination: Dewas Industrial Plant, Bay #3</p>
+              </div>
+
+              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground">
+                Confirm & Issue Dispatch Notice
               </Button>
             </form>
           </div>

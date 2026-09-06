@@ -199,44 +199,66 @@ export default function FpoDashboardPage() {
             </div>
           </div>
 
-          {/* High-Match Buyer Demands */}
+          {/* DEMAND OPPORTUNITIES: Section 8 prompt specifications */}
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
-                <h2 className="text-base font-bold text-foreground">Immediate Buyer Procurement Demands</h2>
-                <p className="text-xs text-muted-foreground">Verified bulk institutional buyers seeking quantities your FPO can fulfill</p>
+                <h2 className="text-base font-black text-foreground">Demand Opportunities</h2>
+                <p className="text-xs text-muted-foreground">These buyers currently need produce your members can supply</p>
               </div>
               <Link href="/fpo/requirements" className="text-xs font-bold text-primary hover:underline">
-                Explore RFQs
+                Explore All RFQs
               </Link>
             </div>
 
             <div className="divide-y divide-border">
-              {buyerDemands.map((demand: any) => (
-                <div key={demand.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-foreground text-sm">
-                        {demand.business_name || demand.buyer_name || "Institutional Buyer"}
-                      </h3>
-                      <TrustBadge type="buyer" size="sm" />
+              {buyerDemands.map((demand: any, idx: number) => {
+                const availableForCrop = idx === 0 ? 135 : 120; // 13.5 tonnes
+                const neededQ = demand.quantity_needed || 200;
+                const fulfillmentPercent = Math.min(100, Math.round((availableForCrop / neededQ) * 100));
+
+                return (
+                  <div key={demand.id} className="p-4.5 space-y-3 hover:bg-muted/20 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-foreground text-sm">
+                            {demand.business_name || demand.buyer_name || "Agrocorp Processing"}
+                          </h3>
+                          <TrustBadge type="buyer" size="sm" showPopover={false} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Needs: <strong className="text-foreground">{neededQ}Q ({(neededQ / 10).toFixed(1)} Tonnes) {demand.commodity}</strong> ({demand.quality_grade}) · Within 150 km
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <span className="text-sm font-black text-primary">₹{demand.offered_price.toLocaleString("en-IN")}/q</span>
+                        <span className="text-[10px] text-muted-foreground block">Offered Rate</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Seeking <strong className="text-foreground">{demand.quantity_needed}Q {demand.commodity}</strong> ({demand.quality_grade}) · Destination: {demand.location}
-                    </p>
-                    <div className="mt-1 flex items-center gap-3 text-xs">
-                      <span className="font-bold text-primary">Offered Rate: ₹{demand.offered_price.toLocaleString("en-IN")}/q</span>
-                      <span className="text-muted-foreground">Target Date: {demand.target_date}</span>
+
+                    {/* Potential fulfillment bar */}
+                    <div className="bg-muted/30 rounded-lg p-3 border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-muted-foreground">Your FPO Available Supply: {(availableForCrop / 10).toFixed(1)} Tonnes ({availableForCrop}Q)</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-black">Fulfillment: {fulfillmentPercent}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${fulfillmentPercent}%` }} />
+                        </div>
+                      </div>
+
+                      <Button asChild size="sm" className="bg-primary text-primary-foreground font-bold shrink-0 h-8 text-xs">
+                        <Link href={`/fpo/requirements?demand_id=${demand.id}`}>
+                          Coordinate Supply
+                        </Link>
+                      </Button>
                     </div>
                   </div>
-
-                  <Button asChild size="sm" className="bg-primary text-primary-foreground shrink-0">
-                    <Link href={`/messages?recipientId=${demand.buyer_id || demand.user_id || "demo-buyer"}&subject=Offer for ${demand.commodity}`}>
-                      Send Collective Offer
-                    </Link>
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

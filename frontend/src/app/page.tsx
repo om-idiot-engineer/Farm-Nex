@@ -201,30 +201,48 @@ export default function LandingPage() {
   return (
     <div className="space-y-20 py-6 sm:py-10">
       {/* HERO SECTION */}
-      <section className="text-center max-w-4xl mx-auto space-y-6 pt-4 sm:pt-8">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/25 bg-primary/5 text-primary text-xs font-bold">
+      <section className="text-center max-w-5xl mx-auto space-y-6 pt-4 sm:pt-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/25 bg-primary/5 text-primary text-xs font-black uppercase tracking-wider">
           <Sprout className="h-4 w-4" />
-          <span>Agricultural Professional Network & Direct Marketplace</span>
+          <span>India&apos;s Agricultural Commerce & Operating System</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black text-foreground tracking-tight leading-[1.1]">
-          A professional network and marketplace built for agriculture.
+          Direct agricultural trade with <span className="text-primary underline decoration-primary/30 decoration-wavy underline-offset-8">transparent net realization</span>.
         </h1>
 
-        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Connect with farmers, FPOs, processors, and consumers. Discover real opportunities, compare net farm-gate outcomes, and manage transparent transactions.
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+          Connecting Malwa and MP farmers &amp; FPOs directly with industrial food processors and urban consumers. Verified moisture assays, freight-adjusted pricing, and protected bank escrow.
         </p>
+
+        {/* Live Mandi Benchmark Ticker Strip */}
+        <div className="inline-flex flex-wrap items-center justify-center gap-3 py-2 px-4 rounded-xl bg-muted/40 border border-border text-xs">
+          <span className="font-bold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" /> Live MP Mandi Rates:
+          </span>
+          <span className="font-semibold text-foreground">
+            Indore Soybean: <strong className="text-emerald-800 dark:text-emerald-300">₹5,380/Q</strong> <span className="text-[10px] text-emerald-700">(+₹488 vs MSP)</span>
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="font-semibold text-foreground">
+            Dewas Sharbati Wheat: <strong className="text-emerald-800 dark:text-emerald-300">₹2,420/Q</strong> <span className="text-[10px] text-emerald-700">(+₹145 vs MSP)</span>
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="font-semibold text-foreground">
+            Ujjain Cotton: <strong className="text-emerald-800 dark:text-emerald-300">₹7,350/Q</strong> <span className="text-[10px] text-emerald-700">(+₹229 vs MSP)</span>
+          </span>
+        </div>
 
         {user ? (
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="font-bold px-8 h-12 rounded-lg text-base shadow-md" asChild>
               <Link href={getRoleHome(user.role)}>
-                Continue as {user.name} ({user.role})
+                Enter {user.name}&apos;s Workspace ({user.role.toUpperCase()})
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="font-bold px-6 h-12 rounded-lg text-base" asChild>
-              <Link href="/marketplace">Explore Marketplace</Link>
+              <Link href="/marketplace">Open Live Marketplace</Link>
             </Button>
           </div>
         ) : (
@@ -235,7 +253,7 @@ export default function LandingPage() {
               asChild
             >
               <Link href="/marketplace">
-                Explore FarmNex
+                Explore Live Produce Lots
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
@@ -245,7 +263,7 @@ export default function LandingPage() {
               className="font-bold px-6 h-12 rounded-lg text-base bg-card hover:bg-muted/40"
               onClick={() => openAuth("farmer", "login")}
             >
-              Join as Farmer
+              🌾 Join as Farmer / FPO
             </Button>
             <Button
               size="lg"
@@ -253,46 +271,101 @@ export default function LandingPage() {
               className="font-semibold text-muted-foreground hover:text-foreground text-sm"
               onClick={() => openAuth("buyer", "login")}
             >
-              Buyer / FPO Sign In
+              🏭 Bulk Buyer / Processor Login
             </Button>
           </div>
         )}
 
+        {/* ECOSYSTEM ARCHITECTURE VISUALIZATION */}
+        <div className="pt-8 max-w-4xl mx-auto">
+          <div className="rounded-xl border border-border bg-card/60 p-5 shadow-xs text-left">
+            <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+              <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                How FarmNex Powers Agricultural Commerce
+              </span>
+              <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded">
+                Full-Stack Commerce Flow
+              </span>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4 text-xs">
+              {/* Box 1: Supply */}
+              <div className="p-4 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 space-y-2">
+                <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300">
+                  <Sprout className="h-4 w-4" /> 1. Supply Generation
+                </div>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  Individual farmers and FPO collectives list harvested lots with geotagged origins and certified NABL moisture/impurity assay parameters.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-emerald-700">
+                  ✓ Sanwer, Dewas, Sehore Hubs
+                </div>
+              </div>
+
+              {/* Box 2: Operating Engine */}
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                <div className="flex items-center gap-2 font-black text-primary">
+                  <Scale className="h-4 w-4" /> 2. Intelligence &amp; Escrow
+                </div>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  FarmNex Net Realization Engine calculates freight deductions, matches buyers within 150 km, and secures payment in bank escrow.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-primary">
+                  ✓ Instant Net ₹/Q Ranking
+                </div>
+              </div>
+
+              {/* Box 3: Demand */}
+              <div className="p-4 rounded-lg bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 space-y-2">
+                <div className="flex items-center gap-2 font-black text-blue-800 dark:text-blue-300">
+                  <Building2 className="h-4 w-4" /> 3. Dual Demand Channels
+                </div>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  Industrial mills contract bulk volume with electronic weighbridge slips, while urban consumers order fresh produce with origin traceability.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-blue-700">
+                  ✓ Processors + Direct Retail
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Testing Personas Strip */}
         <div className="pt-6 border-t border-border mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-          <span className="font-bold uppercase tracking-wider text-[10px]">Instant Demo Roles:</span>
+          <span className="font-bold uppercase tracking-wider text-[10px]">Switch Demo Persona:</span>
           <button
             type="button"
             onClick={() => handleQuickDemoLogin("farmer")}
-            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors"
+            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors border border-border"
           >
             🌾 Ramesh Patel (Farmer)
           </button>
           <button
             type="button"
             onClick={() => handleQuickDemoLogin("fpo")}
-            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors"
+            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors border border-border"
           >
             🏢 Malwa FPO (Collective)
           </button>
           <button
             type="button"
             onClick={() => handleQuickDemoLogin("buyer")}
-            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors"
+            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors border border-border"
           >
             🏭 Agrocorp (Bulk Buyer)
           </button>
           <button
             type="button"
             onClick={() => handleQuickDemoLogin("consumer")}
-            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors"
+            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors border border-border"
           >
             🥗 Meera (Consumer)
           </button>
           <button
             type="button"
             onClick={() => handleQuickDemoLogin("admin")}
-            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors"
+            className="px-2.5 py-1 rounded bg-muted/40 hover:bg-muted font-semibold text-foreground transition-colors border border-border"
           >
             🛡️ Operations (Admin)
           </button>

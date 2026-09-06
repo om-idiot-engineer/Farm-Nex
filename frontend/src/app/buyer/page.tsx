@@ -83,104 +83,213 @@ export default function BuyerDashboardPage() {
   const totalResponses = rfqs.reduce((sum, r) => sum + r.responseCount, 0);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-8 pb-12 max-w-7xl mx-auto py-4">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 md:flex-row md:items-end">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-              Institutional Procurement Center
+            <span className="rounded-md bg-blue-100 px-2.5 py-0.5 text-xs font-black uppercase tracking-wider text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+              Procurement Command Center
             </span>
             <TrustBadge type="buyer" size="sm" />
           </div>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            {user.buyer_profile?.business_name || user.name || "AgroCorp Processing Mills"}
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+            {user.buyer_profile?.business_name || user.name || "Agrocorp Central Processing"}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             Direct farmer and FPO aggregate sourcing, contract settlement, and multi-hub destination delivery management.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" asChild size="sm">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button variant="outline" asChild size="sm" className="font-bold h-10">
             <Link href="/buyer/discover">
               <Search className="mr-1.5 h-4 w-4" />
-              Discover Farm Supply
+              Find Supply Lots
             </Link>
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)} size="sm" className="bg-primary text-primary-foreground">
+          <Button onClick={() => setIsCreateOpen(true)} size="sm" className="bg-primary text-primary-foreground font-bold h-10 shadow-xs">
             <PlusCircle className="mr-1.5 h-4 w-4" />
             Publish New RFQ
           </Button>
         </div>
       </div>
 
-      <DemoNotice>
-        Broadcasted procurement RFQs automatically calculate freight differentials and match with verified farmer lots and FPO aggregated batches.
-      </DemoNotice>
-
-      {/* CONSOLIDATED PROCUREMENT COMMAND STRIP */}
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-0.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Active Tenders & RFQs
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-foreground">{rfqs.length} Open</span>
-              <span className="text-xs font-semibold text-primary">({totalResponses} bids)</span>
-            </div>
-            <Link href="/buyer/procurement" className="text-[11px] font-bold text-primary hover:underline block">
-              Manage RFQ responses →
-            </Link>
-          </div>
-
-          <div className="space-y-0.5 border-l border-border pl-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Committed Volume
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-foreground">{totalCommittedQuintals.toLocaleString("en-IN")} Q</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">Across active tenders</p>
-          </div>
-
-          <div className="space-y-0.5 border-l border-border pl-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Escrow Protection
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-emerald-800">100% Locked</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">Releases post weighbridge receipt</p>
-          </div>
-
-          <div className="space-y-0.5 border-l border-border pl-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Direct Farmer Sourcing
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-foreground">84%</span>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
-                -4.8% brokerage
+      {/* PROCUREMENT WORKFLOW STEPPER */}
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+          <span className="uppercase tracking-wider text-[10px] text-primary">Procurement Journey Progression</span>
+          <span>End-to-End Traceable Workflow</span>
+        </div>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 pt-1 text-center text-xs">
+          {[
+            { step: "1. Requirement", active: true, done: true },
+            { step: "2. Matches", active: true, done: true },
+            { step: "3. Shortlist", active: true, done: false },
+            { step: "4. Compare", active: false, done: false },
+            { step: "5. Negotiate", active: false, done: false },
+            { step: "6. Deal", active: false, done: false },
+            { step: "7. Logistics", active: false, done: false },
+            { step: "8. Complete", active: false, done: false },
+          ].map((s, idx) => (
+            <div key={idx} className="space-y-1">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  s.done ? "bg-primary" : s.active ? "bg-primary/50" : "bg-muted"
+                }`}
+              />
+              <span className={`text-[10px] font-bold block truncate ${s.active ? "text-foreground" : "text-muted-foreground"}`}>
+                {s.step}
               </span>
             </div>
-            <Link href="/buyer/discover" className="text-[11px] font-bold text-primary hover:underline block">
-              Discover farm lots →
-            </Link>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Main Grid: Active RFQs & Real-time Matching Supply */}
+      {/* SECTION 6: KEY PROCUREMENT COMMAND CENTER METRICS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+            Open Requirements
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-foreground">{rfqs.length}</span>
+            <span className="text-xs font-semibold text-primary">Active RFQs</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Broadcasted to verified growers</p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+            Matching Supply
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-emerald-800 dark:text-emerald-400">38</span>
+            <span className="text-xs font-semibold text-muted-foreground">lots available</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Within 150 km of processing plant</p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+            Pending Offers
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-amber-800 dark:text-amber-400">4</span>
+            <span className="text-xs font-semibold text-muted-foreground">quotes awaiting</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">From FPOs & certified farmers</p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+            Active Deals
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-foreground">7</span>
+            <span className="text-xs font-semibold text-primary">in execution</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Escrow protected & in transit</p>
+        </div>
+      </div>
+
+      {/* TOP MATCHES FOR YOUR REQUIREMENTS */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div>
+            <h2 className="text-lg font-black text-foreground">Top Matches for Your Active Requirements</h2>
+            <p className="text-xs text-muted-foreground">
+              Intelligently matched lots based on grade specifications, moisture thresholds, and landed freight cost.
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-xs font-bold text-primary">
+            <Link href="/buyer/procurement">All Requirements ({rfqs.length}) →</Link>
+          </Button>
+        </div>
+
+        {rfqs.slice(0, 2).map((rfq) => {
+          const matchedSuppliers = rfq.matchedSuppliers || [];
+          return (
+            <div key={rfq.id} className="border border-border bg-card rounded-xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20 border border-border/80 rounded-lg p-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-primary">YOUR REQUIREMENT:</span>
+                    <span className="font-bold text-foreground text-sm">{rfq.commodity || rfq.crop}</span>
+                    <span className="text-xs text-muted-foreground">· {rfq.quantityQuintals || rfq.quantity} Quintals ({(rfq.quantityQuintals || rfq.quantity) / 10}T)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Target Rate: <strong className="text-foreground">₹{(rfq.targetPricePerQuintal || 5350).toLocaleString("en-IN")}/q</strong> · Facility: {rfq.deliveryDestination || rfq.destination} · Max Moisture: {rfq.maxMoisturePercentage || 11.5}%
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-200 dark:border-emerald-800">
+                    {matchedSuppliers.length || 5} Matching Suppliers Found
+                  </span>
+                  <Button size="sm" variant="outline" asChild className="h-8 text-xs font-bold">
+                    <Link href={`/buyer/procurement/${rfq.id}`}>Manage RFQ</Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Matched Supplier Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {matchedSuppliers.map((sup, idx) => (
+                  <div key={sup.id} className="border border-border rounded-lg p-3.5 space-y-2.5 bg-background hover:border-primary/50 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-sm text-foreground truncate">{sup.sellerName}</h4>
+                          <TrustBadge type={sup.sellerRole === "fpo" ? "fpo" : "producer"} size="sm" showPopover={false} />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="h-3 w-3 text-primary shrink-0" />
+                          {sup.location} ({sup.distanceKm} km)
+                        </p>
+                      </div>
+                      <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        {sup.qualityFitPercentage || 92}% Match
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-muted/30 p-2 rounded">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase font-bold">Supply Available</span>
+                        <span className="font-bold text-foreground">{sup.availableQuantity} Quintals</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground block text-[10px] uppercase font-bold">Expected Rate</span>
+                        <span className="font-bold text-primary">₹{sup.expectedPrice.toLocaleString("en-IN")}/q</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <span className="text-[11px] text-muted-foreground">Reliability: {sup.reliabilityScore || 98}%</span>
+                      <Button size="sm" asChild className="h-7 text-xs font-bold px-2.5">
+                        <Link href={`/messages?conversation=demo-conversation-agrocorp`}>
+                          Negotiate
+                          <ArrowRight className="h-3 w-3 ml-1" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* Main Grid: Active Tenders & Immediate Farm Supply */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Active RFQs */}
+        {/* Left 2 Cols: Active RFQs Table */}
         <div className="space-y-6 lg:col-span-2">
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
-                <h2 className="text-base font-bold text-foreground">Active Procurement RFQs</h2>
-                <p className="text-xs text-muted-foreground">Broadcasted demand posts open for farmer and FPO quotations</p>
+                <h2 className="text-base font-bold text-foreground">Broadcasted Procurement Tenders</h2>
+                <p className="text-xs text-muted-foreground">Demand posts open for farmer and FPO quotations</p>
               </div>
               <Link href="/buyer/procurement" className="text-xs font-bold text-primary hover:underline">
                 View All RFQs ({rfqs.length})
@@ -222,46 +331,37 @@ export default function BuyerDashboardPage() {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* High-Compatibility Available Lots */}
+        {/* Right 1 Col: Immediate Available Supply Lots */}
+        <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
-                <h2 className="text-base font-bold text-foreground">Immediate Available Supply Lots</h2>
-                <p className="text-xs text-muted-foreground">Verified produce listings within 100km radius matching your active specs</p>
+                <h3 className="text-base font-bold text-foreground">Immediate Available Supply</h3>
+                <p className="text-xs text-muted-foreground">Nearby farm lots matching your specs</p>
               </div>
               <Link href="/buyer/discover" className="text-xs font-bold text-primary hover:underline">
-                Explore Full Directory
+                Explore All
               </Link>
             </div>
 
             <div className="divide-y divide-border">
               {listings.slice(0, 3).map((lot: any) => (
-                <div key={lot.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground text-sm">
-                        {lot.quantity} Quintals {lot.commodity} ({lot.quality_grade})
-                      </span>
-                      <TrustBadge type="producer" size="sm" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Origin: {lot.location} · Asking: <strong className="text-foreground">₹{lot.expected_price.toLocaleString("en-IN")}/Q</strong> · Moisture: {lot.moisture_percentage || "11.2"}%
-                    </p>
+                <div key={lot.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-foreground text-sm">
+                      {lot.quantity}Q {lot.commodity} ({lot.quality_grade})
+                    </span>
+                    <span className="text-xs font-bold text-primary">₹{lot.expected_price.toLocaleString("en-IN")}/q</span>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button asChild variant="outline" size="sm" className="text-xs">
-                      <Link href={`/marketplace/listings/${lot.id}`}>
-                        View Details
-                      </Link>
-                    </Button>
-                    <Button asChild size="sm" className="bg-primary text-primary-foreground text-xs">
-                      <Link href={`/messages?recipientId=${lot.user_id}&subject=Procurement Inquiry for ${lot.commodity}`}>
-                        Make Offer
-                      </Link>
-                    </Button>
-                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-primary shrink-0" />
+                    {lot.location} · Moisture: {lot.moisture_percent || "11.2"}%
+                  </p>
+                  <Button size="sm" variant="outline" asChild className="w-full h-8 text-xs font-bold">
+                    <Link href={`/marketplace/listings/${lot.id}`}>Inspect Farm Lot</Link>
+                  </Button>
                 </div>
               ))}
             </div>

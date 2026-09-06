@@ -13,20 +13,23 @@ interface Milestone {
 }
 
 const MILESTONES: Milestone[] = [
-  { key: "matched", label: "Deal Agreed", desc: "Terms & rate locked" },
-  { key: "trade_confirmed", label: "Buyer Confirmed", desc: "Digital contract signed" },
-  { key: "pickup_scheduled", label: "Pickup Scheduled", desc: "Vehicle & driver assigned" },
-  { key: "pickup_completed", label: "Loaded & Weighed", desc: "Farm weighment recorded" },
-  { key: "in_transit", label: "In Transit", desc: "Dispatched to plant" },
-  { key: "delivered", label: "Delivered", desc: "Received at mill gate" },
-  { key: "payment_confirmed", label: "Payment Confirmed", desc: "Escrow funds released" },
-  { key: "completed", label: "Completed", desc: "Final receipt archived" },
+  { key: "seller_confirmed", label: "Seller Confirmed", desc: "Terms agreed & locked" },
+  { key: "quality_verified", label: "Quality Verified", desc: "Assay & grade certified" },
+  { key: "pickup_scheduled", label: "Pickup Scheduled", desc: "Carrier & bay assigned" },
+  { key: "in_transit", label: "In Transit", desc: "Dispatched from origin" },
+  { key: "delivery_pending", label: "Delivery Pending", desc: "Gate weighbridge check" },
+  { key: "payment_protected", label: "Payment Protected", desc: "Escrow release & payout" },
 ];
 
 function getStageIndex(status: string): number {
   const normalized = status.toLowerCase();
-  const index = MILESTONES.findIndex((m) => m.key === normalized);
-  return index !== -1 ? index : 2; // default to pickup scheduled if unrecognized
+  if (normalized.includes("seller") || normalized === "matched" || normalized === "pending") return 0;
+  if (normalized.includes("quality") || normalized.includes("assay")) return 1;
+  if (normalized.includes("pickup") || normalized === "trade_confirmed") return 2;
+  if (normalized.includes("transit")) return 3;
+  if (normalized.includes("deliver") || normalized.includes("pending_receipt")) return 4;
+  if (normalized.includes("payment") || normalized === "completed" || normalized.includes("settled")) return 5;
+  return 2; // default to pickup scheduled
 }
 
 export default function OrderTimeline({ status }: OrderTimelineProps) {
@@ -47,7 +50,7 @@ export default function OrderTimeline({ status }: OrderTimelineProps) {
       </div>
 
       {/* Desktop Horizontal Milestone Bar */}
-      <div className="hidden lg:grid grid-cols-8 gap-2 relative">
+      <div className="hidden lg:grid grid-cols-6 gap-2 relative">
         {MILESTONES.map((step, idx) => {
           const isDone = idx < currentIndex;
           const isCurrent = idx === currentIndex;
