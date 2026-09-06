@@ -101,6 +101,7 @@ export default function Navbar() {
   };
 
   const isLinkActive = (item: NavLinkItem) => {
+    if (!pathname) return false;
     if (item.exact) return pathname === item.href;
     return pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
   };
@@ -108,77 +109,89 @@ export default function Navbar() {
   return (
     <>
       <header
-        className={`sticky top-0 z-40 border-b bg-card/95 backdrop-blur transition-all duration-200 ${
-          scrolled ? "border-border shadow-sm" : "border-border/60"
+        className={`sticky top-0 z-40 border-b bg-background/95 backdrop-blur transition-all duration-200 ${
+          scrolled ? "border-border shadow-xs" : "border-border/60"
         }`}
       >
         {/* TOP BAR */}
-        <div
-          className={`mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 transition-all duration-200 ${
-            scrolled ? "h-14" : "h-16"
-          }`}
-        >
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href={user ? getRoleHome(user.role) : "/"}
-              className="flex items-center gap-2.5 group"
+              className="flex items-center gap-2 group"
               aria-label="FarmNex Home"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm group-hover:bg-primary/90 transition-colors">
-                <Sprout className="h-5 w-5" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs group-hover:bg-primary/90 transition-colors">
+                <Sprout className="h-4 w-4" />
               </span>
-              <div className="flex flex-col leading-none">
-                <span className="text-xl font-black tracking-tight text-foreground">FarmNex</span>
-                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Agri-OS</span>
-              </div>
+              <span className="text-lg font-black tracking-tight text-foreground">FarmNex</span>
             </Link>
 
             {user && (
-              <span className="hidden sm:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-primary/25 bg-primary/10 text-primary">
-                {getRoleLabel(user.role)}
+              <span className="hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-primary/25 bg-primary/10 text-primary">
+                {getRoleLabel(user.role) || user.role}
               </span>
             )}
           </div>
 
           {/* Center Navigation: Global Search when logged in, or Public Links when visitor */}
           {user ? (
-            <div className="hidden md:block flex-1 max-w-md mx-4">
-              <GlobalSearch />
+            <div className="hidden md:flex flex-1 max-w-2xl mx-4 justify-center">
+              <nav className="flex items-center gap-1 sm:gap-2">
+                {roleNav.map((item) => {
+                  const Icon = item.icon;
+                  const active = isLinkActive(item);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex flex-col items-center justify-center gap-1 min-w-[72px] px-2 py-1.5 rounded-md transition-all ${
+                        active
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-[10px] font-bold">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
           ) : (
-            <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-xs font-bold text-muted-foreground" aria-label="Public Navigation">
+            <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 text-xs font-medium text-muted-foreground" aria-label="Public Navigation">
               <Link
                 href="/#how-it-works"
-                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors font-semibold"
               >
                 How It Works
               </Link>
               <Link
                 href="/#for-farmers"
-                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors font-semibold"
               >
                 For Farmers
               </Link>
               <Link
                 href="/#for-buyers"
-                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors font-semibold"
               >
                 For Buyers
               </Link>
               <Link
                 href="/marketplace"
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  pathname === "/marketplace" ? "text-primary font-black bg-primary/5" : "hover:text-foreground hover:bg-muted/40"
+                className={`px-3 py-1.5 rounded-md transition-colors font-semibold ${
+                  pathname === "/marketplace" ? "text-primary font-bold bg-primary/5" : "hover:text-foreground hover:bg-muted/50"
                 }`}
               >
                 Marketplace
               </Link>
               <Link
                 href="/#trust"
-                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors font-semibold"
               >
-                Trust &amp; Escrow
+                Trust / Escrow
               </Link>
             </nav>
           )}
@@ -293,7 +306,7 @@ export default function Navbar() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 border border-primary/25 text-primary font-bold text-xs hover:bg-primary/20 transition-colors"
                   >
-                    {user.name.slice(0, 2).toUpperCase()}
+                    {(user?.name || "User").slice(0, 2).toUpperCase()}
                   </button>
 
                   {profileOpen && (
@@ -301,12 +314,12 @@ export default function Navbar() {
                       <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
                       <div className="absolute right-0 mt-2 z-40 w-56 rounded-lg border border-border bg-card shadow-xl p-2 text-xs">
                         <div className="px-3 py-2 border-b border-border">
-                          <p className="font-bold text-foreground truncate">{user.name}</p>
-                          <p className="text-[11px] text-muted-foreground capitalize">{user.role} workspace</p>
+                          <p className="font-bold text-foreground truncate">{user?.name || "User"}</p>
+                          <p className="text-[11px] text-muted-foreground capitalize">{user?.role || "user"} workspace</p>
                         </div>
                         <div className="py-1 space-y-0.5">
                           <Link
-                            href={`/profile/${user.id}`}
+                            href={user?.id ? `/profile/${user.id}` : "/profile"}
                             className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/40 font-medium"
                             onClick={() => setProfileOpen(false)}
                           >
@@ -379,64 +392,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* DESKTOP SECONDARY WORKSPACE NAVIGATION BAR */}
-        {user && (
-          <div className="hidden lg:block border-t border-border bg-card/60 backdrop-blur">
-            <div className="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-1 overflow-x-auto">
-                {roleNav.map((item) => {
-                  const Icon = item.icon;
-                  const active = isLinkActive(item);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
-                        active
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Primary Role CTA + Global Portals */}
-              <div className="flex items-center gap-3 shrink-0 pl-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground border-r border-border pr-3">
-                  <Link
-                    href="/marketplace"
-                    className={`px-2 py-1 rounded hover:text-foreground ${
-                      pathname === "/marketplace" ? "font-bold text-primary" : ""
-                    }`}
-                  >
-                    Marketplace
-                  </Link>
-                  <Link
-                    href="/community"
-                    className={`px-2 py-1 rounded hover:text-foreground ${
-                      pathname === "/community" || pathname === "/network" ? "font-bold text-primary" : ""
-                    }`}
-                  >
-                    Community
-                  </Link>
-                </div>
-
-                {primaryAction && (
-                  <Button asChild size="sm" className="h-8 font-bold text-xs shadow-xs">
-                    <Link href={primaryAction.href}>
-                      {primaryAction.label}
-                    </Link>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* MOBILE SLIDE-OVER DRAWER (User Authenticated) */}
         {mobileOpen && user && (
           <div className="lg:hidden border-t border-border bg-card p-4 space-y-4 animate-in slide-in-from-top-2">
@@ -454,7 +409,7 @@ export default function Navbar() {
 
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2">
-                {getRoleLabel(user.role)} Workspace
+                {getRoleLabel(user?.role) || user?.role || "User"} Workspace
               </p>
               {roleNav.map((item) => {
                 const Icon = item.icon;

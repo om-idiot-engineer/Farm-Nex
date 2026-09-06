@@ -35,7 +35,7 @@ export interface RolePrimaryAction {
   icon: any;
 }
 
-export function getRoleHome(role: UserProfile["role"]): string {
+export function getRoleHome(role?: UserProfile["role"]): string {
   if (role === "admin") return "/admin";
   if (role === "buyer") return "/buyer";
   if (role === "fpo") return "/fpo";
@@ -44,7 +44,7 @@ export function getRoleHome(role: UserProfile["role"]): string {
   return "/farmer";
 }
 
-export function getRolePrimaryAction(role: UserProfile["role"]): RolePrimaryAction {
+export function getRolePrimaryAction(role?: UserProfile["role"]): RolePrimaryAction {
   if (role === "farmer") {
     return { label: "+ List Produce", href: "/farmer/produce/new", icon: Plus };
   }
@@ -63,123 +63,42 @@ export function getRolePrimaryAction(role: UserProfile["role"]): RolePrimaryActi
   return { label: "Explore Market", href: "/marketplace", icon: Store };
 }
 
-export function getRoleNavigation(role: UserProfile["role"]): NavLinkItem[] {
-  if (role === "farmer") {
-    return [
-      { href: "/farmer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/farmer/produce", label: "My Produce", icon: Sprout },
-      { href: "/farmer/buyers", label: "Find Buyers", icon: TrendingUp },
-      { href: "/marketplace", label: "Marketplace", icon: Store },
-      { href: "/orders", label: "Orders", icon: ShoppingBasket },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-      { href: "/community", label: "Community", icon: UsersRound },
-      { href: "/farmer/market", label: "More", icon: BarChart3 },
-    ];
-  }
+export function getRoleNavigation(role?: UserProfile["role"]): NavLinkItem[] {
+  if (!role) return [];
 
-  if (role === "consumer") {
-    return [
-      { href: "/consumer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/consumer/discover", label: "Discover", icon: Compass },
-      { href: "/consumer/shop", label: "Shop", icon: ShoppingBasket },
-      { href: "/consumer/orders", label: "Orders", icon: FileCheck2 },
-      { href: "/consumer/following", label: "Following", icon: Heart },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-      { href: "/marketplace", label: "More", icon: Store },
-    ];
-  }
+  const baseNav: NavLinkItem[] = [
+    { href: getRoleHome(role), label: "Home", icon: LayoutDashboard, exact: true },
+    { href: "/network", label: "Network", icon: UsersRound },
+    { href: "/marketplace", label: "Marketplace", icon: Store },
+  ];
 
   if (role === "buyer") {
-    return [
-      { href: "/buyer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/buyer/discover", label: "Find Supply", icon: Search },
-      { href: "/buyer/procurement", label: "My Requirements", icon: FileText },
-      { href: "/buyer/deals", label: "Deals", icon: Handshake },
-      { href: "/orders", label: "Orders", icon: ShoppingBasket },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-      { href: "/intelligence", label: "Analytics", icon: BarChart3 },
-    ];
+    baseNav.push({ href: "/buyer/procurement", label: "Procurement", icon: FileText });
+  } else {
+    baseNav.push({ href: "/orders", label: "Orders", icon: ShoppingBasket });
   }
 
-  if (role === "fpo") {
-    return [
-      { href: "/fpo", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/fpo/supply", label: "Supply", icon: Layers3 },
-      { href: "/fpo/requirements", label: "Requirements", icon: Building2 },
-      { href: "/fpo/deals", label: "Deals", icon: Handshake },
-      { href: "/fpo/members", label: "Members", icon: UsersRound },
-      { href: "/fpo/logistics", label: "Logistics", icon: Truck },
-      { href: "/fpo/analytics", label: "Analytics", icon: BarChart3 },
-    ];
-  }
+  baseNav.push({ href: "/messages", label: "Messages", icon: MessageSquare });
 
-  if (role === "admin") {
-    return [
-      { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-      { href: "/admin/users", label: "Users", icon: UsersRound },
-      { href: "/admin/marketplace", label: "Marketplace", icon: Store },
-      { href: "/admin/transactions", label: "Transactions", icon: ShoppingBasket },
-      { href: "/admin/trust", label: "Trust & Safety", icon: ShieldCheck },
-      { href: "/admin/disputes", label: "Disputes", icon: Scale },
-      { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-    ];
-  }
-
-  // Expert fallback
-  return [
-    { href: "/network", label: "Network Feed", icon: UsersRound, exact: true },
-    { href: "/marketplace", label: "Marketplace", icon: Store },
-    { href: "/intelligence", label: "Market Trends", icon: BarChart3 },
-    { href: "/messages", label: "Inquiries", icon: MessageSquare },
-  ];
+  return baseNav;
 }
 
-export function getMobileNavigation(role: UserProfile["role"]): NavLinkItem[] {
-  if (role === "farmer") {
-    return [
-      { href: "/farmer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/farmer/produce", label: "Produce", icon: Sprout },
-      { href: "/farmer/buyers", label: "Buyers", icon: TrendingUp },
-      { href: "/orders", label: "Orders", icon: ShoppingBasket },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-    ];
-  }
+export function getMobileNavigation(role?: UserProfile["role"]): NavLinkItem[] {
+  if (!role) return [];
 
-  if (role === "consumer") {
-    return [
-      { href: "/consumer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/consumer/discover", label: "Discover", icon: Compass },
-      { href: "/consumer/shop", label: "Shop", icon: ShoppingBasket },
-      { href: "/consumer/orders", label: "Orders", icon: FileCheck2 },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-    ];
-  }
+  const baseNav: NavLinkItem[] = [
+    { href: getRoleHome(role), label: "Home", icon: LayoutDashboard, exact: true },
+    { href: "/network", label: "Network", icon: UsersRound },
+    { href: "/marketplace", label: "Market", icon: Store },
+  ];
 
   if (role === "buyer") {
-    return [
-      { href: "/buyer", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/buyer/discover", label: "Supply", icon: Search },
-      { href: "/buyer/procurement", label: "RFQs", icon: FileText },
-      { href: "/orders", label: "Orders", icon: ShoppingBasket },
-      { href: "/messages", label: "Messages", icon: MessageSquare },
-    ];
+    baseNav.push({ href: "/buyer/procurement", label: "Procure", icon: FileText });
+  } else {
+    baseNav.push({ href: "/orders", label: "Orders", icon: ShoppingBasket });
   }
 
-  if (role === "fpo") {
-    return [
-      { href: "/fpo", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/fpo/supply", label: "Supply", icon: Layers3 },
-      { href: "/fpo/requirements", label: "Demand", icon: Building2 },
-      { href: "/fpo/members", label: "Members", icon: UsersRound },
-      { href: "/orders", label: "Deals", icon: ShoppingBasket },
-    ];
-  }
+  baseNav.push({ href: "/messages", label: "Messages", icon: MessageSquare });
 
-  return [
-    { href: "/admin", label: "Admin", icon: LayoutDashboard, exact: true },
-    { href: "/admin/marketplace", label: "Market", icon: Store },
-    { href: "/admin/transactions", label: "Trades", icon: ShoppingBasket },
-    { href: "/admin/disputes", label: "Disputes", icon: Scale },
-    { href: "/admin/users", label: "Users", icon: UsersRound },
-  ];
+  return baseNav;
 }

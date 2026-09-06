@@ -50,14 +50,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser: (nextUser, nextSource = "api") => {
       setUserState(nextUser);
       setSource(nextSource);
-      if (nextUser) api.setCurrentUser(nextUser);
-      else api.clearToken();
+      if (nextUser) {
+        api.setCurrentUser(nextUser);
+        if (!api.getToken()) {
+          api.setToken(`demo_token_${nextUser.role || "user"}`);
+        }
+      } else {
+        api.clearToken();
+      }
     },
     switchDemoRole: (role) => {
       const result = getDemoUser(role);
       setUserState(result.data);
       setSource("demo");
       api.setCurrentUser(result.data);
+      api.setToken(`demo_token_${role}`);
       if (typeof window !== "undefined") window.localStorage.setItem("farmnex_demo_role", role);
     },
     logout: () => {
@@ -77,8 +84,17 @@ export function useUser() {
   return context;
 }
 
-export function getRoleLabel(role: UserProfile["role"]) {
-  return { farmer: "Farmer", fpo: "FPO", buyer: "Bulk buyer", consumer: "Consumer", admin: "Admin", expert: "Expert" }[role];
+export function getRoleLabel(role?: UserProfile["role"]) {
+  if (!role) return "User";
+  const labels: Record<string, string> = {
+    farmer: "Farmer",
+    fpo: "FPO",
+    buyer: "Bulk buyer",
+    consumer: "Consumer",
+    admin: "Admin",
+    expert: "Expert",
+  };
+  return labels[role] || "User";
 }
 
 export { DEMO_SOURCE_LABEL, demoUsers };

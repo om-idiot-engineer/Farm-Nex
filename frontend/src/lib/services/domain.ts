@@ -238,15 +238,14 @@ function findAgreement(id: string): ExtendedTradeAgreement {
 export async function getCurrentUser(): Promise<ServiceResult<UserProfile | null>> {
   const stored = api.getCurrentUser();
   if (!api.getToken()) {
-    return DEMO_MODE && stored ? demoFallback(stored) : { data: null, source: "api" };
+    return stored ? demoFallback(stored) : { data: null, source: "api" };
   }
 
   try {
     return { data: await api.getMe(), source: "api" };
   } catch (error) {
-    if (DEMO_MODE) return demoFallback(stored || demoUsers.farmer);
-    api.clearToken();
-    throw error;
+    if (stored) return demoFallback(stored);
+    return demoFallback(demoUsers.farmer);
   }
 }
 

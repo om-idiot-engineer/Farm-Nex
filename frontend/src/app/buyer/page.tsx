@@ -80,7 +80,7 @@ export default function BuyerDashboardPage() {
   };
 
   const totalCommittedQuintals = rfqs.reduce((sum, r) => sum + (r.quantityQuintals || r.quantity || 0), 0);
-  const totalResponses = rfqs.reduce((sum, r) => sum + r.responseCount, 0);
+  const totalResponses = rfqs.reduce((sum, r) => sum + (r.responseCount || 0), 0);
 
   return (
     <div className="space-y-8 pb-12 max-w-7xl mx-auto py-4">
