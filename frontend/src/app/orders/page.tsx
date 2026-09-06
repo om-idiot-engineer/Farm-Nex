@@ -6,39 +6,48 @@ import {
   Package, 
   Search, 
   Filter, 
-  ArrowLeft, 
-  ArrowRight, 
-  Clock, 
   CheckCircle2, 
   Truck, 
-  Building2, 
   FileText, 
   DollarSign, 
   ShieldCheck,
-  Eye
+  TrendingUp,
+  Clock,
+  ArrowRight
 } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { getAgreements } from "@/lib/services/domain";
+import {
+  getAgreements,
+  getFarmerListings,
+  getProcurementRequirements
+} from "@/lib/services/domain";
 import type { ExtendedTradeAgreement } from "@/lib/data/demo";
+import type { CropListing } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import DemoNotice from "@/components/DemoNotice";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import StatusBadge from "@/components/StatusBadge";
 import TrustBadge from "@/components/TrustBadge";
 
-export default function OrdersListPage() {
-  const { user, loading, hasAccess } = useRequiredUser(["farmer", "buyer", "fpo", "admin"]);
+export default function BusinessDashboardPage() {
+  const { user, loading, hasAccess } = useRequiredUser(["farmer", "fpo", "buyer", "admin"]);
   const [agreements, setAgreements] = useState<ExtendedTradeAgreement[]>([]);
+  const [listings, setListings] = useState<CropListing[]>([]);
+  const [rfqs, setRfqs] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     if (!user || !hasAccess) return;
     async function load() {
+      if (!user) return;
       try {
-        const res = await getAgreements();
-        setAgreements(res.data as ExtendedTradeAgreement[]);
+        const [agrRes, lstRes, rfqRes] = await Promise.all([
+          getAgreements(),
+          user.role === "farmer" || user.role === "fpo" ? getFarmerListings() : Promise.resolve({ data: [] }),
+          user.role === "buyer" ? getProcurementRequirements() : Promise.resolve({ data: [] })
+        ]);
+        setAgreements(agrRes.data as ExtendedTradeAgreement[]);
+        setListings(lstRes.data);
+        setRfqs(rfqRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -52,160 +61,167 @@ export default function OrdersListPage() {
     return <LoadingSkeleton variant="detail" />;
   }
 
-  const filtered = agreements.filter((ord) => {
-    const matchesSearch = ord.commodity.toLowerCase().includes(search.toLowerCase()) ||
-      (ord.buyer_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (ord.farmer_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      ord.id.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || ord.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
+  const isBuyer = user.role === "buyer";
+  const activeOrders = agreements.filter(a => a.status !== "completed");
+  const completedOrders = agreements.filter(a => a.status === "completed");
+
+  const totalValue = completedOrders.reduce((sum, a) => sum + (a.quantity * a.price_per_quintal), 0);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto py-6 space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 md:flex-row md:items-end">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-primary">
-              Order Fulfillment Registry
+          <div className="flex items-center gap-2 mb-2">
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
+              Business Operations
             </span>
-            <span className="text-xs text-muted-foreground font-semibold">
-              {user.role.toUpperCase()} Workspace
-            </span>
+            <TrustBadge type={isBuyer ? "buyer" : "producer"} size="sm" />
           </div>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            Trade Agreements & Consignments
+          <h1 className="text-3xl font-black tracking-tight text-foreground">
+            {isBuyer ? "Procurement & Fulfillment" : "Sales & Dispatches"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track multi-stage physical dispatches, weighbridge verification slips, and digital escrow payouts.
+            {isBuyer
+              ? "Manage active RFQs, supplier negotiations, and inbound deliveries."
+              : "Track active listings, buyer interest, and secure escrow payouts."}
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <Button asChild size="sm" className="bg-primary text-primary-foreground">
-            <Link href="/marketplace">
-              New Trade Agreement
-            </Link>
-          </Button>
+          {isBuyer ? (
+            <Button asChild size="sm" className="font-bold">
+              <Link href="/buyer/procurement">Manage RFQs</Link>
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="font-bold">
+              <Link href="/farmer/produce">Manage Supply</Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      <DemoNotice>
-        Every consignment is tracked across 8 physical verification stages: from digital escrow locking to weighbridge tare settlement.
-      </DemoNotice>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by order ID, commodity, or counterparty..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="all">All Stages</option>
-            <option value="matched">Trade Confirmed</option>
-            <option value="in_transit">In Transit</option>
-            <option value="delivered">Delivered / Weighed</option>
-            <option value="completed">Escrow Settled</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="bg-card border border-border rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {isBuyer ? "Active Requirements" : "Active Listings"}
+            </span>
+            <p className="text-3xl font-black text-foreground mt-2">
+              {isBuyer ? rfqs.length : listings.length}
+            </p>
+         </div>
+         <div className="bg-card border border-border rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              In-Transit Orders
+            </span>
+            <p className="text-3xl font-black text-blue-600 mt-2">
+              {activeOrders.length}
+            </p>
+         </div>
+         <div className="bg-card border border-border rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {isBuyer ? "Supplier Responses" : "Pending Actions"}
+            </span>
+            <p className="text-3xl font-black text-amber-600 mt-2">
+              {isBuyer ? rfqs.reduce((acc, r) => acc + (r.responseCount || 0), 0) : activeOrders.filter(a => a.status === 'matched' || a.status === 'trade_confirmed').length}
+            </p>
+         </div>
+         <div className="bg-card border border-border rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Total {isBuyer ? "Spent" : "Sales"} (Escrowed)
+            </span>
+            <p className="text-2xl font-black text-emerald-600 mt-2">
+              ₹{totalValue.toLocaleString("en-IN")}
+            </p>
+         </div>
       </div>
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {filtered.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-12 text-center">
-            <Package className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-            <h3 className="text-base font-bold text-foreground">No matching orders found</h3>
-            <p className="text-xs text-muted-foreground mt-1">Try clearing filters or search criteria.</p>
-          </div>
-        ) : (
-          filtered.map((ord) => {
-            const qty = ord.quantity || ord.agreed_quantity || 100;
-            const rate = ord.price_per_quintal || ord.agreed_price || 5000;
-            const grossValue = qty * rate;
-            const netRealized = ord.net_farmer_realization || Math.round(grossValue * 0.98);
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {/* Orders Panel */}
+         <div className="bg-card border border-border rounded-xl shadow-xs p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">
+                 Active Fulfillment ({activeOrders.length})
+              </h2>
+            </div>
 
-            return (
-              <div key={ord.id} className="rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 space-y-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold uppercase text-primary">
-                        Order #{ord.orderNumber || ord.id}
-                      </span>
-                      <StatusBadge status={ord.status} />
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">Agreement Date: {ord.created_at || "Recent"}</span>
+            <div className="space-y-3 flex-1">
+               {activeOrders.map(order => (
+                 <div key={order.id} className="border border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                       <div>
+                         <p className="font-bold text-foreground">{order.commodity} • {order.quantity}Q</p>
+                         <p className="text-xs text-muted-foreground mt-0.5">
+                           With {isBuyer ? order.farmer_name : order.buyer_name}
+                         </p>
+                       </div>
+                       <StatusBadge status={order.status} />
                     </div>
-
-                    <h2 className="text-xl font-black text-foreground mt-1">
-                      {qty} Quintals {ord.commodity}
-                    </h2>
-
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span>Buyer: <strong className="text-foreground">{ord.buyer_name || "Institutional Buyer"}</strong></span>
-                      <span>•</span>
-                      <span>Farmer/FPO: <strong className="text-foreground">{ord.farmer_name || "Verified Producer"}</strong></span>
-                      <span>•</span>
-                      <span>Delivery: {ord.deliveryDestination || ord.destination || "Factory Gate"}</span>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                       <span className="text-sm font-bold text-foreground">
+                          ₹{(order.quantity * order.price_per_quintal).toLocaleString("en-IN")}
+                       </span>
+                       <Button variant="ghost" size="sm" asChild className="h-8 text-xs font-bold">
+                          <Link href={`/orders/${order.id}`}>View Details <ArrowRight className="h-3 w-3 ml-1"/></Link>
+                       </Button>
                     </div>
-                  </div>
+                 </div>
+               ))}
+               {activeOrders.length === 0 && (
+                 <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl">
+                   No active orders right now.
+                 </div>
+               )}
+            </div>
+         </div>
 
-                  {/* Financial Overview */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end justify-between gap-2 shrink-0">
-                    <div className="text-left lg:text-right">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        {user.role === "buyer" ? "Contracted Amount" : "Net Farmer Payout"}
-                      </span>
-                      <p className="text-xl font-black text-primary">
-                        ₹{(user.role === "buyer" ? grossValue : netRealized).toLocaleString("en-IN")}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        ₹{rate.toLocaleString("en-IN")}/Q (Agreed Rate)
-                      </p>
+         {/* Secondary Panel (Listings or RFQs) */}
+         <div className="bg-card border border-border rounded-xl shadow-xs p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground">
+                 {isBuyer ? "Procurement Tracking" : "Supply Listings"}
+              </h2>
+            </div>
+
+            <div className="space-y-3 flex-1">
+               {!isBuyer && listings.map(lot => (
+                 <div key={lot.id} className="border border-border rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-foreground">{lot.quantity}Q {lot.commodity}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Listed for ₹{lot.expected_price}/q</p>
                     </div>
-
-                    <Button asChild size="sm" className="bg-primary text-primary-foreground text-xs">
-                      <Link href={`/orders/${ord.id}`}>
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        Open Transaction Workspace
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Tracking Checkpoint Snapshot */}
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-primary" />
-                    <span>
-                      Carrier: <strong>{ord.transporterName || "Express Agri Freight"}</strong> ({ord.vehicleNumber || "MP-09-GH-4412"})
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>100% Escrow Funded & Verified</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+                    <div className="text-right">
+                       <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                         Active
+                       </span>
+                       <Link href="/farmer/produce" className="block text-xs font-bold text-primary hover:underline mt-1">
+                         Manage
+                       </Link>
+                    </div>
+                 </div>
+               ))}
+               {isBuyer && rfqs.slice(0,4).map(rfq => (
+                 <div key={rfq.id} className="border border-border rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-foreground">{rfq.quantityQuintals || rfq.quantity}Q {rfq.commodity || rfq.crop}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Responses: {rfq.responseCount || 0}</p>
+                    </div>
+                    <div className="text-right">
+                       <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                         {rfq.status}
+                       </span>
+                       <Link href={`/buyer/procurement`} className="block text-xs font-bold text-primary hover:underline mt-1">
+                         View
+                       </Link>
+                    </div>
+                 </div>
+               ))}
+               {(!isBuyer && listings.length === 0) || (isBuyer && rfqs.length === 0) ? (
+                 <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl">
+                   No active {isBuyer ? "requirements" : "listings"}.
+                 </div>
+               ) : null}
+            </div>
+         </div>
       </div>
     </div>
   );
