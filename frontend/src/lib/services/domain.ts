@@ -645,7 +645,7 @@ export async function getPostDetail(id: string): Promise<ServiceResult<NetworkPo
 }
 
 export async function createNetworkPost(
-  input: { tag: string; content: string; topic: NetworkPost["topic"]; quantitySpec?: string; targetPrice?: string },
+  input: { tag: string; content: string; topic: NetworkPost["topic"]; quantitySpec?: string; targetPrice?: string; mediaUrl?: string },
   owner: UserProfile
 ): Promise<ServiceResult<NetworkPost>> {
   const post: NetworkPost = {
@@ -664,6 +664,7 @@ export async function createNetworkPost(
     comments: 0,
     quantitySpec: input.quantitySpec,
     targetPrice: input.targetPrice,
+    mediaUrl: input.mediaUrl,
   };
   const list = [post, ...localPosts()];
   writeLocal(LOCAL_KEYS.posts, list);

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
 
 export default function MainLayoutWrapper({
   children,
@@ -16,8 +17,11 @@ export default function MainLayoutWrapper({
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-20 sm:p-6 sm:pb-6 lg:p-8">
-      {children}
-    </main>
+    <div className="flex flex-1 mx-auto w-full max-w-7xl">
+      <Sidebar />
+      <main className="flex-1 min-w-0 p-4 pb-20 sm:p-6 sm:pb-6 lg:p-8">
+        {children}
+      </main>
+    </div>
   );
 }

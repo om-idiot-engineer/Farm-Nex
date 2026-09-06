@@ -34,10 +34,12 @@ import {
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 type FeedFilter = "all" | "harvest" | "procurement" | "market" | "question" | "expert" | "machinery";
 
 export default function NetworkFeedPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useUser();
   const [posts, setPosts] = useState<NetworkPost[]>([]);
@@ -123,10 +125,10 @@ export default function NetworkFeedPage() {
               <UsersRound className="h-3.5 w-3.5" />
             </span>
             <span className="text-xs font-black uppercase tracking-wider text-primary">
-              Agricultural Professional Feed
+              {t("communityTitle", "Agricultural Professional Feed")}
             </span>
           </div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Network & Discussions</h1>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">{t("network.feedTitle", "Network & Discussions")}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Verified harvest updates, buyer sourcing tenders, machinery rentals, and expert agronomic advisories.
           </p>
@@ -195,13 +197,13 @@ export default function NetworkFeedPage() {
               Feed Channels
             </p>
             {[
-              { id: "all", label: "For You (All)", icon: UsersRound },
-              { id: "harvest", label: "Harvest Updates", icon: Sparkles },
-              { id: "procurement", label: "Buyer Requirements", icon: TrendingUp },
-              { id: "market", label: "Market Trends", icon: TrendingUp },
-              { id: "expert", label: "Verified Advisories", icon: ShieldCheck },
-              { id: "question", label: "Agronomy Q&A", icon: HelpCircle },
-              { id: "machinery", label: "Machinery & Rentals", icon: Wrench },
+              { id: "all", label: t("network.forYou", "For You (All)"), icon: UsersRound },
+              { id: "harvest", label: t("tagHarvest", "Harvest Updates"), icon: Sparkles },
+              { id: "procurement", label: t("marketplace.buyerDemands", "Buyer Requirements"), icon: TrendingUp },
+              { id: "market", label: t("tagMarket", "Market Trends"), icon: TrendingUp },
+              { id: "expert", label: t("tagExpert", "Verified Advisories"), icon: ShieldCheck },
+              { id: "question", label: t("tagQuestion", "Agronomy Q&A"), icon: HelpCircle },
+              { id: "machinery", label: t("tagMachinery", "Machinery & Rentals"), icon: Wrench },
             ].map((f) => {
               const Icon = f.icon;
               const isActive = activeFilter === f.id;
@@ -231,25 +233,25 @@ export default function NetworkFeedPage() {
             <div className="border border-border bg-card rounded-lg p-5 shadow-md space-y-4 animate-in fade-in-50">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <span className="text-xs font-black uppercase tracking-wider text-primary">
-                  Publish to Network
+                  {t("network.publishPost", "Publish to Network")}
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowComposer(false)}
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {t("common.cancel", "Cancel")}
                 </button>
               </div>
 
               {/* Topic Select */}
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { id: "harvest", label: "Harvest Update" },
-                  { id: "procurement", label: "Buyer Requirement" },
-                  { id: "question", label: "Ask Question" },
-                  { id: "market", label: "Market Note" },
-                  { id: "machinery", label: "Machinery Rental" },
+                  { id: "harvest", label: t("tagHarvest", "Harvest Update") },
+                  { id: "procurement", label: t("marketplace.buyerDemands", "Buyer Requirement") },
+                  { id: "question", label: t("network.questions", "Ask Question") },
+                  { id: "market", label: t("tagMarket", "Market Note") },
+                  { id: "machinery", label: t("tagMachinery", "Machinery Rental") },
                 ].map((t) => (
                   <button
                     key={t.id}
@@ -278,7 +280,7 @@ export default function NetworkFeedPage() {
                       ? "Specify crop, required grade, destination mill, and target price range..."
                       : topic === "question"
                       ? "Ask verified agronomists and peer farmers a question..."
-                      : "Share an agricultural update..."
+                      : t("network.shareUpdate", "Share an agricultural update...")
                   }
                   className="w-full p-3 border border-input rounded-md bg-background text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary leading-relaxed"
                 />

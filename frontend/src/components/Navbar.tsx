@@ -137,27 +137,11 @@ export default function Navbar() {
 
           {/* Center Navigation: Global Search when logged in, or Public Links when visitor */}
           {user ? (
-            <div className="hidden md:flex flex-1 max-w-2xl mx-4 justify-center">
-              <nav className="flex items-center gap-1 sm:gap-2">
-                {roleNav.map((item) => {
-                  const Icon = item.icon;
-                  const active = isLinkActive(item);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex flex-col items-center justify-center gap-1 min-w-[72px] px-2 py-1.5 rounded-md transition-all ${
-                        active
-                          ? "text-primary border-b-2 border-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="text-[10px] font-bold">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
+            <div className="hidden lg:flex flex-1 max-w-2xl mx-4 justify-center">
+              {/* Optional: We can add a Global Search here later */}
+              <div className="flex-1 max-w-md">
+                 <GlobalSearch />
+              </div>
             </div>
           ) : (
             <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 text-xs font-medium text-muted-foreground" aria-label="Public Navigation">

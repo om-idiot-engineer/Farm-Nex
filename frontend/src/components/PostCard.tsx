@@ -21,6 +21,7 @@ import {
 import type { NetworkPost } from "@/lib/data/demo";
 import TrustBadge from "@/components/TrustBadge";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 interface PostCardProps {
   post: NetworkPost;
@@ -30,6 +31,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, currentUserId, onReact, onReply }: PostCardProps) {
+  const { t } = useTranslation();
   const [showReplyBox, setShowReplyBox] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,7 +146,7 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
                   : "text-muted-foreground hover:text-foreground border border-border"
               }`}
             >
-              {isFollowing ? "Following" : "+ Follow"}
+              {isFollowing ? t("network.following", "Following") : t("network.follow", "+ Follow")}
             </button>
           </div>
         </div>
@@ -198,7 +200,7 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
               className="flex items-center gap-1.5 hover:text-foreground transition-colors"
             >
               <MessageSquare className="h-4 w-4" />
-              <span>{post.replies?.length || post.comments || 0} answers</span>
+              <span>{post.replies?.length || post.comments || 0} {t("repliesCount", "answers")}</span>
             </button>
 
             <button
@@ -208,10 +210,10 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
                 alert("Post link copied to clipboard!");
               }}
               className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-              title="Share post"
+              title={t("common.share", "Share post")}
             >
               <Share2 className="h-4 w-4" />
-              <span>Share</span>
+              <span>{t("common.share", "Share")}</span>
             </button>
           </div>
 
@@ -251,12 +253,12 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
                 type="text"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Share your agronomic advice or reply..."
+                placeholder={t("writeReply", "Share your agronomic advice or reply...")}
                 className="min-w-0 flex-1 border border-input bg-card px-3 py-1.5 text-xs rounded outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
               <Button size="sm" type="submit" disabled={!replyText.trim() || isSubmitting} className="h-8 text-xs font-bold">
                 <Send className="h-3 w-3 mr-1" />
-                Reply
+                {t("postReply", "Reply")}
               </Button>
             </form>
           </div>

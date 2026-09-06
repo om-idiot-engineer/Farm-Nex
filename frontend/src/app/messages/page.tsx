@@ -27,8 +27,10 @@ import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 function MessagesContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
   const requestedConversation = searchParams.get("conversation");
@@ -236,9 +238,9 @@ function MessagesContent() {
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
           <span className="text-xs font-black uppercase tracking-wider text-primary">
-            Trade & Contract Inquiries
+            {t("messages.title", "Trade & Contract Inquiries")}
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground">Deal Messages</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground">{t("messages.title", "Deal Messages")}</h1>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href="/marketplace">
@@ -261,7 +263,7 @@ function MessagesContent() {
           }`}
         >
           <div className="border-b border-border px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground bg-muted/20">
-            Active Deals & Inquiries
+            {t("farmer.activeDeals", "Active Deals & Inquiries")}
           </div>
 
           <div className="divide-y divide-border">
@@ -393,7 +395,7 @@ function MessagesContent() {
                       disabled={acceptingDeal}
                       className="h-7 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
                     >
-                      {acceptingDeal ? "Accepting..." : "Accept Deal"}
+                      {acceptingDeal ? t("common.loading", "Accepting...") : t("messages.acceptDeal", "Accept Deal")}
                     </Button>
                   </div>
                 </div>
@@ -440,7 +442,7 @@ function MessagesContent() {
                       >
                         <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
                           <DollarSign className="h-3.5 w-3.5" />
-                          {msg.kind === "offer" ? "Formal Buyer Offer" : "Farmer Counter Offer"}
+                          {msg.kind === "offer" ? t("messages.buyerOffer", "Formal Buyer Offer") : t("messages.counterOffer", "Farmer Counter Offer")}
                         </div>
                         <p className="text-sm font-semibold">{msg.body}</p>
                         {msg.offerData && (
@@ -494,7 +496,7 @@ function MessagesContent() {
                 type="text"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Type your message, query, or terms..."
+                placeholder={t("messages.typeMessage", "Type your message, query, or terms...")}
                 className="min-w-0 flex-1 border border-input rounded-md bg-background px-3.5 py-2 text-xs sm:text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
               <Button type="submit" size="sm" disabled={!body.trim()} className="font-bold shrink-0">

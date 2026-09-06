@@ -59,6 +59,18 @@ async def health_check():
     }
 
 
+@app.get("/", include_in_schema=False)
+async def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    from fastapi import Response
+    return Response(content=b"", media_type="image/x-icon")
+
+
 if __name__ == "__main__":
     import uvicorn
 

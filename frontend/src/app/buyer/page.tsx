@@ -3,48 +3,51 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Building2, 
-  Search, 
-  PlusCircle, 
-  TrendingUp, 
+import {
+  Building2,
+  Search,
+  PlusCircle,
   FileText,
-  MessageSquare,
-  ShieldCheck,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
   Truck,
   ArrowRight
 } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { 
+import {
   getProcurementRequirements,
   getAgreements,
-  getNetworkPosts,
   getMarketListings
 } from "@/lib/services/domain";
-import type { ExtendedTradeAgreement, NetworkPost } from "@/lib/data/demo";
+import type { ExtendedTradeAgreement } from "@/lib/data/demo";
 import { Button } from "@/components/ui/button";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
-import TrustBadge from "@/components/TrustBadge";
-import PostCard from "@/components/PostCard";
+import { LineChart, Line, BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+
+const mockProcurementData = [
+  { name: 'Jan', volume: 400 },
+  { name: 'Feb', volume: 300 },
+  { name: 'Mar', volume: 550 },
+  { name: 'Apr', volume: 450 },
+  { name: 'May', volume: 700 },
+];
 
 export default function BuyerDashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading, hasAccess } = useRequiredUser(["buyer", "admin"]);
   const [rfqs, setRfqs] = useState(() => getProcurementRequirements().data);
   const [agreements, setAgreements] = useState<ExtendedTradeAgreement[]>([]);
-  const [posts, setPosts] = useState<NetworkPost[]>([]);
-  const [supply, setSupply] = useState(getMarketListings().data.slice(0, 3));
+  const [supply, setSupply] = useState(getMarketListings().data.slice(0, 4));
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [agreementsRes, postsRes] = await Promise.all([
+      const [agreementsRes] = await Promise.all([
         getAgreements(),
-        getNetworkPosts("procurement")
       ]);
       setAgreements(agreementsRes.data);
-      setPosts(postsRes.data);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -64,113 +67,196 @@ export default function BuyerDashboardPage() {
   const supplierResponses = rfqs.reduce((acc, r) => acc + (r.responseCount || 0), 0);
 
   return (
-    <div className="max-w-6xl mx-auto py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Left Column: Compact Business Snapshot */}
-      <div className="lg:col-span-3 space-y-4">
-        <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
-          <div className="bg-blue-100 dark:bg-blue-900/30 h-16 w-full" />
-          <div className="px-4 pb-4 -mt-8">
-            <div className="flex justify-between items-end mb-2">
-              <div className="h-16 w-16 bg-card border-4 border-card rounded-xl flex items-center justify-center overflow-hidden">
-                <div className="h-full w-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center font-black text-2xl">
-                  {user.buyer_profile?.business_name?.[0] || user.name[0]}
+    <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-8">
+
+      {/* Top Greeting */}
+      <div>
+        <h1 className="text-2xl font-black text-foreground tracking-tight">Good morning, {user.buyer_profile?.business_name || user.name.split(' ')[0]} 👋</h1>
+        <p className="text-muted-foreground mt-1">Here’s your procurement overview.</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[11px] text-muted-foreground font-semibold mb-1 uppercase tracking-wider">Active RFQs</p>
+          <p className="text-2xl font-black text-foreground">{rfqs.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[11px] text-muted-foreground font-semibold mb-1 uppercase tracking-wider">Supplier Responses</p>
+          <p className="text-2xl font-black text-blue-600">{supplierResponses}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[11px] text-muted-foreground font-semibold mb-1 uppercase tracking-wider">Open Orders</p>
+          <p className="text-2xl font-black text-foreground">{activeAgreements.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[11px] text-rose-600 font-semibold mb-1 uppercase tracking-wider">Pending Actions</p>
+          <p className="text-2xl font-black text-rose-600">{pendingActions + 1}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[11px] text-muted-foreground font-semibold mb-1 uppercase tracking-wider">Total Procurement</p>
+          <p className="text-2xl font-black text-foreground">2,400 Q</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Main Column (Left) */}
+        <div className="lg:col-span-2 space-y-8">
+
+          {/* Priority Actions */}
+          <section>
+            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground mb-4">What needs your attention?</h2>
+            <div className="space-y-3">
+              {supplierResponses > 0 && (
+                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">12 supplier responses waiting</p>
+                      <p className="text-xs text-muted-foreground">Review quotes for your latest Soybean RFQ.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white">Review Responses</Button>
+                </div>
+              )}
+              <div className="flex items-center justify-between p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-rose-600" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">2 RFQs closing soon</p>
+                    <p className="text-xs text-muted-foreground">Action required before they expire today.</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="default" className="bg-rose-600 hover:bg-rose-700 text-white">Manage RFQs</Button>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">3 lots ready for inspection</p>
+                    <p className="text-xs text-muted-foreground">Pending quality check at the warehouse.</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline">Schedule Inspection</Button>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Truck className="h-5 w-5 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">1 shipment delayed</p>
+                    <p className="text-xs text-muted-foreground">Order #FN1024 is running behind schedule.</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline">Track Order</Button>
+              </div>
+            </div>
+          </section>
+
+          {/* Visual Analytics */}
+          <section>
+            <h2 className="text-sm font-black uppercase tracking-wider text-muted-foreground mb-4">Procurement Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <div className="bg-card border border-border rounded-xl p-5">
+                <h3 className="text-sm font-bold mb-4">Procurement Volume</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={mockProcurementData}>
+                      <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="volume" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2 px-2">
+                  <span>Jan</span>
+                  <span>May</span>
                 </div>
               </div>
+
+              <div className="bg-card border border-border rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold mb-4">Commodity Breakdown</h3>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="font-semibold">Soybean</span>
+                        <span className="text-muted-foreground">60%</span>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 w-[60%] rounded-full"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="font-semibold">Wheat</span>
+                        <span className="text-muted-foreground">30%</span>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 w-[30%] rounded-full"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="font-semibold">Maize</span>
+                        <span className="text-muted-foreground">10%</span>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 w-[10%] rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
-            <h1 className="text-base font-black text-foreground tracking-tight">{user.buyer_profile?.business_name || user.name}</h1>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              Verified Bulk Buyer
-            </p>
-            <div className="mt-4 pt-4 border-t border-border space-y-3 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Active RFQs</span>
-                <span className="font-bold text-foreground">{rfqs.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Supplier Responses</span>
-                <span className="font-bold text-foreground">{supplierResponses}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Open Orders</span>
-                <span className="font-bold text-foreground">{activeAgreements.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-rose-600 font-semibold">Pending Actions</span>
-                <span className="font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/50 px-2 rounded-md">{pendingActions}</span>
-              </div>
+          </section>
+
+        </div>
+
+        {/* Side Column (Right) */}
+        <div className="lg:col-span-1 space-y-6">
+
+          {/* Quick Actions */}
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Quick Actions</h2>
+            <div className="space-y-2">
+              <Button asChild variant="default" className="w-full justify-start font-bold bg-blue-600 hover:bg-blue-700">
+                <Link href="/buyer/procurement"><PlusCircle className="mr-2 h-4 w-4" /> Publish RFQ</Link>
+              </Button>
+              <Button asChild variant="secondary" className="w-full justify-start font-bold text-foreground bg-muted hover:bg-muted/80">
+                <Link href="/buyer/discover"><Search className="mr-2 h-4 w-4" /> Find Supply Lots</Link>
+              </Button>
             </div>
           </div>
-        </div>
 
-        <div className="bg-card border border-border rounded-xl shadow-xs p-4">
-          <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h2>
-          <div className="space-y-2">
-             <Button asChild variant="outline" className="w-full justify-start font-bold">
-               <Link href="/buyer/procurement"><PlusCircle className="mr-2 h-4 w-4 text-primary" /> Publish RFQ</Link>
-             </Button>
-             <Button asChild variant="outline" className="w-full justify-start font-bold">
-               <Link href="/buyer/discover"><Search className="mr-2 h-4 w-4 text-blue-600" /> Find Supply Lots</Link>
-             </Button>
-             <Button asChild variant="outline" className="w-full justify-start font-bold">
-               <Link href="/orders"><Truck className="mr-2 h-4 w-4 text-emerald-600" /> Track Deliveries</Link>
-             </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Middle Column: Procurement Feed */}
-      <div className="lg:col-span-6 space-y-4">
-        {/* Post Composer area simplified */}
-        <div className="bg-card border border-border rounded-xl shadow-xs p-4 flex gap-3 items-center cursor-pointer hover:border-primary/40 transition-colors" onClick={() => router.push('/network')}>
-           <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full flex items-center justify-center font-bold shrink-0">
-             {user.name[0]}
-           </div>
-           <div className="flex-1 bg-muted/40 hover:bg-muted/70 transition-colors rounded-full px-4 py-2.5 text-sm text-muted-foreground font-medium border border-border/60">
-             Post an open procurement requirement to the network...
-           </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pt-2">
-             <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Procurement Network</h2>
-             <span className="text-[10px] font-semibold text-muted-foreground">Filtered for Buyers</span>
-          </div>
-          {posts.map((post) => (
-             <PostCard key={post.id} post={post} currentUserId={user.id} />
-          ))}
-          {posts.length === 0 && (
-             <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl bg-card">
-               No recent procurement activity in your network.
-             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Column: Recommended Supply */}
-      <div className="lg:col-span-3 space-y-4">
-        <div className="bg-card border border-border rounded-xl shadow-xs p-4">
-          <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Recommended Supply</h2>
-          <div className="space-y-3">
-             {supply.map(lot => (
-                <div key={lot.id} className="p-3 bg-muted/30 border border-border/50 rounded-lg">
-                  <p className="text-sm font-bold text-foreground">{lot.quantity}Q {lot.commodity}</p>
-                  <p className="text-xs text-muted-foreground mt-1 mb-2">From {lot.farmer_name}, {lot.location}</p>
-                  <Link href={`/marketplace/listings/${lot.id}`} className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center hover:underline">
-                    View Lot <ArrowRight className="h-3 w-3 ml-1" />
+          {/* Recommended Supply */}
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Recommended Supply</h2>
+            <div className="space-y-4">
+              {supply.map(lot => (
+                <div key={lot.id} className="group border-b border-border/50 last:border-0 pb-3 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{lot.quantity}Q {lot.commodity}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{lot.farmer_name}</p>
+                      <p className="text-xs text-muted-foreground">{lot.location}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-emerald-600">Verified</p>
+                      <p className="text-xs font-bold text-foreground mt-1">₹{lot.expected_price}/Q</p>
+                    </div>
+                  </div>
+                  <Link href={`/marketplace/listings/${lot.id}`} className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-700 mt-2">
+                    View Lot <ArrowRight className="h-3 w-3 ml-1 transition-transform group-hover:translate-x-1" />
                   </Link>
-               </div>
-             ))}
-             {supply.length === 0 && (
-               <p className="text-xs text-muted-foreground">No matches found.</p>
-             )}
+                </div>
+              ))}
+              {supply.length === 0 && (
+                <p className="text-sm text-muted-foreground">No matches found.</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="bg-card border border-border rounded-xl shadow-xs p-4 flex flex-col items-center text-center">
-           <Building2 className="h-8 w-8 text-blue-600 mb-2" />
-           <p className="text-sm font-bold">FPO Aggregation</p>
-           <p className="text-xs text-muted-foreground mt-1 mb-3">Source large volumes directly from verified Farmer Producer Organizations.</p>
-           <TrustBadge type="fpo" size="sm" />
         </div>
       </div>
     </div>
