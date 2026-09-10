@@ -350,7 +350,7 @@ export const api = {
     return this.request<AdminKPIData>("/admin/stats");
   },
 
-  
+
   async confirmDelivery(agreementId: string) {
     return this.request<any>(`/marketplace/agreements/${agreementId}/delivery`, { method: "PATCH" });
   },

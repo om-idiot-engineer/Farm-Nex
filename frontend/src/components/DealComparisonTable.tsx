@@ -64,11 +64,11 @@ export default function DealComparisonTable({
             {opportunities.slice(0, 3).map((opp, idx) => {
               const isTop = idx === 0;
               return (
-                <div 
+                <div
                   key={opp.match_id || idx}
                   className={`rounded-2xl border p-5 flex flex-col justify-between space-y-5 transition-all ${
-                    isTop 
-                      ? "border-primary bg-primary/[0.02] shadow-sm ring-1 ring-primary/20" 
+                    isTop
+                      ? "border-primary bg-primary/[0.02] shadow-sm ring-1 ring-primary/20"
                       : "border-border bg-card shadow-2xs"
                   }`}
                 >

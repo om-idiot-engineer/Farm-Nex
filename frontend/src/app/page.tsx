@@ -478,6 +478,187 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
+      {/* 6. FARMER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
+      {/* ========================================================================= */}
+      <section id="for-farmers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
+          {/* Left Visual: Indian Farmer Harvest Photography */}
+          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px]">
+            <Image
+              src="/images/farmer-harvest.jpg"
+              alt="Indian farmer holding freshly harvested crop produce in farm field"
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/30" />
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
+                Direct Farm-Gate Procurement
+              </span>
+            </div>
+          </div>
+
+          {/* Right Content */}
+          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6">
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                For Farmers &amp; FPOs
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+                List your produce. Reach relevant buyers.
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Empowering smallholders and collectives to take charge of their agricultural harvest with transparent pocket pricing.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">List Lots with Lab Moisture Assays</strong>
+                  <span className="text-muted-foreground">Attach certified moisture and foreign matter parameters to prevent arbitrary mill-gate deductions.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Algorithmic Net Realization Ranking</strong>
+                  <span className="text-muted-foreground">Compare offers from nearby mills with freight and transport tariffs calculated upfront.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">FPO Volume Consolidation</strong>
+                  <span className="text-muted-foreground">Pool member supplies to fulfill multi-ton industrial contracts at premium wholesale rates.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Frictionless Mobile OTP Access</strong>
+                  <span className="text-muted-foreground">Sign in instantly via 6-digit phone OTP—no complicated passwords or paperwork.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Button
+                size="lg"
+                className="font-bold px-6 rounded-xl shadow-xs"
+                onClick={() => openAuth("farmer", "login")}
+              >
+                Join as a Farmer
+              </Button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("farmer")}
+                className="text-xs font-bold text-primary hover:underline text-left sm:text-center"
+              >
+                Quick Demo: Ramesh Patel →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 7. BUYER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
+      {/* ========================================================================= */}
+      <section id="for-buyers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
+          {/* Left Content */}
+          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6 order-2 lg:order-1">
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                For Food Processors &amp; Bulk Buyers
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+                Discover verified supply. Source in bulk.
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Connect directly with vetted producer collectives and farm-gate lots with certified quality standards.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Broadcast Procurement Tenders</strong>
+                  <span className="text-muted-foreground">Post volume requirements with target rates, moisture limits, and desired delivery timelines.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Define Exact Quality Tolerances</strong>
+                  <span className="text-muted-foreground">Filter produce by certified moisture cutoff and grain grade needed for commercial milling.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Direct Producer Cluster Sourcing</strong>
+                  <span className="text-muted-foreground">Procure directly from vetted smallholders and FPOs across Madhya Pradesh.</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground font-bold block">Weighbridge &amp; Escrow Rails</strong>
+                  <span className="text-muted-foreground">Funds are held safely in escrow and released digitally upon certified weighbridge receipt.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Button
+                size="lg"
+                variant="outline"
+                className="font-bold px-6 rounded-xl border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                onClick={() => openAuth("buyer", "login")}
+              >
+                Explore as a Buyer
+              </Button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("buyer")}
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline text-left sm:text-center"
+              >
+                Quick Demo: Agrocorp Mills →
+              </button>
+            </div>
+          </div>
+
+          {/* Right Visual: Quality Grain Procurement & Laboratory Assay */}
+          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px] order-1 lg:order-2">
+            <Image
+              src="/images/grain-procurement.jpg"
+              alt="Agricultural grain quality testing and modern processing facility"
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:to-black/30" />
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
+                Industrial Grain Quality Testing
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
       {/* 2. TWO AUDIENCES (LIGHT & COMPACT INTEGRATION) */}
       {/* ========================================================================= */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 relative z-20">
@@ -779,187 +960,6 @@ export default function LandingPage() {
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 6. FARMER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
-      {/* ========================================================================= */}
-      <section id="for-farmers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
-          {/* Left Visual: Indian Farmer Harvest Photography */}
-          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px]">
-            <Image
-              src="/images/farmer-harvest.jpg"
-              alt="Indian farmer holding freshly harvested crop produce in farm field"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/30" />
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
-                Direct Farm-Gate Procurement
-              </span>
-            </div>
-          </div>
-
-          {/* Right Content */}
-          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6">
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                For Farmers &amp; FPOs
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                List your produce. Reach relevant buyers.
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Empowering smallholders and collectives to take charge of their agricultural harvest with transparent pocket pricing.
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">List Lots with Lab Moisture Assays</strong>
-                  <span className="text-muted-foreground">Attach certified moisture and foreign matter parameters to prevent arbitrary mill-gate deductions.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Algorithmic Net Realization Ranking</strong>
-                  <span className="text-muted-foreground">Compare offers from nearby mills with freight and transport tariffs calculated upfront.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">FPO Volume Consolidation</strong>
-                  <span className="text-muted-foreground">Pool member supplies to fulfill multi-ton industrial contracts at premium wholesale rates.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Frictionless Mobile OTP Access</strong>
-                  <span className="text-muted-foreground">Sign in instantly via 6-digit phone OTP—no complicated passwords or paperwork.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Button
-                size="lg"
-                className="font-bold px-6 rounded-xl shadow-xs"
-                onClick={() => openAuth("farmer", "login")}
-              >
-                Join as a Farmer
-              </Button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("farmer")}
-                className="text-xs font-bold text-primary hover:underline text-left sm:text-center"
-              >
-                Quick Demo: Ramesh Patel →
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 7. BUYER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
-      {/* ========================================================================= */}
-      <section id="for-buyers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
-          {/* Left Content */}
-          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6 order-2 lg:order-1">
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                For Food Processors &amp; Bulk Buyers
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                Discover verified supply. Source in bulk.
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Connect directly with vetted producer collectives and farm-gate lots with certified quality standards.
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Broadcast Procurement Tenders</strong>
-                  <span className="text-muted-foreground">Post volume requirements with target rates, moisture limits, and desired delivery timelines.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Define Exact Quality Tolerances</strong>
-                  <span className="text-muted-foreground">Filter produce by certified moisture cutoff and grain grade needed for commercial milling.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Direct Producer Cluster Sourcing</strong>
-                  <span className="text-muted-foreground">Procure directly from vetted smallholders and FPOs across Madhya Pradesh.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Weighbridge &amp; Escrow Rails</strong>
-                  <span className="text-muted-foreground">Funds are held safely in escrow and released digitally upon certified weighbridge receipt.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Button
-                size="lg"
-                variant="outline"
-                className="font-bold px-6 rounded-xl border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                onClick={() => openAuth("buyer", "login")}
-              >
-                Explore as a Buyer
-              </Button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("buyer")}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline text-left sm:text-center"
-              >
-                Quick Demo: Agrocorp Mills →
-              </button>
-            </div>
-          </div>
-
-          {/* Right Visual: Quality Grain Procurement & Laboratory Assay */}
-          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px] order-1 lg:order-2">
-            <Image
-              src="/images/grain-procurement.jpg"
-              alt="Agricultural grain quality testing and modern processing facility"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:to-black/30" />
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
-                Industrial Grain Quality Testing
-              </span>
             </div>
           </div>
         </div>

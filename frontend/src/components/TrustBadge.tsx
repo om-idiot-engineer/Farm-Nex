@@ -83,7 +83,7 @@ export default function TrustBadge({
                 <p className="text-[10px] text-muted-foreground">{config.subtitle}</p>
               </div>
             </div>
-            
+
             {score ? (
               <div className="mb-4">
                 <ReliabilityScoreCard score={score} />
@@ -106,7 +106,7 @@ export default function TrustBadge({
                 </div>
               </>
             )}
-            
+
             <div className="mt-3 pt-2 border-t border-border flex justify-end">
               <button
                 type="button"

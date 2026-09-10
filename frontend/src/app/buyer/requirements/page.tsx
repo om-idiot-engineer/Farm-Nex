@@ -2,16 +2,16 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  FileText, 
-  PlusCircle, 
-  Search, 
-  Filter, 
-  ArrowLeft, 
-  ArrowRight, 
-  Clock, 
-  CheckCircle2, 
-  Users, 
+import {
+  FileText,
+  PlusCircle,
+  Search,
+  Filter,
+  ArrowLeft,
+  ArrowRight,
+  Clock,
+  CheckCircle2,
+  Users,
   AlertCircle,
   Eye,
   SlidersHorizontal,
@@ -208,7 +208,7 @@ export default function BuyerProcurementManagerPage() {
                 <FileText className="h-5 w-5 text-primary" />
                 <h3 className="text-lg font-bold text-foreground">Publish Procurement RFQ</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setIsCreateOpen(false)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >

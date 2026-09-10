@@ -17,9 +17,9 @@ export default function MainLayoutWrapper({
   }
 
   return (
-    <div className="flex flex-1 mx-auto w-full max-w-7xl">
+    <div className="flex mx-auto w-full max-w-[1440px]">
       <Sidebar />
-      <main className="flex-1 min-w-0 p-4 pb-20 sm:p-6 sm:pb-6 lg:p-8">
+      <main className="flex-1 min-w-0 pb-[88px] lg:pb-0">
         {children}
       </main>
     </div>

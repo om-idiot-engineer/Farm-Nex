@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  TrendingUp, 
-  BarChart3, 
-  Layers, 
-  Users, 
-  ArrowLeft, 
-  DollarSign, 
-  Truck, 
+import {
+  TrendingUp,
+  BarChart3,
+  Layers,
+  Users,
+  ArrowLeft,
+  DollarSign,
+  Truck,
   ShieldCheck,
   CheckCircle2,
   MapPin

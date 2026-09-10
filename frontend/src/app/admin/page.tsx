@@ -2,30 +2,30 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  ShieldCheck, 
-  Users, 
-  Layers, 
-  DollarSign, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ArrowRight, 
-  Activity, 
-  Scale, 
-  Building2, 
-  FileText, 
-  MapPin, 
+import {
+  ShieldCheck,
+  Users,
+  Layers,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  Activity,
+  Scale,
+  Building2,
+  FileText,
+  MapPin,
   TrendingUp,
   SlidersHorizontal,
   ExternalLink
 } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { 
-  getAdminOverview, 
-  getAdminUsers, 
-  getAdminDisputes, 
+import {
+  getAdminOverview,
+  getAdminUsers,
+  getAdminDisputes,
   getAdminMap,
-  type DataSource 
+  type DataSource
 } from "@/lib/services/domain";
 import type { AdminKPIData, AdminMapResponse, MapNode } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -160,8 +160,8 @@ export default function AdminOverviewPage() {
 
       {/* Operational Modules Quick Access */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Link 
-          href="/admin/users" 
+        <Link
+          href="/admin/users"
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-muted/40"
         >
           <div className="rounded-md bg-blue-100 p-2 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
@@ -173,8 +173,8 @@ export default function AdminOverviewPage() {
           </div>
         </Link>
 
-        <Link 
-          href="/admin/marketplace" 
+        <Link
+          href="/admin/marketplace"
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-muted/40"
         >
           <div className="rounded-md bg-emerald-100 p-2 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -186,8 +186,8 @@ export default function AdminOverviewPage() {
           </div>
         </Link>
 
-        <Link 
-          href="/admin/transactions" 
+        <Link
+          href="/admin/transactions"
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-muted/40"
         >
           <div className="rounded-md bg-amber-100 p-2 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
@@ -199,8 +199,8 @@ export default function AdminOverviewPage() {
           </div>
         </Link>
 
-        <Link 
-          href="/admin/disputes" 
+        <Link
+          href="/admin/disputes"
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-muted/40"
         >
           <div className="rounded-md bg-rose-100 p-2 text-rose-800 dark:bg-rose-950 dark:text-rose-300">

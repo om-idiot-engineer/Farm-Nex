@@ -50,6 +50,8 @@ import {
   type DemoProfile,
 } from "@/lib/data/demo";
 
+export type { NetworkPost, Conversation, ConversationMessage };
+
 export type DataSource = "api" | "demo";
 
 export interface ServiceResult<T> {
@@ -634,14 +636,20 @@ export async function getMarketExplanation(crop_id: string): Promise<ServiceResu
 }
 
 export async function getNetworkPosts(topic?: string): Promise<ServiceResult<NetworkPost[]>> {
-  const local = localPosts();
-  const filtered = topic && topic !== "all" ? local.filter((p) => p.topic === topic || p.tag === topic) : local;
-  return demoFallback(filtered);
+  const localData = await localPosts();
+  const filtered = topic && topic !== "all" ? localData.filter((p) => p.topic === topic || p.tag === topic) : localData;
+  return fetchApiOrDemo(
+    () => api.getCommunityPosts(topic) as Promise<NetworkPost[]>,
+    filtered as NetworkPost[]
+  );
 }
 
 export async function getPostDetail(id: string): Promise<ServiceResult<NetworkPost>> {
-  const post = localPosts().find((p) => p.id === id) || demoPosts[0];
-  return demoFallback(post);
+  const localData = await localPosts();
+  return fetchApiOrDemo(
+    () => api.request<NetworkPost>(`/community/posts/${id}`),
+    localData.find((p) => p.id === id) || demoPosts[0]
+  );
 }
 
 export async function createNetworkPost(
@@ -666,9 +674,11 @@ export async function createNetworkPost(
     targetPrice: input.targetPrice,
     mediaUrl: input.mediaUrl,
   };
-  const list = [post, ...localPosts()];
-  writeLocal(LOCAL_KEYS.posts, list);
-  return demoFallback(post);
+  writeLocal(LOCAL_KEYS.posts, [post, ...localPosts()]);
+  return fetchApiOrDemo(
+    () => api.createCommunityPost({ tag: input.tag, content: input.content }) as Promise<NetworkPost>,
+    post
+  );
 }
 
 export async function replyToPost(postId: string, content: string, owner: UserProfile): Promise<ServiceResult<NetworkPost["replies"][number]>> {
@@ -680,10 +690,13 @@ export async function replyToPost(postId: string, content: string, owner: UserPr
     author_role: owner.role,
     content,
     created_at: new Date().toISOString(),
-  };
+  } as NetworkPost["replies"][number];
   const list = localPosts().map((p) => (p.id === postId ? { ...p, comments: (p.comments || 0) + 1, replies: [...(p.replies || []), reply] } : p));
   writeLocal(LOCAL_KEYS.posts, list);
-  return demoFallback(reply);
+  return fetchApiOrDemo(
+    () => api.addPostReply(postId, content) as Promise<NetworkPost["replies"][number]>,
+    reply
+  );
 }
 
 export async function togglePostReaction(postId: string): Promise<ServiceResult<number>> {
@@ -696,16 +709,26 @@ export async function togglePostReaction(postId: string): Promise<ServiceResult<
     return p;
   });
   writeLocal(LOCAL_KEYS.posts, list);
-  return demoFallback(newReactions);
+  return fetchApiOrDemo(
+    () => api.request<{ reactions: number }>(`/community/posts/${postId}/react`, { method: "POST" }).then(r => r.reactions),
+    newReactions
+  );
 }
 
 export async function getMessages(): Promise<ServiceResult<Conversation[]>> {
-  return demoFallback(localMessages());
+  const localData = await localMessages();
+  return fetchApiOrDemo(
+    () => api.request<Conversation[]>("/messages"),
+    localData
+  );
 }
 
 export async function getConversation(id: string): Promise<ServiceResult<Conversation>> {
-  const conversation = localMessages().find((c) => c.id === id) || demoConversations[0];
-  return demoFallback(conversation);
+  const localData = await localMessages();
+  return fetchApiOrDemo(
+    () => api.request<Conversation>(`/messages/${id}`),
+    localData.find((c) => c.id === id) || demoConversations[0]
+  );
 }
 
 export async function sendMessage(
@@ -715,21 +738,43 @@ export async function sendMessage(
   kind: ConversationMessage["kind"] = "text",
   offerData?: ConversationMessage["offerData"]
 ): Promise<ServiceResult<ConversationMessage>> {
-  const message: ConversationMessage = {
-    id: `demo-message-${Date.now()}`,
-    senderId,
-    body,
-    createdAt: new Date().toISOString(),
-    kind,
-    offerData,
-  };
-  const conversations = localMessages().map((conversation) =>
-    conversation.id === conversationId
-      ? { ...conversation, lastMessage: body, updatedAt: message.createdAt, messages: [...conversation.messages, message], unread: 0 }
-      : conversation
+  const localData = await localMessages();
+  return fetchApiOrDemo(
+    () => api.request<ConversationMessage>(`/messages/${conversationId}`, {
+      method: "POST",
+      body: JSON.stringify({ body, kind, offerData }),
+    }),
+    {
+      id: `demo-message-${Date.now()}`,
+      senderId,
+      body,
+      createdAt: new Date().toISOString(),
+      kind,
+      offerData,
+    } as ConversationMessage
   );
-  writeLocal(LOCAL_KEYS.messages, conversations);
-  return demoFallback(message);
+}
+
+export async function createConversation(participantId: string): Promise<ServiceResult<Conversation>> {
+  const localData = await localMessages();
+  const participant = demoUsers[participantId as keyof typeof demoUsers] || demoUsers.buyer;
+  return fetchApiOrDemo(
+    () => api.request<Conversation>("/messages", {
+      method: "POST",
+      body: JSON.stringify({ participantId }),
+    }),
+    {
+      id: `demo-conv-${Date.now()}`,
+      participantId: participant.id,
+      participantName: participant.name,
+      participantRole: participant.role,
+      participantVerified: participant.verified,
+      lastMessage: "",
+      updatedAt: new Date().toISOString(),
+      unread: 0,
+      messages: [],
+    } as Conversation
+  );
 }
 
 export async function getNotifications(): Promise<ServiceResult<AppNotification[]>> {

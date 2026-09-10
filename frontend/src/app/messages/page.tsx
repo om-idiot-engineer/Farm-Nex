@@ -1,662 +1,332 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  MessageSquare,
-  Send,
-  Building2,
-  FileCheck2,
-  Scale,
-  DollarSign,
-  ArrowRight,
-  ShieldCheck,
-  Truck,
-  Calendar,
-  X,
-} from "lucide-react";
-import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { getMessages, sendMessage, acceptBuyerMatch, type DataSource } from "@/lib/services/domain";
-import type { Conversation, ConversationMessage } from "@/lib/data/demo";
-import TrustBadge from "@/components/TrustBadge";
-import DemoNotice from "@/components/DemoNotice";
-import EmptyState from "@/components/EmptyState";
-import ErrorState from "@/components/ErrorState";
-import LoadingSkeleton from "@/components/LoadingSkeleton";
+import React, { useState, useEffect, Suspense } from "react";
+import { Search, Phone, MoreVertical, Paperclip, Send, CheckCircle2, MessageSquare, Plus } from "lucide-react";
+import { useUser } from "@/lib/auth/UserContext";
+import { getMessages, getConversation, sendMessage, createConversation, type Conversation, type ConversationMessage } from "@/lib/services/domain";
 import { Button } from "@/components/ui/button";
-import { useTranslation } from "@/lib/i18n/LanguageContext";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
 
 function MessagesContent() {
-  const { t } = useTranslation();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const requestedConversation = searchParams.get("conversation");
-  const { user, loading: userLoading, hasAccess } = useRequiredUser();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [body, setBody] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [counterModalOpen, setCounterModalOpen] = useState(false);
-  const [counterRate, setCounterRate] = useState<number>(5380);
-  const [confirmQtyModalOpen, setConfirmQtyModalOpen] = useState(false);
-  const [confirmedQty, setConfirmedQty] = useState<number>(250);
-  const [pickupModalOpen, setPickupModalOpen] = useState(false);
-  const [pickupDate, setPickupDate] = useState("2026-09-08");
-  const [pickupVehicle, setPickupVehicle] = useState("12-Wheel Heavy Truck (MP-09-GH-8214)");
-  const [acceptingDeal, setAcceptingDeal] = useState(false);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
+  const { user, loading: userLoading } = useUser();
+  const isFarmer = user?.role === "farmer";
 
-  const loadMessages = async () => {
-    setLoading(true);
-    setError("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+
+  const themeClass = isFarmer ? "theme-farmer" : "theme-buyer";
+  const gradientClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
+  const accentColor = isFarmer ? "bg-emerald-600" : "bg-blue-600";
+  const accentLight = isFarmer ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700";
+
+  const loadConversations = async () => {
     try {
-      const result = await getMessages();
-      setConversations(result.data);
-      const availableIds = result.data.map((c) => c.id);
-      if (requestedConversation && availableIds.includes(requestedConversation)) {
-        setSelectedId(requestedConversation);
-        setMobileShowChat(true);
-      } else if (availableIds.length > 0 && !selectedId) {
-        setSelectedId(availableIds[0]);
+      const res = await getMessages();
+      setConversations(res.data);
+      if (res.data.length > 0 && !activeChat) {
+        setActiveChat(res.data[0].id);
       }
-    } catch (err: any) {
-      setError(err.message || "We could not load your messages.");
+    } catch (err) {
+      console.error("Failed to load conversations:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!user || !hasAccess) return;
-    loadMessages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasAccess, requestedConversation, user]);
+    if (!user || userLoading) return;
+    loadConversations();
+  }, [user, userLoading]);
 
-  const selectedConversation = conversations.find((c) => c.id === selectedId);
-
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedConversation || !body.trim()) return;
-    const text = body.trim();
-    setBody("");
-    try {
-      const result = await sendMessage(selectedConversation.id, user.id, text, "text");
-      setConversations((current) =>
-        current.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessage: text,
-                updatedAt: result.data.createdAt,
-                messages: [...c.messages, result.data],
-              }
-            : c
-        )
-      );
-    } catch (err: any) {
-      setError(err.message || "We could not send that message.");
-      setBody(text);
-    }
-  };
+    if (!messageText.trim() || !activeChat || !user || sending) return;
 
-  const handleSendCounterOffer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !selectedConversation || !counterRate) return;
-    const counterMsg = `Formal Counter Offer: ₹${counterRate.toLocaleString("en-IN")}/quintal for ${selectedConversation.context?.quantity || 250}Q ${selectedConversation.context?.crop || "produce"}.`;
-    try {
-      const result = await sendMessage(
-        selectedConversation.id,
-        user.id,
-        counterMsg,
-        "counter_offer",
-        {
-          rate: counterRate,
-          quantity: selectedConversation.context?.quantity || 250,
-          pickup: "Farm-gate pickup",
-          payment: "Within 24h",
-        }
-      );
-      setConversations((current) =>
-        current.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessage: counterMsg,
-                updatedAt: result.data.createdAt,
-                messages: [...c.messages, result.data],
-              }
-            : c
-        )
-      );
-      setCounterModalOpen(false);
-    } catch (err: any) {
-      alert("Failed to submit counter offer.");
-    }
-  };
+    const currentMessageText = messageText;
+    setMessageText("");
+    setSending(true);
 
-  const handleConfirmQuantity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !selectedConversation || !confirmedQty) return;
-    const confirmMsg = `Quantity Confirmation: Producer has verified and locked supply at ${confirmedQty} Quintals (${(confirmedQty / 10).toFixed(1)} MT). Available for loading.`;
     try {
-      const result = await sendMessage(
-        selectedConversation.id,
-        user.id,
-        confirmMsg,
-        "text"
-      );
-      setConversations((current) =>
-        current.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessage: confirmMsg,
-                updatedAt: result.data.createdAt,
-                messages: [...c.messages, result.data],
-              }
-            : c
-        )
-      );
-      setConfirmQtyModalOpen(false);
-    } catch (err: any) {
-      alert("Failed to confirm quantity.");
-    }
-  };
-
-  const handleSchedulePickup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !selectedConversation) return;
-    const pickupMsg = `Consignment Scheduled: Designated vehicle "${pickupVehicle}" scheduled for loading at farm-gate origin on ${pickupDate}. Driver contact will be shared 4 hours prior.`;
-    try {
-      const result = await sendMessage(
-        selectedConversation.id,
-        user.id,
-        pickupMsg,
-        "text"
-      );
-      setConversations((current) =>
-        current.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessage: pickupMsg,
-                updatedAt: result.data.createdAt,
-                messages: [...c.messages, result.data],
-              }
-            : c
-        )
-      );
-      setPickupModalOpen(false);
-    } catch (err: any) {
-      alert("Failed to schedule pickup.");
-    }
-  };
-
-  const handleAcceptDealInChat = async () => {
-    if (!user || !selectedConversation) return;
-    setAcceptingDeal(true);
-    try {
-      const listingId = selectedConversation.context?.listingId || "demo-lot-fn-28492";
-      const demandId = selectedConversation.context?.demandId || "demo-demand-agrocorp-500";
-      const res = await acceptBuyerMatch(listingId, demandId, user);
-      await sendMessage(
-        selectedConversation.id,
-        user.id,
-        `Deal accepted! Order #${res.data.orderNumber} created. Pickup scheduled for 8 September.`,
-        "acceptance"
-      );
-      router.push(`/deals/${res.data.id}`);
-    } catch (err: any) {
-      alert("Could not process deal acceptance.");
+      await sendMessage(activeChat, user.id, currentMessageText, "text");
+      setConversations(conversations.map(c =>
+        c.id === activeChat
+          ? { ...c, lastMessage: currentMessageText, updatedAt: new Date().toISOString(), unread: 0, messages: [...c.messages, { id: `msg-${Date.now()}`, senderId: user.id, body: currentMessageText, createdAt: new Date().toISOString(), kind: "text" }] }
+          : c
+      ));
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      alert("Failed to send message. Please try again.");
     } finally {
-      setAcceptingDeal(false);
+      setSending(false);
     }
   };
 
-  if (userLoading || !user || !hasAccess) return <LoadingSkeleton variant="detail" />;
-  if (loading) return <LoadingSkeleton variant="detail" />;
-  if (error) return <div className="mx-auto max-w-5xl py-8"><ErrorState message={error} onRetry={loadMessages} /></div>;
-  if (!conversations.length) {
-    return (
-      <div className="mx-auto max-w-5xl py-8">
-        <EmptyState
-          title="No conversations yet"
-          description="Messages start automatically when a buyer or farmer initiates contact around a listed lot or buyer RFQ."
-          action="Browse marketplace"
-          href="/marketplace"
-          icon={MessageSquare}
-        />
-      </div>
-    );
-  }
+  const handleNewChat = async () => {
+    if (!user) return;
+    // In a real app, this would open a user search modal
+    // For now, create a demo conversation
+    try {
+      const res = await createConversation(user.role === "farmer" ? "demo-buyer-agrocorp" : "demo-farmer-ramesh");
+      if (res.data) {
+        setConversations([res.data, ...conversations]);
+        setActiveChat(res.data.id);
+      }
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+    }
+  };
+
+  const activeConversation = conversations.find(c => c.id === activeChat);
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return date.toLocaleDateString("en-IN", { weekday: "short" });
+    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+  };
+
+  if (userLoading || loading) return <LoadingSkeleton variant="detail" />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 py-4">
-      <div className="flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <span className="text-xs font-black uppercase tracking-wider text-primary">
-            {t("messages.title", "Trade & Contract Inquiries")}
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground">{t("messages.title", "Deal Messages")}</h1>
-        </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/marketplace">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Marketplace
-          </Link>
-        </Button>
-      </div>
+    <div className={`p-4 lg:p-6 max-w-[1440px] mx-auto h-[calc(100vh-64px)] ${themeClass}`}>
+      <div className="bg-white rounded-[24px] border border-zinc-200 shadow-sm overflow-hidden flex h-[calc(100vh-120px)] min-h-[600px]">
 
-      <DemoNotice>
-        Deal conversations are stored in your local browser state until the messaging service is connected.
-      </DemoNotice>
-
-      {/* Split Workspace */}
-      <div className="grid border border-border bg-card rounded-lg shadow-sm min-h-[36rem] md:grid-cols-[19rem_1fr] overflow-hidden">
-        {/* LEFT COLUMN: Conversation List */}
-        <aside
-          className={`border-b md:border-b-0 md:border-r border-border ${
-            mobileShowChat ? "hidden md:block" : "block"
-          }`}
-        >
-          <div className="border-b border-border px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground bg-muted/20">
-            {t("farmer.activeDeals", "Active Deals & Inquiries")}
+        {/* Left Sidebar (Chats List) */}
+        <div className="w-full md:w-[320px] border-r border-zinc-200 flex flex-col bg-zinc-50/50">
+          <div className="p-4 border-b border-zinc-200 bg-white flex items-center justify-between">
+            <h2 className="font-bold text-[16px]">Messages • Negotiation Hub</h2>
+            <Button onClick={handleNewChat} size="sm" className="h-8 rounded-full font-bold" variant="outline">
+              <Plus className="w-4 h-4 mr-1" /> New
+            </Button>
           </div>
 
-          <div className="divide-y divide-border">
-            {conversations.map((c) => {
-              const isSelected = selectedId === c.id;
-              return (
+          <div className="p-3 border-b border-zinc-200 bg-white">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                placeholder="Search chats, products..."
+                className="w-full h-9 pl-9 pr-3 rounded-full bg-zinc-100 text-[13px] focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-200"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {conversations.length === 0 ? (
+              <div className="p-8 text-center text-zinc-500">
+                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                <p className="text-sm">No conversations yet</p>
+                <p className="text-xs mt-1">Start negotiating with buyers or farmers</p>
+              </div>
+            ) : (
+              conversations.map(chat => (
                 <button
-                  type="button"
-                  key={c.id}
-                  onClick={() => {
-                    setSelectedId(c.id);
-                    setMobileShowChat(true);
-                  }}
-                  className={`w-full text-left p-4 transition-colors block ${
-                    isSelected ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted/30"
-                  }`}
+                  key={chat.id}
+                  onClick={() => setActiveChat(chat.id)}
+                  className={`w-full p-4 flex gap-3 text-left hover:bg-white transition-colors border-b border-black/[0.03] ${activeChat === chat.id ? "bg-white shadow-sm border-l-4 border-l-zinc-900" : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-sm text-foreground truncate">
-                          {c.participantName}
-                        </span>
-                        {c.participantVerified && (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-[11px] text-primary font-semibold mt-0.5 truncate">
-                        {c.context?.crop} · {c.context?.quantity}Q
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{c.lastMessage}</p>
+                  <div className="relative shrink-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[13px] text-white ${chat.participantVerified ? 'bg-zinc-900' : 'bg-zinc-300'}`}>
+                      {chat.participantName?.substring(0, 2).toUpperCase() || 'US'}
                     </div>
-
-                    {c.unread > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shrink-0">
-                        {c.unread}
-                      </span>
-                    )}
+                    {chat.context && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" title="Active negotiation" />}
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        {/* RIGHT COLUMN: Active Chat & Deal Context Panel */}
-        {selectedConversation ? (
-          <section
-            className={`flex flex-col min-h-[36rem] bg-card ${
-              !mobileShowChat ? "hidden md:flex" : "flex"
-            }`}
-          >
-            {/* Header with back button for mobile */}
-            <div className="border-b border-border px-5 py-3.5 flex items-center justify-between gap-3 bg-muted/10">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMobileShowChat(false)}
-                  className="md:hidden p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-foreground">
-                      {selectedConversation.participantName}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[13px] truncate">{chat.participantName}</span>
+                      <span className="text-[11px] text-zinc-500 shrink-0">{formatTime(chat.updatedAt)}</span>
+                    </div>
+                    <div className="text-[12px] text-zinc-500 truncate mt-0.5 flex items-center gap-1.5">
+                      {chat.context && (
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${accentLight}`}>
+                          {chat.context.crop} • {chat.context.quantity}Q
+                        </span>
+                      )}
+                      <span className="truncate">{chat.lastMessage || "Start a conversation"}</span>
+                    </div>
+                  </div>
+                  {chat.unread > 0 && (
+                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-1">
+                      {chat.unread}
                     </span>
-                    <TrustBadge
-                      type={selectedConversation.participantRole.toLowerCase().includes("buyer") ? "buyer" : "producer"}
-                      size="sm"
-                    />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Area (Chat View) */}
+        {activeChat ? (
+          <div className="hidden md:flex flex-1 flex-col bg-white">
+            {/* Chat Header */}
+            <div className="h-[64px] border-b border-zinc-200 px-5 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-[12px]">
+                  {activeConversation?.participantName?.substring(0, 2).toUpperCase() || 'US'}
+                </div>
+                <div>
+                  <div className="font-bold text-[14px] flex items-center gap-2">
+                    {activeConversation?.participantName}
+                    {activeConversation?.participantVerified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {selectedConversation.participantRole}
-                  </p>
+                  <div className="text-[11px] text-zinc-500 flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Online
+                  </div>
                 </div>
               </div>
-
-              <Button size="sm" variant="outline" className="text-xs h-7" asChild>
-                <Link href={`/profile/${selectedConversation.participantId}`}>View Profile</Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <button className="w-9 h-9 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                  <Phone className="w-4 h-4 text-zinc-600" />
+                </button>
+                <button className="w-9 h-9 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                  <MoreVertical className="w-4 h-4 text-zinc-600" />
+                </button>
+              </div>
             </div>
 
-            {/* STICKY TRANSACTION CONTEXT PANEL (Section 14) */}
-            {selectedConversation.context && (
-              <div className="border-b border-primary/20 bg-primary/5 p-4 text-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-primary text-xs uppercase tracking-wider">
-                      {selectedConversation.context.label}
-                    </span>
-                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                      {selectedConversation.context.quantity}Q ({((selectedConversation.context.quantity || 250) / 10).toFixed(1)} MT) {selectedConversation.context.crop}
-                    </span>
-                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded font-bold text-[11px]">
-                      ₹{selectedConversation.context.offer.toLocaleString("en-IN")}/Q
-                    </span>
+            {/* Context Strip */}
+            {activeConversation?.context && (
+              <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3 shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-2xl shadow-sm">
+                  🌾
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-[13px] text-amber-900">
+                    {activeConversation.context.crop} • {activeConversation.context.quantity}Q
                   </div>
-
-                  {/* QUICK COMMERCE ACTIONS (Section 14) */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setCounterModalOpen(true)}
-                      className="h-7 text-xs font-bold bg-background"
-                    >
-                      Counter Offer
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setConfirmQtyModalOpen(true)}
-                      className="h-7 text-xs font-bold bg-background"
-                    >
-                      Confirm Qty
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPickupModalOpen(true)}
-                      className="h-7 text-xs font-bold bg-background"
-                    >
-                      Schedule Pickup
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleAcceptDealInChat}
-                      disabled={acceptingDeal}
-                      className="h-7 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
-                    >
-                      {acceptingDeal ? t("common.loading", "Accepting...") : t("messages.acceptDeal", "Accept Deal")}
-                    </Button>
+                  <div className="text-[11px] text-amber-700/80 mt-0.5">
+                    ₹{activeConversation.context.offer?.toLocaleString("en-IN") || "—"}/Q • {activeConversation.context.location} • {activeConversation.context.payment}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-muted-foreground border-t border-primary/10 pt-2">
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold">Quality Assay</span>
-                    <span className="font-bold text-foreground">{selectedConversation.context.quality}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold">Est. Total Deal Value</span>
-                    <span className="font-bold text-emerald-800">
-                      ₹{((selectedConversation.context.quantity || 250) * (selectedConversation.context.offer || 5200)).toLocaleString("en-IN")}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold">Target Pickup / Delivery</span>
-                    <span className="font-bold text-foreground">08 Sep 2026</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold">Freight & Settlement</span>
-                    <span className="font-bold text-foreground">{selectedConversation.context.payment}</span>
-                  </div>
-                </div>
+                <button className="h-8 px-4 rounded-full bg-zinc-900 text-white text-[11px] font-bold shadow-sm">
+                  View Deal
+                </button>
               </div>
             )}
 
-            {/* Messages Thread */}
-            <div className="flex-1 space-y-3 overflow-y-auto p-5">
-              {selectedConversation.messages.map((msg) => {
-                const isMe = msg.senderId === user.id;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                  >
-                    {msg.kind === "offer" || msg.kind === "counter_offer" ? (
-                      <div
-                        className={`max-w-[85%] sm:max-w-[70%] p-4 rounded-lg border text-xs space-y-2 ${
-                          isMe
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted/40 text-foreground border-border"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
-                          <DollarSign className="h-3.5 w-3.5" />
-                          {msg.kind === "offer" ? t("messages.buyerOffer", "Formal Buyer Offer") : t("messages.counterOffer", "Farmer Counter Offer")}
-                        </div>
-                        <p className="text-sm font-semibold">{msg.body}</p>
-                        {msg.offerData && (
-                          <div className="bg-black/10 p-2 rounded text-[11px] space-y-0.5">
-                            <p>Rate: ₹{msg.offerData.rate.toLocaleString("en-IN")}/quintal</p>
-                            <p>Pickup: {msg.offerData.pickup}</p>
-                            <p>Terms: {msg.offerData.payment}</p>
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#FCFCF9]">
+              {activeConversation?.messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-zinc-500">
+                  <MessageSquare className="w-12 h-12 mb-3 text-zinc-300" />
+                  <p className="text-sm">No messages yet</p>
+                  <p className="text-xs mt-1">Start the negotiation by sending a message below</p>
+                </div>
+              ) : (
+                <>
+                  {activeConversation?.messages.map((msg, idx) => {
+                    const isMe = msg.senderId === user?.id;
+                    const showDate = idx === 0 || formatDate(msg.createdAt) !== formatDate(activeConversation.messages[idx - 1].createdAt);
+
+                    return (
+                      <React.Fragment key={msg.id}>
+                        {showDate && (
+                          <div className="flex justify-center mb-4">
+                            <span className="text-[11px] bg-zinc-100 px-3 py-1 rounded-full text-zinc-500 font-medium border border-zinc-200">
+                              {formatDate(msg.createdAt)}
+                            </span>
                           </div>
                         )}
-                        <span className="text-[10px] opacity-70 block text-right">
-                          {new Date(msg.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    ) : msg.kind === "acceptance" ? (
-                      <div className="max-w-[85%] p-3.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
-                        <span>{msg.body}</span>
-                      </div>
-                    ) : (
-                      <div
-                        className={`max-w-[85%] sm:max-w-[75%] px-3.5 py-2.5 rounded-lg text-xs leading-relaxed ${
-                          isMe
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-muted/40 text-foreground border border-border rounded-bl-none"
-                        }`}
-                      >
-                        <p>{msg.body}</p>
-                        <span
-                          className={`text-[10px] block text-right mt-1 ${
-                            isMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                          }`}
-                        >
-                          {new Date(msg.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                        <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[75%] ${isMe ? 'bg-zinc-900 text-white rounded-2xl rounded-br-sm' : 'bg-white border border-zinc-200 shadow-sm rounded-2xl rounded-bl-sm'} px-4 py-3`}>
+                            {msg.kind === "offer" && msg.offerData ? (
+                              <div className="bg-white rounded-xl p-3 text-zinc-900 border border-zinc-200">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Make Offer</div>
+                                <div className="font-extrabold text-[16px] leading-tight">
+                                  ₹{msg.offerData.rate}/Q • {msg.offerData.quantity}Q
+                                </div>
+                                <div className="text-[11px] text-zinc-500 mt-1">
+                                  Pickup: {msg.offerData.pickup} • Payment: {msg.offerData.payment}
+                                </div>
+                                <div className="flex gap-2 mt-3">
+                                  <button className={`flex-1 h-8 rounded-full ${accentColor} text-white text-[12px] font-bold`}>Accept</button>
+                                  <button className="flex-1 h-8 rounded-full bg-zinc-100 text-zinc-700 text-[12px] font-bold hover:bg-zinc-200">Counter</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-[13px] leading-relaxed">{msg.body}</div>
+                                <div className={`text-[10px] mt-1.5 font-medium ${isMe ? 'text-white/50' : 'text-zinc-400'}`}>
+                                  {formatTime(msg.createdAt)} {isMe && '✓✓'}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              )}
             </div>
 
-            {/* Input Bar */}
-            <form onSubmit={handleSend} className="border-t border-border p-3 sm:p-4 flex gap-2 bg-card">
-              <input
-                type="text"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={t("messages.typeMessage", "Type your message, query, or terms...")}
-                className="min-w-0 flex-1 border border-input rounded-md bg-background px-3.5 py-2 text-xs sm:text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-              <Button type="submit" size="sm" disabled={!body.trim()} className="font-bold shrink-0">
-                <Send className="h-4 w-4 mr-1.5" />
-                Send
-              </Button>
-            </form>
-          </section>
+            {/* Chat Input */}
+            <div className="p-4 border-t border-zinc-200 bg-white shrink-0">
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <button type="button" className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                  <Paperclip className="w-4 h-4 text-zinc-600" />
+                </button>
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Type message, offer price..."
+                    className="w-full h-11 pl-4 pr-12 rounded-full bg-zinc-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-200 text-[14px] transition-colors border border-transparent"
+                    disabled={sending}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!messageText.trim() || sending}
+                    className="absolute right-1.5 top-1.5 w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </form>
+              <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {['₹42/kg?', 'Sample please', 'Delivery tomorrow?', 'Regular supply?'].map(chip => (
+                  <button key={chip} type="button" onClick={() => setMessageText(chip)} className="px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-200 text-[11px] font-medium whitespace-nowrap hover:bg-zinc-900 hover:text-white transition-colors">
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="hidden md:flex items-center justify-center p-10 text-xs text-muted-foreground">
-            Select a conversation to inspect trade context and message.
+          <div className="hidden md:flex flex-1 items-center justify-center bg-zinc-50">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-zinc-200 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-6 h-6 text-zinc-400" />
+              </div>
+              <h3 className="font-bold text-[15px]">Your Messages</h3>
+              <p className="text-[13px] text-zinc-500 mt-1">Select a chat to view negotiation history</p>
+            </div>
           </div>
         )}
+
       </div>
-
-      {/* COUNTER OFFER MODAL */}
-      {counterModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-50">
-          <div className="relative w-full max-w-sm bg-card border border-border rounded-xl shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
-            <button
-              type="button"
-              onClick={() => setCounterModalOpen(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-black text-foreground">Propose Counter Offer</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Suggest an updated rate for {selectedConversation?.context?.quantity || 250}Q {selectedConversation?.context?.crop || "produce"}.
-              </p>
-            </div>
-
-            <form onSubmit={handleSendCounterOffer} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-foreground block mb-1">Your Counter Price (₹/quintal)</label>
-                <input
-                  type="number"
-                  value={counterRate}
-                  onChange={(e) => setCounterRate(Number(e.target.value))}
-                  className="w-full p-2.5 border border-input rounded font-bold text-sm outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="bg-muted/20 p-2.5 rounded text-[11px] text-muted-foreground space-y-1">
-                <p>Original Offer: ₹{selectedConversation?.context?.offer.toLocaleString("en-IN")}/q</p>
-                <p>Logistics: Farm-gate pickup by buyer</p>
-              </div>
-
-              <Button type="submit" className="w-full font-bold">
-                Submit Counter Offer
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRM QUANTITY MODAL */}
-      {confirmQtyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-50">
-          <div className="relative w-full max-w-sm bg-card border border-border rounded-xl shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
-            <button
-              type="button"
-              onClick={() => setConfirmQtyModalOpen(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-black text-foreground">Confirm Available Supply Volume</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Verify the exact batch volume available for this consignment.
-              </p>
-            </div>
-
-            <form onSubmit={handleConfirmQuantity} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-foreground block mb-1">Confirmed Volume (Quintals)</label>
-                <input
-                  type="number"
-                  value={confirmedQty}
-                  onChange={(e) => setConfirmedQty(Number(e.target.value))}
-                  className="w-full p-2.5 border border-input rounded font-bold text-sm outline-none focus:border-primary"
-                />
-                <span className="text-[11px] text-muted-foreground mt-1 block">
-                  Equivalent to {(confirmedQty / 10).toFixed(1)} Metric Tonnes
-                </span>
-              </div>
-
-              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground">
-                Lock & Confirm Quantity
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SCHEDULE PICKUP MODAL */}
-      {pickupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-50">
-          <div className="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
-            <button
-              type="button"
-              onClick={() => setPickupModalOpen(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-black text-foreground">Schedule Farm-Gate Dispatch</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Allocate logistics vehicle and notify producer of gate arrival window.
-              </p>
-            </div>
-
-            <form onSubmit={handleSchedulePickup} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-foreground block mb-1">Target Loading Date</label>
-                <input
-                  type="date"
-                  value={pickupDate}
-                  onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full p-2.5 border border-input rounded font-medium text-sm outline-none focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-foreground block mb-1">Allocated Carrier / Vehicle</label>
-                <select
-                  value={pickupVehicle}
-                  onChange={(e) => setPickupVehicle(e.target.value)}
-                  className="w-full p-2.5 border border-input rounded font-medium text-sm outline-none focus:border-primary"
-                >
-                  <option value="12-Wheel Heavy Truck (MP-09-GH-8214)">12-Wheel Heavy Truck (MP-09-GH-8214) - 25 MT</option>
-                  <option value="6-Wheel Medium Truck (MP-13-BB-4102)">6-Wheel Medium Truck (MP-13-BB-4102) - 10 MT</option>
-                  <option value="Eicher LCV (MP-04-KA-9021)">Eicher LCV (MP-04-KA-9021) - 4 MT</option>
-                </select>
-              </div>
-
-              <div className="p-3 bg-muted/20 rounded text-[11px] text-muted-foreground space-y-1">
-                <p>Origin: Sanwer Aggregation Hub, Indore (Farm Gate)</p>
-                <p>Destination: Dewas Industrial Plant, Bay #3</p>
-              </div>
-
-              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground">
-                Confirm & Issue Dispatch Notice
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 export default function MessagesPage() {
+  const { user, loading } = useUser();
+
+  if (loading) return <LoadingSkeleton variant="detail" />;
+
   return (
     <Suspense fallback={<LoadingSkeleton variant="detail" />}>
       <MessagesContent />

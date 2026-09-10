@@ -2,14 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
-import { 
-  DollarSign, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
-  ExternalLink, 
-  Download, 
-  ShieldCheck, 
+import {
+  DollarSign,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Download,
+  ShieldCheck,
   Building2,
   Lock,
   ArrowUpRight,
@@ -173,7 +173,7 @@ export default function AdminTransactionsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold ${
-                      tx.status === "delivered" 
+                      tx.status === "delivered"
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                         : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                     }`}>

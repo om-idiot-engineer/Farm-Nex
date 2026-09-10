@@ -30,7 +30,7 @@ export default function ListingDetailPage() {
     setError("");
     try {
       const result = await getMarketplaceListings();
-      
+
       const l = result.data.find((item) => item.id === id) || null;
       setListing(l);
       setSource(result.source);

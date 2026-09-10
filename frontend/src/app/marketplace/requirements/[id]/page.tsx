@@ -29,7 +29,7 @@ export default function RequirementDetailPage() {
     setError("");
     try {
       const result = await getDemandPosts();
-      
+
       const d = result.data.find((item) => item.id === id) || null;
       setDemand(d);
       setSource(result.source);

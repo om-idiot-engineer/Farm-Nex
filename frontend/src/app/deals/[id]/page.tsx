@@ -3,16 +3,16 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { 
-  ArrowLeft, 
-  FileText, 
-  Download, 
-  Printer, 
-  Building2, 
-  User, 
-  CheckCircle2, 
-  AlertTriangle, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  FileText,
+  Download,
+  Printer,
+  Building2,
+  User,
+  CheckCircle2,
+  AlertTriangle,
+  MessageSquare,
   X
 } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
@@ -197,9 +197,9 @@ export default function DealRoomPage() {
               <option value="2">2 Stars</option>
               <option value="1">1 Star</option>
             </select>
-            <input 
-              type="text" 
-              placeholder="Write a review..." 
+            <input
+              type="text"
+              placeholder="Write a review..."
               value={review}
               onChange={e => setReview(e.target.value)}
               className="border p-1 rounded text-sm px-2 bg-card min-w-[200px]"
@@ -218,9 +218,9 @@ export default function DealRoomPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => window.print()}
             className="text-xs"
           >
@@ -235,8 +235,8 @@ export default function DealRoomPage() {
           </Button>
 
           {!agreement.dispute?.hasDispute && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setIsDisputeOpen(true)}
               className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950"
@@ -674,7 +674,7 @@ export default function DealRoomPage() {
                 <AlertTriangle className="h-5 w-5" />
                 <h3 className="text-lg font-bold text-foreground">Raise Commercial Dispute</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setIsDisputeOpen(false)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >

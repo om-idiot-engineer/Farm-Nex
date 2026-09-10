@@ -52,7 +52,7 @@ export function getRoleNavigation(role?: UserProfile["role"]): NavLinkItem[] {
   return [
     { href: getRoleHome(role), label: "Home", icon: LayoutDashboard, exact: true },
     { href: "/marketplace", label: isBuyer ? "Find Supply" : "Market", icon: Store },
-    ...(isBuyer 
+    ...(isBuyer
       ? [{ href: "/buyer/requirements", label: "My Requirements", icon: ClipboardList }]
       : [{ href: "/farmer/produce", label: "My Produce", icon: Sprout }]
     ),

@@ -2,14 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
-import { 
-  ShieldCheck, 
-  ArrowLeft, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Scale, 
-  Building2, 
-  FileText, 
+import {
+  ShieldCheck,
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
+  Scale,
+  Building2,
+  FileText,
   Award,
   Sparkles,
   Search

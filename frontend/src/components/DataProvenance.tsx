@@ -15,7 +15,7 @@ interface DataProvenanceProps {
 
 export function DataProvenance({ source, updatedAt, region, className }: DataProvenanceProps) {
   const { t } = useLanguage();
-  
+
   const parsedDate = new Date(updatedAt);
   const isStale = Date.now() - parsedDate.getTime() > 3 * 24 * 60 * 60 * 1000; // > 3 days
   const isRecent = Date.now() - parsedDate.getTime() < 24 * 60 * 60 * 1000; // < 1 day

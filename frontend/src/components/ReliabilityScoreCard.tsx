@@ -25,8 +25,8 @@ export function ReliabilityScoreCard({ score, className, compact = false }: Reli
   const { t, language } = useLanguage();
 
   const isNew = score.total_transactions === 0;
-  const successRate = score.total_transactions > 0 
-    ? Math.round((score.successful_transactions / score.total_transactions) * 100) 
+  const successRate = score.total_transactions > 0
+    ? Math.round((score.successful_transactions / score.total_transactions) * 100)
     : 0;
 
   // Determine tier
@@ -69,7 +69,7 @@ export function ReliabilityScoreCard({ score, className, compact = false }: Reli
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-bold text-foreground">
-            {score.role === "farmer" 
+            {score.role === "farmer"
               ? (language === 'hi' ? "किसान विश्वसनीयता" : "Farmer Reliability")
               : (language === 'hi' ? "खरीदार विश्वसनीयता" : "Buyer Reliability")}
           </h3>
@@ -100,8 +100,8 @@ export function ReliabilityScoreCard({ score, className, compact = false }: Reli
 
       {isNew ? (
         <div className="py-4 text-center text-sm text-muted-foreground bg-muted/30 rounded-md">
-          {language === 'hi' 
-            ? "अभी तक कोई लेनदेन नहीं हुआ है।" 
+          {language === 'hi'
+            ? "अभी तक कोई लेनदेन नहीं हुआ है।"
             : "No transaction history yet."}
         </div>
       ) : (
@@ -114,14 +114,14 @@ export function ReliabilityScoreCard({ score, className, compact = false }: Reli
             <span className="text-muted-foreground">{language === 'hi' ? "सफल" : "Successful"}:</span>
             <span className="font-medium text-brand-600">{score.successful_transactions} ({successRate}%)</span>
           </div>
-          
+
           {score.role === "farmer" && score.quality_consistency_percent !== undefined && (
             <div className="flex justify-between col-span-2 mt-1">
               <span className="text-muted-foreground">{language === 'hi' ? "गुणवत्ता स्थिरता" : "Quality consistency"}:</span>
               <span className="font-medium">{score.quality_consistency_percent}%</span>
             </div>
           )}
-          
+
           {score.role === "buyer" && score.payment_reliability_percent !== undefined && (
             <div className="flex justify-between col-span-2 mt-1">
               <span className="text-muted-foreground">{language === 'hi' ? "भुगतान विश्वसनीयता" : "Payment reliability"}:</span>

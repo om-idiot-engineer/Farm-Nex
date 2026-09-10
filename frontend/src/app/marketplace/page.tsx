@@ -3,34 +3,14 @@
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { 
-  Filter, 
-  Search, 
-  Sprout, 
-  Building2, 
-  MapPin, 
-  CheckCircle2, 
-  ShieldCheck, 
-  ArrowRight, 
-  SlidersHorizontal, 
-  Check, 
-  Calendar, 
-  Layers, 
-  Scale, 
-  DollarSign, 
-  Clock, 
-  Plus,
-  LayoutGrid,
-  List
+import {
+  Search, Filter, MapPin, CheckCircle2, SlidersHorizontal, ArrowRight, ShieldCheck, Clock
 } from "lucide-react";
 import type { CropListing, DemandPost } from "@/lib/api";
 import { useUser } from "@/lib/auth/UserContext";
 import { getDemandPosts, getMarketplaceListings } from "@/lib/services/domain";
-import StatusBadge from "@/components/StatusBadge";
-import TrustBadge from "@/components/TrustBadge";
-import EmptyState from "@/components/EmptyState";
-import LoadingSkeleton from "@/components/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
 
 type MarketplaceView = "supply" | "demand";
 
@@ -38,14 +18,11 @@ function MarketplaceContent() {
   const { user } = useUser();
   const searchParams = useSearchParams();
   const initialView = (searchParams.get("view") as MarketplaceView) || "supply";
-  const initialCrop = searchParams.get("crop") || "all";
 
   const [view, setView] = useState<MarketplaceView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCrop, setSelectedCrop] = useState<string>(initialCrop);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [selectedCrop, setSelectedCrop] = useState<string>("all");
   const [onlyVerified, setOnlyVerified] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
   const [listings, setListings] = useState<CropListing[]>([]);
   const [demands, setDemands] = useState<DemandPost[]>([]);
@@ -61,8 +38,8 @@ function MarketplaceContent() {
         ]);
         setListings(listingsRes.data || []);
         setDemands(demandsRes.data || []);
-      } catch (err) {
-        console.error(err);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
@@ -70,449 +47,257 @@ function MarketplaceContent() {
     loadData();
   }, []);
 
-  // Filter listings
-  const filteredListings = listings.filter((l) => {
-    const matchesSearch = 
-      l.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      l.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCrop = selectedCrop === "all" || l.crop_id.toLowerCase() === selectedCrop.toLowerCase();
-    const matchesLoc = selectedLocation === "all" || l.location.toLowerCase().includes(selectedLocation.toLowerCase());
-    return matchesSearch && matchesCrop && matchesLoc;
+  const isFarmer = user?.role === "farmer";
+  const themeClass = isFarmer ? "theme-farmer" : "theme-buyer";
+  const gradientClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
+  const softBg = isFarmer ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800";
+  const highlightBorder = isFarmer ? "hover:border-emerald-300" : "hover:border-blue-300";
+
+  const getEmoji = (crop: string) => {
+    const l = crop.toLowerCase();
+    if (l.includes("tomato")) return "🍅";
+    if (l.includes("wheat")) return "🌾";
+    if (l.includes("potato")) return "🥔";
+    if (l.includes("soybean") || l.includes("soy")) return "🌱";
+    if (l.includes("onion")) return "🧅";
+    return "📦";
+  };
+
+  const getGradient = (crop: string) => {
+    const l = crop.toLowerCase();
+    if (l.includes("tomato")) return "from-red-400 to-orange-400";
+    if (l.includes("wheat")) return "from-amber-300 to-yellow-500";
+    if (l.includes("potato")) return "from-orange-300 to-amber-600";
+    if (l.includes("soybean")) return "from-green-300 to-emerald-500";
+    if (l.includes("onion")) return "from-fuchsia-400 to-purple-500";
+    return "from-zinc-400 to-zinc-600";
+  };
+
+  const filteredListings = listings.filter(item => {
+    if (selectedCrop !== "all" && !item.crop_id.toLowerCase().includes(selectedCrop.toLowerCase())) return false;
+    if (onlyVerified && item.farmer_name && !item.farmer_name.includes("Verified")) return false;
+    if (searchQuery && !item.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) && !item.location.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
   });
 
-  // Filter demands
-  const filteredDemands = demands.filter((d) => {
-    const matchesSearch = 
-      d.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      d.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCrop = selectedCrop === "all" || d.crop_id.toLowerCase() === selectedCrop.toLowerCase();
-    const matchesLoc = selectedLocation === "all" || d.location.toLowerCase().includes(selectedLocation.toLowerCase());
-    return matchesSearch && matchesCrop && matchesLoc;
+  const filteredDemands = demands.filter(item => {
+    if (selectedCrop !== "all" && !item.crop_id.toLowerCase().includes(selectedCrop.toLowerCase())) return false;
+    if (searchQuery && !item.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) && !item.location.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
   });
-
-  const totalAvailableQty = listings.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const totalDemandQty = demands.reduce((sum, item) => sum + (item.quantity_needed || (item as any).quantity || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      
-      {/* 1. TRADING FLOOR HEADER & AGGREGATE STRIP */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-5">
+    <div className={`p-4 lg:p-8 space-y-6 max-w-[1440px] mx-auto ${themeClass}`}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
-              <Sprout className="h-3.5 w-3.5" />
-            </span>
-            <span className="text-xs font-black uppercase tracking-wider text-primary">
-              FarmNex Agricultural Trading Network
-            </span>
-          </div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">
-            Live Agricultural Marketplace
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Transparent farm-gate supply and aggregated processor demand with zero broker deductions.
-          </p>
+          <h1 className="text-[24px] lg:text-[28px] font-extrabold tracking-tight text-zinc-900">Mandi Exchange</h1>
+          <p className="text-[13px] text-zinc-500 font-medium">Discover trusted buyers and premium harvest across India.</p>
         </div>
 
-        {/* Aggregated Market Liquidity Metrics */}
-        <div className="flex items-center gap-4 text-xs bg-muted/20 border border-border/80 p-3 rounded-xl shrink-0">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Active Harvest Supply</span>
-            <span className="font-black text-sm text-foreground tabular-nums">
-              {totalAvailableQty.toLocaleString("en-IN")} Quintals
-            </span>
-          </div>
-          <div className="h-7 w-px bg-border" />
-          <div>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Processor Sourcing Demand</span>
-            <span className="font-black text-sm text-primary tabular-nums">
-              {totalDemandQty.toLocaleString("en-IN")} Quintals
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. DUAL MODE TOGGLE (SUPPLY vs DEMAND - Section 17) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex p-1.5 rounded-xl bg-muted/40 border border-border w-full sm:w-fit">
+        <div className="flex bg-zinc-100/80 p-1 rounded-full border border-zinc-200">
           <button
-            type="button"
             onClick={() => setView("supply")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              view === "supply"
-                ? "bg-card text-foreground shadow-xs border border-border/60"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all shadow-sm ${view === 'supply' ? 'bg-white text-zinc-900' : 'text-zinc-500 hover:text-zinc-700 hover:bg-white/50'}`}
           >
-            <Sprout className={`h-4 w-4 ${view === "supply" ? "text-primary" : ""}`} />
-            <span>SUPPLY · AVAILABLE HARVEST ({listings.length})</span>
+            Produce (Supply)
           </button>
-
           <button
-            type="button"
             onClick={() => setView("demand")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              view === "demand"
-                ? "bg-card text-foreground shadow-xs border border-border/60"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all shadow-sm ${view === 'demand' ? 'bg-white text-zinc-900' : 'text-zinc-500 hover:text-zinc-700 hover:bg-white/50'}`}
           >
-            <Building2 className={`h-4 w-4 ${view === "demand" ? "text-primary" : ""}`} />
-            <span>DEMAND · BUYER RFQS ({demands.length})</span>
-          </button>
-        </div>
-
-        {/* View Layout Mode (Cards vs Table) */}
-        <div className="flex items-center gap-1.5 self-end sm:self-center">
-          <button
-            type="button"
-            onClick={() => setViewMode("cards")}
-            className={`p-2 rounded-lg border text-xs font-bold transition-colors ${
-              viewMode === "cards" 
-                ? "bg-card text-primary border-primary/40 shadow-2xs" 
-                : "bg-muted/20 text-muted-foreground border-border hover:text-foreground"
-            }`}
-            title="Card View"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("table")}
-            className={`p-2 rounded-lg border text-xs font-bold transition-colors ${
-              viewMode === "table" 
-                ? "bg-card text-primary border-primary/40 shadow-2xs" 
-                : "bg-muted/20 text-muted-foreground border-border hover:text-foreground"
-            }`}
-            title="Table View"
-          >
-            <List className="h-4 w-4" />
+            Requirements (Demand)
           </button>
         </div>
       </div>
 
-      {/* 3. MULTI-DIMENSIONAL FILTER BAR (Section 17) */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-          
-          {/* Text Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={view === "supply" ? "Search crops, farmer names, tehsils..." : "Search procurement RFQs, buyer entities, destination plants..."}
-              className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={selectedCrop}
-              onChange={(e) => setSelectedCrop(e.target.value)}
-              className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="all">All Crops</option>
-              <option value="soybean">Soybean (Yellow)</option>
-              <option value="wheat">Wheat (Sharbati)</option>
-              <option value="cotton">Cotton (Medium Staple)</option>
-            </select>
-
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="all">All Locations (Malwa)</option>
-              <option value="indore">Indore Region</option>
-              <option value="dewas">Dewas Industrial</option>
-              <option value="ujjain">Ujjain Region</option>
-            </select>
-
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8 items-start">
+        {/* Filters Sidebar */}
+        <div className="bg-white rounded-[24px] border border-zinc-200 p-5 shadow-sm space-y-6 h-fit sticky top-[88px]">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-[14px] flex items-center gap-2 uppercase tracking-wider text-zinc-500">
+              <Filter className="w-4 h-4" /> Filters
+            </h3>
             <button
-              type="button"
-              onClick={() => setOnlyVerified(!onlyVerified)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors border ${
-                onlyVerified 
-                  ? "bg-emerald-50 text-emerald-900 border-emerald-300" 
-                  : "bg-background text-muted-foreground border-border hover:text-foreground"
-              }`}
+              onClick={() => { setSelectedCrop("all"); setOnlyVerified(false); setSearchQuery(""); }}
+              className="text-[11px] font-bold text-zinc-400 hover:text-zinc-700"
             >
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
-              <span>Verified Only</span>
+              Reset
             </button>
           </div>
+
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search crop or location..."
+                className="w-full h-10 pl-9 pr-4 rounded-full bg-zinc-100 text-[13px] focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-all font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-bold text-[13px] text-zinc-900">Crop Category</h4>
+            <div className="flex flex-col gap-2">
+              {['all', 'soybean', 'wheat', 'tomato', 'potato', 'onion'].map(crop => (
+                <label key={crop} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="crop"
+                    checked={selectedCrop === crop}
+                    onChange={() => setSelectedCrop(crop)}
+                    className={`w-4 h-4 text-zinc-900 bg-zinc-100 border-zinc-300 rounded focus:ring-zinc-900`}
+                  />
+                  <span className={`text-[13px] font-medium capitalize ${selectedCrop === crop ? 'text-zinc-900 font-bold' : 'text-zinc-600 group-hover:text-zinc-900'}`}>
+                    {crop === 'all' ? 'All Crops' : crop}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-4 border-t border-zinc-100">
+            <h4 className="font-bold text-[13px] text-zinc-900">Quality & Trust</h4>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={onlyVerified}
+                onChange={(e) => setOnlyVerified(e.target.checked)}
+                className="w-4 h-4 text-zinc-900 rounded bg-zinc-100 border-zinc-300 focus:ring-zinc-900"
+              />
+              <span className="text-[13px] text-zinc-600 font-medium group-hover:text-zinc-900 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500" /> Verified Partners Only
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Results Grid */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-64 bg-zinc-100 rounded-[20px] animate-pulse"></div>
+              ))}
+            </div>
+          ) : view === "supply" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredListings.map(listing => (
+                <div key={listing.id} className={`bg-white rounded-[20px] p-2 border border-zinc-200 shadow-sm transition-all ${highlightBorder} group flex flex-col`}>
+                  <div className={`h-36 rounded-[16px] bg-gradient-to-br ${getGradient(listing.crop_id)} flex items-center justify-center text-[54px] relative shadow-inner overflow-hidden`}>
+                    <span className="drop-shadow-lg group-hover:scale-110 transition-transform duration-500">{getEmoji(listing.crop_id)}</span>
+                    <div className="absolute top-3 left-3 px-2 py-1 bg-black/40 backdrop-blur-md rounded-[8px] text-[10px] font-bold text-white uppercase tracking-wider shadow-sm">
+                      {listing.quality_grade}
+                    </div>
+                    {listing.farmer_name?.includes("Verified") && (
+                      <div className="absolute top-3 right-3 bg-blue-500 text-white rounded-full p-1 shadow-sm">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-extrabold text-[16px] text-zinc-900 capitalize tracking-tight">{listing.crop_id}</h3>
+                        <p className="text-[12px] text-zinc-500 font-medium mt-0.5">{listing.farmer_name || "Verified Farmer"}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-[16px] text-zinc-900">₹{listing.expected_price}</div>
+                        <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Per Qtl</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-600 font-medium">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400" />
+                        <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-900">{listing.quantity} Qtl</span> Available
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-600 font-medium truncate">
+                        <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                        <span className="truncate">{listing.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px] text-zinc-600 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                        {listing.harvest_date}
+                      </div>
+                    </div>
+
+                    <Button asChild size="sm" className={`w-full mt-4 h-9 rounded-full font-bold text-[12px] text-white bg-gradient-to-br ${gradientClass} shadow-sm group-hover:shadow-md transition-all`}>
+                      <Link href={`/marketplace/listings/${listing.id}`}>
+                        Negotiate Offer <ArrowRight className="w-3 h-3 ml-1" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {filteredListings.length === 0 && (
+                <div className="col-span-full py-12 text-center text-zinc-500 font-medium bg-white rounded-[24px] border border-dashed border-zinc-300">
+                  No produce matching your filters.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {filteredDemands.map(demand => (
+                <div key={demand.id} className={`bg-white rounded-[20px] p-5 border border-zinc-200 shadow-sm transition-all ${highlightBorder} flex flex-col`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[24px] bg-gradient-to-br ${getGradient(demand.crop_id)} shadow-inner`}>
+                        {getEmoji(demand.crop_id)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-extrabold text-[16px] text-zinc-900 capitalize tracking-tight">{demand.crop_id}</h3>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${softBg}`}>
+                            {demand.quality_grade}
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-zinc-500 font-medium mt-1 truncate">By {demand.buyer_name || demand.business_name}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
+                    <div className="bg-zinc-50 rounded-[12px] p-3 border border-zinc-100">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Target Rate</span>
+                      <span className="font-black text-[16px] text-zinc-900">₹{demand.offered_price}</span>
+                    </div>
+                    <div className="bg-zinc-50 rounded-[12px] p-3 border border-zinc-100">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Required</span>
+                      <span className="font-black text-[16px] text-zinc-900">{demand.quantity_needed} Qtl</span>
+                    </div>
+                    <div className="col-span-2 bg-zinc-50 rounded-[12px] p-3 border border-zinc-100 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-zinc-400" />
+                      <span className="font-semibold text-[13px] text-zinc-700 truncate">{demand.location}</span>
+                    </div>
+                  </div>
+
+                  <Button asChild size="sm" className={`w-full h-10 rounded-full font-bold text-[13px] text-white bg-gradient-to-br ${gradientClass} shadow-md hover:scale-[1.02] transition-transform`}>
+                    <Link href={`/marketplace/requirements/${demand.id}`}>
+                      Submit Quote <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+              {filteredDemands.length === 0 && (
+                <div className="col-span-full py-12 text-center text-zinc-500 font-medium bg-white rounded-[24px] border border-dashed border-zinc-300">
+                  No active demands matching your filters.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* 4. MAIN CONTENT (SUPPLY VS DEMAND) */}
-      {loading ? (
-        <LoadingSkeleton variant="card" rows={6} />
-      ) : view === "supply" ? (
-        filteredListings.length === 0 ? (
-          <EmptyState
-            title="No harvest lots match your criteria"
-            description="Try loosening your filters or clear your search term to see all available farm lots."
-            action="Clear Filters"
-            href="/marketplace?view=supply"
-            icon={Sprout}
-          />
-        ) : viewMode === "cards" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredListings.map((lot) => (
-              <div 
-                key={lot.id}
-                className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xl">🌾</span>
-                        <h3 className="text-lg font-black capitalize text-foreground">{lot.crop_id}</h3>
-                        <TrustBadge type="producer" size="sm" />
-                      </div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span>{lot.location.split(",")[0]} · Farm Gate</span>
-                      </p>
-                    </div>
-                    <StatusBadge status={lot.status} size="sm" />
-                  </div>
-
-                  {/* Agricultural Specs Box */}
-                  <div className="my-3.5 grid grid-cols-2 gap-2 bg-muted/20 border border-border/60 rounded-xl p-3 text-xs">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Available Qty</span>
-                      <span className="font-black text-foreground text-sm">{lot.quantity} Quintals</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Farm Gate Asking</span>
-                      <span className="font-black text-primary text-sm">₹{lot.expected_price.toLocaleString("en-IN")}/Q</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Assay Grade</span>
-                      <span className="font-bold text-foreground">{lot.quality_grade || "Grade A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Moisture Assay</span>
-                      <span className="font-bold text-foreground">{lot.moisture_percent || 10.8}%</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Seller: <strong className="text-foreground font-semibold">Ramesh Patel (FPO)</strong></span>
-                    <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
-                      Immediate Pickup
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
-                  <Button asChild variant="outline" size="sm" className="text-xs h-8 font-bold">
-                    <Link href={`/marketplace/listings/${lot.id}`}>
-                      Inspect Assay Slip
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
-                    <Link href={`/messages?recipientId=demo-farmer&makeOffer=true&crop=${lot.crop_id}&lotId=${lot.id}`}>
-                      Make Buyer Offer
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
-            <table className="w-full min-w-[50rem] text-left text-xs">
-              <thead className="bg-muted/40 text-[10px] font-black uppercase tracking-wider text-muted-foreground border-b border-border">
-                <tr>
-                  <th className="px-4 py-3">Crop & Lot ID</th>
-                  <th className="px-4 py-3 text-right">Available Volume</th>
-                  <th className="px-4 py-3">Quality Assay</th>
-                  <th className="px-4 py-3 text-right">Farm-Gate Rate</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3 text-center">Verification</th>
-                  <th className="px-4 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredListings.map((lot) => (
-                  <tr key={lot.id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3.5">
-                      <span className="font-bold text-foreground capitalize block">{lot.crop_id}</span>
-                      <span className="text-[10px] text-muted-foreground">#{lot.id.slice(0, 8)}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-black text-foreground">
-                      {lot.quantity} Quintals
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {lot.quality_grade || "Grade A"} · {lot.moisture_percent || 10.8}% Moisture
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-black text-primary text-sm">
-                      ₹{lot.expected_price.toLocaleString("en-IN")}/Q
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {lot.location.split(",")[0]}
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                        <CheckCircle2 className="h-3 w-3" /> Certified
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <Button asChild size="sm" className="text-xs h-7 font-bold">
-                        <Link href={`/marketplace/listings/${lot.id}`}>View Lot</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : (
-        /* DEMAND VIEW (BUYER RFQS) */
-        filteredDemands.length === 0 ? (
-          <EmptyState
-            title="No buyer requirements found"
-            description="Currently no active procurement tenders match your selected filters."
-            action="Clear Filters"
-            href="/marketplace?view=demand"
-            icon={Building2}
-          />
-        ) : viewMode === "cards" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredDemands.map((demand) => (
-              <div 
-                key={demand.id}
-                className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xl">🏭</span>
-                        <h3 className="text-lg font-black capitalize text-foreground">{demand.crop_id}</h3>
-                        <TrustBadge type="buyer" size="sm" />
-                      </div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span>{demand.location.split(",")[0]} · Processing Facility</span>
-                      </p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase">
-                      Active RFQ
-                    </span>
-                  </div>
-
-                  {/* Procurement Specs Box */}
-                  <div className="my-3.5 grid grid-cols-2 gap-2 bg-muted/20 border border-border/60 rounded-xl p-3 text-xs">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Volume Needed</span>
-                      <span className="font-black text-foreground text-sm">{demand.quantity_needed || (demand as any).quantity || 100} Quintals</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Target Price Ceiling</span>
-                      <span className="font-black text-emerald-800 text-sm">₹{(demand.offered_price || (demand as any).target_price || 4800).toLocaleString("en-IN")}/Q</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Moisture Tolerance</span>
-                      <span className="font-bold text-foreground">&lt; 11.5% Maximum</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Payment Terms</span>
-                      <span className="font-bold text-foreground">100% Escrow on Gate In</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Buyer: <strong className="text-foreground font-semibold">{demand.buyer_name || demand.business_name || "ITC Agri Division"}</strong></span>
-                    <span className="text-primary font-bold bg-primary/10 px-2 py-0.5 rounded text-[11px]">
-                      Needed within 7 days
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
-                  <Button asChild variant="outline" size="sm" className="text-xs h-8 font-bold">
-                    <Link href={`/marketplace/requirements/${demand.id}`}>
-                      View Full Specifications
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
-                    <Link href={`/messages?recipientId=demo-buyer&submitBid=true&demandId=${demand.id}`}>
-                      Submit Farm Proposal
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
-            <table className="w-full min-w-[50rem] text-left text-xs">
-              <thead className="bg-muted/40 text-[10px] font-black uppercase tracking-wider text-muted-foreground border-b border-border">
-                <tr>
-                  <th className="px-4 py-3">Crop & RFQ</th>
-                  <th className="px-4 py-3 text-right">Required Volume</th>
-                  <th className="px-4 py-3">Quality Threshold</th>
-                  <th className="px-4 py-3 text-right">Target Buying Rate</th>
-                  <th className="px-4 py-3">Delivery Facility</th>
-                  <th className="px-4 py-3 text-center">Settlement Guarantee</th>
-                  <th className="px-4 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredDemands.map((demand) => (
-                  <tr key={demand.id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3.5">
-                      <span className="font-bold text-foreground capitalize block">{demand.crop_id}</span>
-                      <span className="text-[10px] text-muted-foreground">#{demand.id.slice(0, 8)}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-black text-foreground">
-                      {demand.quantity_needed || (demand as any).quantity || 100} Quintals
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      Grade A · Moisture &lt; 11.5%
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-black text-emerald-800 text-sm">
-                      ₹{(demand.offered_price || (demand as any).target_price || 4800).toLocaleString("en-IN")}/Q
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {demand.location.split(",")[0]}
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                        <CheckCircle2 className="h-3 w-3" /> Escrow Backed
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <Button asChild size="sm" className="text-xs h-7 font-bold">
-                        <Link href={`/marketplace/requirements/${demand.id}`}>Submit Bid</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      )}
-
     </div>
   );
 }
 
 export default function MarketplacePage() {
   return (
-    <Suspense fallback={<LoadingSkeleton variant="card" rows={4} />}>
+    <Suspense fallback={<LoadingSkeleton />}>
       <MarketplaceContent />
     </Suspense>
   );
 }
-

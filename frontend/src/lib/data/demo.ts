@@ -101,6 +101,8 @@ export interface NetworkPost extends CommunityPostItem {
   comments: number;
   saved?: boolean;
   following?: boolean;
+  hasLiked?: boolean;
+  isVerified?: boolean;
   mediaUrl?: string;
   targetPrice?: string;
   quantitySpec?: string;

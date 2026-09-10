@@ -2,14 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  Scale, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
-  ShieldCheck, 
-  FileText, 
+import {
+  Scale,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  ShieldCheck,
+  FileText,
   ExternalLink,
   MessageSquare,
   Lock
@@ -117,9 +117,9 @@ export default function AdminDisputesPage() {
                 </Button>
 
                 {d.status !== "Resolved" && (
-                  <Button 
+                  <Button
                     onClick={() => handleResolve(d.id)}
-                    size="sm" 
+                    size="sm"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
                   >
                     <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />

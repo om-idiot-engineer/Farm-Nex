@@ -2,15 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  Layers, 
-  Search, 
-  Filter, 
-  ArrowLeft, 
-  ShieldAlert, 
-  CheckCircle2, 
-  Trash2, 
-  Eye, 
+import {
+  Layers,
+  Search,
+  Filter,
+  ArrowLeft,
+  ShieldAlert,
+  CheckCircle2,
+  Trash2,
+  Eye,
   AlertTriangle,
   Building2,
   MapPin,
@@ -154,9 +154,9 @@ export default function AdminMarketplaceModerationPage() {
                         <Button variant="outline" size="sm" asChild className="text-xs h-7">
                           <Link href={`/marketplace/listings/${lot.id}`}>Inspect</Link>
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDeleteListing(lot.id)}
                           className="text-xs h-7 text-rose-600 hover:bg-rose-50"
                         >
@@ -213,9 +213,9 @@ export default function AdminMarketplaceModerationPage() {
                         <Button variant="outline" size="sm" asChild className="text-xs h-7">
                           <Link href={`/marketplace/requirements/${demand.id}`}>Inspect</Link>
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDeleteDemand(demand.id)}
                           className="text-xs h-7 text-rose-600 hover:bg-rose-50"
                         >

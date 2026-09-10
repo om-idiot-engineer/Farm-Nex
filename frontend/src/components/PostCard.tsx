@@ -158,10 +158,10 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
         {post.images && post.images.length > 0 && (
           <div className="relative mt-3 rounded-lg overflow-hidden border border-border bg-muted/20 flex gap-2 overflow-x-auto snap-x py-2 px-2 hide-scrollbar">
             {post.images.map((img: string, idx: number) => (
-              <img 
-                key={idx} 
-                src={img} 
-                alt={`Media ${idx}`} 
+              <img
+                key={idx}
+                src={img}
+                alt={`Media ${idx}`}
                 className="h-48 w-auto object-cover rounded-md snap-center shrink-0 border border-border shadow-sm"
               />
             ))}

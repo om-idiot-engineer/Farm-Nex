@@ -65,11 +65,11 @@ export default function HeatmapWidget() {
                   </span>
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
-                  <div 
+                  <div
                     className="h-full bg-emerald-500 rounded-l-full"
                     style={{ width: `${(node.listings / total) * intensity}%` }}
                   />
-                  <div 
+                  <div
                     className="h-full bg-blue-500 rounded-r-full"
                     style={{ width: `${(node.demands / total) * intensity}%` }}
                   />

@@ -3,16 +3,16 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { 
-  FileText, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
-  MapPin, 
-  Users, 
-  Building2, 
-  Send, 
-  ShieldCheck, 
+import {
+  FileText,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Users,
+  Building2,
+  Send,
+  ShieldCheck,
   SlidersHorizontal,
   ChevronRight,
   TrendingUp,
@@ -137,9 +137,9 @@ export default function BuyerProcurementDetailPage() {
                         #{idx + 1}
                       </span>
                       <h3 className="text-base font-bold text-foreground">{match.sellerName}</h3>
-                      <TrustBadge 
-                        type={match.sellerRole === "fpo" ? "fpo" : "producer"} 
-                        size="sm" 
+                      <TrustBadge
+                        type={match.sellerRole === "fpo" ? "fpo" : "producer"}
+                        size="sm"
                       />
                       <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                         {match.qualityFitPercentage}% Spec Fit

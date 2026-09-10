@@ -1,429 +1,508 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useUser } from "@/lib/auth/UserContext";
-import {
-  createNetworkPost,
-  getNetworkPosts,
-  replyToPost,
-  togglePostReaction,
-  type DataSource,
-} from "@/lib/services/domain";
-import type { NetworkPost } from "@/lib/data/demo";
-import PostCard from "@/components/PostCard";
-import DemoNotice from "@/components/DemoNotice";
-import ErrorState from "@/components/ErrorState";
-import LoadingSkeleton from "@/components/LoadingSkeleton";
-import TrustBadge from "@/components/TrustBadge";
-import {
-  UsersRound,
-  Plus,
-  TrendingUp,
-  Sparkles,
-  HelpCircle,
-  Wrench,
-  ShieldCheck,
-  Send,
-  MapPin,
-  ArrowRight,
-  Filter,
-  CheckCircle2, Truck,
-  Building2,
-  Calendar,
-} from "lucide-react";
+import React, { useState, useEffect, Suspense } from "react";
+import { MoreVertical, UsersRound, Plus, Image as ImageIcon, Video, Calendar, FileText, Search, Star, Heart, MessageSquare, Share2, TrendingUp, CheckCircle2, Send, X, MapPin, Award, Play, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTranslation } from "@/lib/i18n/LanguageContext";
+import { useUser } from "@/lib/auth/UserContext";
+import { getNetworkPosts, createNetworkPost, replyToPost, togglePostReaction, type NetworkPost } from "@/lib/services/domain";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
 
-type FeedFilter = "all" | "market" | "demand" | "supply" | "farm update" | "question" | "knowledge" | "machinery" | "logistics" | "success story";
+function NetworkContent() {
+  const { user, loading: userLoading } = useUser();
+  const isFarmer = user?.role === "farmer";
+  const currentUser = user?.name || (isFarmer ? "Ramesh Patel" : "Ananya Foods");
+  const currentRole = isFarmer ? "Organic Farmer" : "Verified Buyer";
 
-export default function NetworkFeedPage() {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const { user } = useUser();
-  const [posts, setPosts] = useState<NetworkPost[]>([]);
-  const [activeFilter, setActiveFilter] = useState<FeedFilter>("all");
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [source, setSource] = useState<DataSource>("api");
-
-  // Post composer state
+  const [activeTab, setActiveTab] = useState("All");
   const [showComposer, setShowComposer] = useState(false);
-  const [topic, setTopic] = useState<NetworkPost["topic"]>("harvest");
-  const [content, setContent] = useState("");
-  const [quantitySpec, setQuantitySpec] = useState("");
-  const [targetPrice, setTargetPrice] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [postContent, setPostContent] = useState("");
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [posts, setPosts] = useState<NetworkPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const themeClass = isFarmer ? "theme-farmer" : "theme-buyer";
+  const gradientClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
+
+  const imageStyles = [
+    { emoji: "🍅", bg: "from-red-400 to-orange-400", label: "Tomato Harvest" },
+    { emoji: "🌾", bg: "from-amber-300 to-yellow-500", label: "Wheat Field" },
+    { emoji: "🥔", bg: "from-orange-300 to-amber-600", label: "Potato Yield" },
+    { emoji: "🥕", bg: "from-orange-400 to-red-400", label: "Carrot Farm" },
+    { emoji: "🌱", bg: "from-green-300 to-emerald-500", label: "Seedling" },
+    { emoji: "🚜", bg: "from-emerald-400 to-teal-500", label: "Tractor Day" }
+  ];
 
   const loadPosts = async () => {
     try {
-      setLoading(true);
-      setErrorMsg("");
-      const result = await getNetworkPosts(activeFilter === "all" ? undefined : activeFilter);
-      setPosts(result.data);
-      setSource(result.source);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to load network feed.");
+      const res = await getNetworkPosts(activeTab === "All" ? undefined : activeTab);
+      setPosts(res.data);
+    } catch (err) {
+      console.error("Failed to load posts:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!user || userLoading) return;
     loadPosts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter]);
+  }, [user, userLoading, activeTab]);
 
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || !user) return;
+  const handlePostSubmit = async () => {
+    if (!postContent.trim() || !user) return;
 
-    setSubmitting(true);
     try {
-      const result = await createNetworkPost(
-        {
-          tag: topic === "expert" ? "expert_verified" : topic === "machinery" ? "machinery" : "market",
-          topic,
-          content: content.trim(),
-          quantitySpec: quantitySpec.trim() || undefined,
-          targetPrice: targetPrice.trim() || undefined,
-        },
-        user
-      );
-      setPosts([result.data, ...posts]);
-      setContent("");
-      setQuantitySpec("");
-      setTargetPrice("");
-      setShowComposer(false);
-    } catch (err: any) {
-      alert(err.message || "Could not publish post.");
-    } finally {
-      setSubmitting(false);
+      const res = await createNetworkPost({
+        tag: "market",
+        content: postContent,
+        topic: "market",
+      }, user);
+
+      if (res.data) {
+        setPosts([res.data, ...posts]);
+        setPostContent("");
+        setShowComposer(false);
+      }
+    } catch (err) {
+      console.error("Failed to create post:", err);
+      alert("Failed to create post. Please try again.");
     }
   };
 
-  const handleReply = async (postId: string, replyText: string) => {
-    if (!user) {
-      router.push("/");
-      return;
+  const handleLike = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const wasLiked = post.hasLiked || false;
+    setPosts(posts.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          hasLiked: !wasLiked,
+          reactions: wasLiked ? (p.reactions || 0) - 1 : (p.reactions || 0) + 1
+        };
+      }
+      return p;
+    }));
+
+    try {
+      await togglePostReaction(postId);
+    } catch (err) {
+      setPosts(posts.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            hasLiked: wasLiked,
+            reactions: wasLiked ? (p.reactions || 0) + 1 : (p.reactions || 0) - 1
+          };
+        }
+        return p;
+      }));
     }
-    await replyToPost(postId, replyText, user);
-    loadPosts();
   };
 
-  const handleReact = async (postId: string) => {
-    await togglePostReaction(postId);
+  const handleCommentSubmit = async (postId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim() || !user) return;
+
+    const currentCommentText = commentText;
+    setCommentText("");
+
+    setPosts(posts.map(p => {
+      if (p.id === postId) {
+        const newReply = {
+          id: `reply-${Date.now()}`,
+          post_id: postId,
+          author_id: user.id,
+          author_name: user.name,
+          author_role: user.role,
+          content: currentCommentText,
+          created_at: new Date().toISOString(),
+        };
+        return {
+          ...p,
+          comments: (p.comments || 0) + 1,
+          replies: [...(p.replies || []), newReply]
+        };
+      }
+      return p;
+    }));
+
+    try {
+      await replyToPost(postId, currentCommentText, user);
+    } catch (err) {
+      setPosts(posts.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            comments: Math.max(0, (p.comments || 0) - 1),
+            replies: (p.replies || []).slice(0, -1)
+          };
+        }
+        return p;
+      }));
+    }
   };
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+  };
+
+  if (userLoading) return <LoadingSkeleton variant="detail" />;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto py-4">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
-              <UsersRound className="h-3.5 w-3.5" />
-            </span>
-            <span className="text-xs font-black uppercase tracking-wider text-primary">
-              {t("communityTitle", "Agricultural Professional Feed")}
-            </span>
-          </div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">{t("network.feedTitle", "Network & Discussions")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Verified harvest updates, buyer sourcing tenders, machinery rentals, and expert agronomic advisories.
-          </p>
+    <div className={`bg-zinc-50 lg:bg-transparent min-h-screen ${themeClass}`}>
+      {/* Mobile Top Bar */}
+      <div className="bg-white border-b border-zinc-200 px-4 lg:px-6 py-3 flex items-center justify-between lg:hidden">
+        <div className="flex items-center gap-3">
+          <h1 className="text-[18px] font-extrabold tracking-tight">Kisan Network</h1>
         </div>
-
-        <Button
-          onClick={() => {
-            if (!user) {
-              router.push("/");
-              return;
-            }
-            setShowComposer(!showComposer);
-          }}
-          className="font-bold shrink-0 shadow-sm"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          Share Update
+        <Button onClick={() => setShowComposer(true)} size="sm" className="h-8 rounded-full font-bold">
+          <Plus className="w-4 h-4 mr-1" /> Post
         </Button>
       </div>
 
-      {source === "demo" && (
-        <DemoNotice>
-          Network discussions and updates are stored in your local browser sandbox when the live community service is not active.
-        </DemoNotice>
-      )}
+      <div className="max-w-[1128px] mx-auto lg:grid lg:grid-cols-[225px_1fr_300px] gap-6 p-0 lg:p-6">
 
-      {/* 3-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Identity & Topic Filters */}
-        <aside className="lg:col-span-3 space-y-5">
-          {/* User mini badge */}
-          {user ? (
-            <div className="border border-border bg-card rounded-lg p-4 space-y-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground font-black text-sm">
-                  {user.name.slice(0, 2).toUpperCase()}
+        {/* Left Sidebar (Desktop) */}
+        <div className="hidden lg:block space-y-4">
+          <div className="rounded-[20px] bg-white border border-zinc-200 overflow-hidden shadow-sm">
+            <div className={`h-16 bg-gradient-to-r ${gradientClass}`}></div>
+            <div className="p-4 -mt-10">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl">
+                {currentUser.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5 font-bold text-[15px]">
+                  {currentUser}
+                  <CheckCircle2 className="w-4 h-4 text-blue-500" />
                 </div>
-                <div>
-                  <p className="font-bold text-sm text-foreground">{user.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                <div className="text-[12px] text-zinc-500 leading-tight mt-1">{currentRole} • Bhopal, MP</div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-zinc-100 text-[12px] space-y-3">
+                <div className="flex justify-between hover:underline cursor-pointer">
+                  <span className="text-zinc-500 font-medium">Connections</span>
+                  <span className="font-bold text-blue-600">1,247</span>
+                </div>
+                <div className="flex justify-between hover:underline cursor-pointer">
+                  <span className="text-zinc-500 font-medium">Profile views</span>
+                  <span className="font-bold">342</span>
                 </div>
               </div>
-              <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Location</span>
-                <span className="font-semibold text-foreground">
-                  {user.farmer_profile?.location || user.buyer_profile?.location || "Madhya Pradesh"}
-                </span>
-              </div>
-              <Button size="sm" variant="outline" className="w-full text-xs font-semibold" asChild>
-                <Link href={`/profile/${user.id}`}>View My Profile</Link>
-              </Button>
             </div>
-          ) : (
-            <div className="border border-border bg-card rounded-lg p-4 space-y-3 shadow-sm text-center">
-              <p className="text-xs font-bold text-foreground">Join the Agricultural Network</p>
-              <p className="text-[11px] text-muted-foreground">Sign in to connect with farmers, agronomists, and bulk buyers.</p>
-              <Button size="sm" className="w-full font-bold" asChild>
-                <Link href="/">Sign in</Link>
-              </Button>
-            </div>
-          )}
 
-          {/* Filter Categories */}
-          <div className="border border-border bg-card rounded-lg p-3 space-y-1 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 py-1.5">
-              Feed Channels
-            </p>
-            {[
-              { id: "all", label: "For You (All)", icon: UsersRound },
-              { id: "market", label: "Market", icon: TrendingUp },
-              { id: "demand", label: "Demand", icon: Building2 },
-              { id: "supply", label: "Supply", icon: Sparkles },
-              { id: "farm update", label: "Farm Update", icon: UsersRound },
-              { id: "question", label: "Question", icon: HelpCircle },
-              { id: "knowledge", label: "Knowledge", icon: ShieldCheck },
-              { id: "machinery", label: "Machinery", icon: Wrench },
-              { id: "logistics", label: "Logistics", icon: Truck },
-              { id: "success story", label: "Success Story", icon: CheckCircle2 },
-            ].map((f) => {
-              const Icon = f.icon;
-              const isActive = activeFilter === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setActiveFilter(f.id as FeedFilter)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition-colors text-left ${
-                    isActive
-                      ? "bg-primary text-primary-foreground font-bold shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{f.label}</span>
-                </button>
-              );
-            })}
+            <div className="border-t border-zinc-100 text-[12px] font-medium divide-y divide-zinc-100">
+              <button className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors">
+                <UsersRound className="w-4 h-4 text-zinc-400" /> My Network
+              </button>
+              <button className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors">
+                <Calendar className="w-4 h-4 text-zinc-400" /> Events • 3 near you
+              </button>
+              <button className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors">
+                <TrendingUp className="w-4 h-4 text-zinc-400" /> Market Insights
+              </button>
+            </div>
           </div>
-        </aside>
+        </div>
 
-        {/* CENTER COLUMN: Composer & Feed */}
-        <main className="lg:col-span-6 space-y-5">
-          {/* Collapsible Composer */}
-          {showComposer && (
-            <div className="border border-border bg-card rounded-lg p-5 shadow-md space-y-4 animate-in fade-in-50">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <span className="text-xs font-black uppercase tracking-wider text-primary">
-                  {t("network.publishPost", "Publish to Network")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowComposer(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  {t("common.cancel", "Cancel")}
-                </button>
+        {/* Main Feed Column */}
+        <div className="space-y-3 lg:space-y-5">
+          {/* Create Post Box */}
+          <div className="bg-white border-y lg:border lg:rounded-[20px] border-zinc-200 p-4 shadow-sm">
+            <div className="flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 shrink-0 flex items-center justify-center text-white font-bold text-[12px]">
+                {currentUser.substring(0, 2).toUpperCase()}
               </div>
-
-              {/* Topic Select */}
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { id: "harvest", label: t("tagHarvest", "Harvest Update") },
-                  { id: "procurement", label: t("marketplace.buyerDemands", "Buyer Requirement") },
-                  { id: "question", label: t("network.questions", "Ask Question") },
-                  { id: "market", label: t("tagMarket", "Market Note") },
-                  { id: "machinery", label: t("tagMachinery", "Machinery Rental") },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTopic(t.id as any)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                      topic === t.id
-                        ? "bg-primary text-primary-foreground font-bold"
-                        : "bg-muted/40 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-
-              <form onSubmit={handleCreatePost} className="space-y-3">
-                <textarea
-                  rows={3}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder={
-                    topic === "harvest"
-                      ? "Describe your harvest progress, moisture reading, and available quintals..."
-                      : topic === "procurement"
-                      ? "Specify crop, required grade, destination mill, and target price range..."
-                      : topic === "question"
-                      ? "Ask verified agronomists and peer farmers a question..."
-                      : t("network.shareUpdate", "Share an agricultural update...")
-                  }
-                  className="w-full p-3 border border-input rounded-md bg-background text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary leading-relaxed"
-                />
-
-                {/* Additional Spec Pills */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <input
-                    type="text"
-                    value={quantitySpec}
-                    onChange={(e) => setQuantitySpec(e.target.value)}
-                    placeholder="Volume spec (e.g. 250Q Available)"
-                    className="p-2 border border-input rounded bg-background outline-none focus:border-primary"
-                  />
-                  <input
-                    type="text"
-                    value={targetPrice}
-                    onChange={(e) => setTargetPrice(e.target.value)}
-                    placeholder="Target price (e.g. ₹5,350/q)"
-                    className="p-2 border border-input rounded bg-background outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="submit"
-                    disabled={!content.trim() || submitting}
-                    className="font-bold text-xs"
-                  >
-                    <Send className="h-3 w-3 mr-1.5" />
-                    {submitting ? "Publishing..." : "Post to Network"}
-                  </Button>
-                </div>
-              </form>
+              <button
+                onClick={() => setShowComposer(true)}
+                className="flex-1 text-left px-4 h-10 rounded-full border border-zinc-300 text-[14px] text-zinc-500 hover:bg-zinc-50 font-medium transition-colors"
+              >
+                Start a post - Share your farming journey
+              </button>
             </div>
-          )}
-
-          {/* Feed List */}
-          {errorMsg ? (
-            <ErrorState message={errorMsg} onRetry={loadPosts} />
-          ) : loading ? (
-            <LoadingSkeleton variant="card" rows={4} />
-          ) : posts.length ? (
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  currentUserId={user?.id}
-                  onReact={handleReact}
-                  onReply={handleReply}
-                />
+            <div className="mt-4 flex justify-between items-center px-1">
+              {[
+                { icon: ImageIcon, label: "Photo", color: "text-blue-600" },
+                { icon: Video, label: "Video", color: "text-green-600" },
+                { icon: BarChart2, label: "Poll", color: "text-amber-600" },
+                { icon: FileText, label: "Article", color: "text-red-500" }
+              ].map(btn => (
+                <button
+                  key={btn.label}
+                  onClick={() => setShowComposer(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-zinc-50 text-[13px] font-semibold transition-colors"
+                >
+                  <btn.icon className={`w-5 h-5 ${btn.color}`} />
+                  <span className="hidden sm:inline">{btn.label}</span>
+                </button>
               ))}
             </div>
+          </div>
+
+          {/* Feed List */}
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-64 bg-zinc-100 rounded-[20px] animate-pulse border border-zinc-200" />
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="bg-white rounded-[20px] border border-zinc-200 p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-6 h-6 text-zinc-400" />
+              </div>
+              <h3 className="font-bold text-[15px]">No posts yet</h3>
+              <p className="text-[13px] text-zinc-500 mt-1">Be the first to share your farming journey!</p>
+            </div>
           ) : (
-            <div className="border border-border bg-card rounded-lg p-10 text-center space-y-3">
-              <UsersRound className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="font-bold text-foreground">No posts found in this category</p>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Be the first to share an agricultural update, harvest note, or inquiry with the community.
-              </p>
-              <Button size="sm" onClick={() => setShowComposer(true)} className="font-bold">
-                Create First Post
-              </Button>
-            </div>
+            posts.map(post => (
+              <div key={post.id} className="bg-white border-y lg:border lg:rounded-[20px] border-zinc-200 shadow-sm animate-in fade-in duration-300">
+                <div className="p-4 flex items-start justify-between">
+                  <div className="flex gap-3">
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-[14px] shrink-0 ${post.author_role === "expert" ? 'bg-gradient-to-br from-zinc-700 to-zinc-900' : 'bg-gradient-to-br from-orange-300 to-pink-400'}`}>
+                      {post.author_name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'US'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[14px] hover:underline cursor-pointer tracking-tight">{post.author_name}</span>
+                        {post.isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 ml-0.5" />}
+                      </div>
+                      <div className="text-[12px] text-zinc-500 leading-tight mt-0.5">{post.author_role} • {post.location || "Madhya Pradesh"}</div>
+                      <div className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">{formatTime(post.created_at)}</div>
+                    </div>
+                  </div>
+                  <button className="w-8 h-8 rounded-full hover:bg-zinc-100 flex items-center justify-center transition-colors text-zinc-400">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="px-4 pb-2 text-[14px] leading-relaxed whitespace-pre-line text-zinc-800">
+                  {post.content}
+                </div>
+
+                {/* Media */}
+                {post.mediaUrl && (
+                  <div className="mt-2 mx-4 h-[340px] rounded-[16px] bg-gradient-to-br from-zinc-300 to-zinc-400 flex items-center justify-center relative overflow-hidden shadow-inner">
+                    <span className="text-[72px]">📷</span>
+                  </div>
+                )}
+
+                {/* Engagement Stats */}
+                <div className="px-4 py-3 flex items-center justify-between text-[12px] text-zinc-500 border-b border-zinc-100 mt-2">
+                  <div className="flex items-center gap-1.5 hover:underline cursor-pointer" onClick={() => handleLike(post.id)}>
+                    <div className="flex -space-x-1.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white z-20">
+                        <Heart className={`w-2.5 h-2.5 ${post.hasLiked ? 'fill-white' : ''}`} />
+                      </div>
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 border-2 border-white z-10"></div>
+                      <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white z-0"></div>
+                    </div>
+                    <span className="ml-1 font-medium">{post.reactions || 0}</span>
+                  </div>
+                  <span className="hover:underline cursor-pointer font-medium">
+                    {post.comments || 0} comments
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="px-2 py-1 flex justify-between">
+                  {[
+                    { label: "Like", icon: Heart, active: post.hasLiked, onClick: () => handleLike(post.id) },
+                    { label: "Comment", icon: MessageSquare, onClick: () => setActiveCommentPostId(activeCommentPostId === post.id ? null : post.id) },
+                    { label: "Share", icon: Share2, onClick: () => navigator.share({ text: post.content }).catch(() => alert("Link copied to clipboard!")) },
+                    { label: "Send Offer", icon: Send, primary: true, onClick: () => alert("Navigate to marketplace to send offer") }
+                  ].map(btn => (
+                    <button
+                      key={btn.label}
+                      onClick={btn.onClick}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-colors ${
+                        btn.primary ? "text-white bg-zinc-900 hover:bg-black mx-1 shadow-sm" :
+                        btn.active ? "text-blue-600 bg-blue-50" :
+                        "text-zinc-600 hover:bg-zinc-100"
+                      }`}
+                    >
+                      <btn.icon className={`w-4 h-4 ${btn.active ? "fill-blue-600" : ""}`} />
+                      <span className="hidden sm:inline">{btn.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Comments Section */}
+                {activeCommentPostId === post.id && (
+                  <div className="border-t border-zinc-100 bg-zinc-50/50 p-4 space-y-4">
+                    {(post.replies || []).map((comment: any, idx: number) => (
+                      <div key={idx} className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-400 shrink-0 flex items-center justify-center text-white font-bold text-[10px]">
+                          {comment.author_name?.substring(0, 2).toUpperCase() || 'US'}
+                        </div>
+                        <div className="flex-1 bg-white border border-zinc-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-[13px]">{comment.author_name}</span>
+                            <span className="text-[11px] text-zinc-500 font-medium">• {comment.author_role}</span>
+                            <span className="text-[10px] text-zinc-400 ml-auto">{formatTime(comment.created_at)}</span>
+                          </div>
+                          <div className="text-[13px] text-zinc-800 leading-snug">{comment.content}</div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex gap-3 pt-2">
+                      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradientClass} text-white shrink-0 flex items-center justify-center text-[12px] font-bold shadow-sm`}>
+                        {currentUser.substring(0, 2).toUpperCase()}
+                      </div>
+                      <form onSubmit={(e) => handleCommentSubmit(post.id, e)} className="flex-1 flex gap-2">
+                        <input
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="Write a comment or advice..."
+                          className="flex-1 h-10 rounded-full border border-zinc-200 px-4 text-[13px] focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 bg-white shadow-sm"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!commentText.trim()}
+                          className="h-10 px-5 rounded-full bg-zinc-900 text-white text-[13px] font-bold hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          Post
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
           )}
-        </main>
+        </div>
 
-        {/* RIGHT COLUMN: Market Alerts & Recommended Contacts */}
-        <aside className="lg:col-span-3 space-y-5">
-          {/* Mandi Snapshot Widget */}
-          <div className="border border-border bg-card rounded-lg p-4 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                Mandi Benchmark
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
-                +1.8% 7d
-              </span>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Soybean (Yellow)</p>
-              <p className="text-2xl font-black text-foreground">₹5,420<span className="text-xs font-normal text-muted-foreground">/q</span></p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Indore & Dewas average</p>
-            </div>
-            <Button size="sm" variant="outline" className="w-full text-xs font-semibold" asChild>
-              <Link href="/intelligence">Full Market Trends</Link>
-            </Button>
-          </div>
-
-          {/* Nearby Buyer Demand Callout */}
-          <div className="border border-border bg-card rounded-lg p-4 space-y-2.5 shadow-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-              Active Buyer Requirement
-            </span>
-            <h4 className="text-xs font-bold text-foreground">Agrocorp Central Processing</h4>
-            <p className="text-xs text-muted-foreground">
-              Seeking 500Q Grade A soybean at ₹5,350/q with buyer pickup in Dewas.
-            </p>
-            <Button size="sm" className="w-full text-xs font-bold" asChild>
-              <Link href="/marketplace/requirements/demo-demand-agrocorp-500">
-                View Requirement
-                <ArrowRight className="h-3 w-3 ml-1.5" />
-              </Link>
-            </Button>
-          </div>
-
-          {/* Verified Contacts to Follow */}
-          <div className="border border-border bg-card rounded-lg p-4 space-y-3 shadow-sm text-xs">
-            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Suggested Agricultural Contacts
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <Link href="/profile/demo-expert-dr-kavita" className="font-bold text-foreground hover:underline block">
-                    Dr. Kavita Rao
-                  </Link>
-                  <p className="text-[11px] text-muted-foreground">Agronomist · Indore</p>
+        {/* Right Sidebar */}
+        <div className="hidden lg:block space-y-5 h-fit sticky top-[88px]">
+          <div className="rounded-[20px] bg-white border border-zinc-200 p-5 shadow-sm">
+            <h4 className="font-bold text-[14px] mb-4">People You May Know</h4>
+            <div className="space-y-4">
+              {[
+                { name: "Dr. Priya Sharma", role: "Agri Expert • Indore", mutual: "12 mutual" },
+                { name: "Suresh Patel", role: "Wheat Specialist • Sehore", mutual: "8 mutual" },
+                { name: "Geeta Bai", role: "Organic Farming", mutual: "5 mutual" }
+              ].map((person, i) => (
+                <div key={i} className="flex gap-3 items-center">
+                  <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-zinc-500 text-[12px] shrink-0">
+                    {person.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-[13px] leading-tight truncate">{person.name}</div>
+                    <div className="text-[11px] text-zinc-500 leading-tight mt-0.5 truncate">{person.role}</div>
+                  </div>
+                  <button className="h-8 px-3.5 rounded-full border border-zinc-300 text-[12px] font-semibold hover:bg-zinc-900 hover:text-white transition-colors">
+                    Connect
+                  </button>
                 </div>
-                <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5">
-                  Follow
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <Link href="/profile/demo-fpo-malwa" className="font-bold text-foreground hover:underline block">
-                    Malwa Kisan FPO
-                  </Link>
-                  <p className="text-[11px] text-muted-foreground">248 Smallholders · Rau</p>
-                </div>
-                <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5">
-                  Follow
-                </Button>
-              </div>
+              ))}
             </div>
           </div>
-        </aside>
+
+          <div className="rounded-[20px] bg-white border border-zinc-200 p-5 shadow-sm">
+            <h4 className="font-bold text-[14px] mb-4">Trending in Agriculture</h4>
+            <div className="space-y-3.5 text-[13px]">
+              {[
+                { tag: "#OrganicFarming", posts: "2.4k posts" },
+                { tag: "#MandiBhav", posts: "1.8k posts" },
+                { tag: "#DripIrrigation", posts: "1.2k posts" },
+                { tag: "#KisanMela2026", posts: "892 posts" }
+              ].map(item => (
+                <div key={item.tag} className="flex justify-between items-center hover:bg-zinc-50 p-1.5 -mx-1.5 rounded-lg cursor-pointer transition-colors">
+                  <span className="font-bold text-blue-700 tracking-tight">{item.tag}</span>
+                  <span className="text-[11px] text-zinc-500 font-medium">{item.posts}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* Composer Modal */}
+      {showComposer && (
+        <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-[560px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+              <h3 className="font-extrabold text-[18px] tracking-tight">Create a post</h3>
+              <button onClick={() => setShowComposer(false)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[14px] bg-gradient-to-br ${gradientClass}`}>
+                  {currentUser.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-bold text-[15px]">{currentUser}</div>
+                  <div className="text-[12px] px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-semibold mt-1 inline-flex items-center gap-1">
+                    🌍 Anyone
+                  </div>
+                </div>
+              </div>
+
+              <textarea
+                value={postContent}
+                onChange={e => setPostContent(e.target.value)}
+                placeholder="What do you want to talk about?"
+                className="w-full h-36 resize-none outline-none text-[16px] leading-relaxed placeholder:text-zinc-400"
+                autoFocus
+              ></textarea>
+
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-100">
+                <div className="flex gap-1.5">
+                  <button className="w-10 h-10 rounded-full hover:bg-zinc-100 flex items-center justify-center transition-colors text-blue-600">
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                  <button className="w-10 h-10 rounded-full hover:bg-zinc-100 flex items-center justify-center transition-colors text-green-600">
+                    <Video className="w-5 h-5" />
+                  </button>
+                  <button className="w-10 h-10 rounded-full hover:bg-zinc-100 flex items-center justify-center transition-colors text-amber-600">
+                    <BarChart2 className="w-5 h-5" />
+                  </button>
+                  <button className="w-10 h-10 rounded-full hover:bg-zinc-100 flex items-center justify-center transition-colors text-red-500">
+                    <MapPin className="w-5 h-5" />
+                  </button>
+                </div>
+                <Button
+                  onClick={handlePostSubmit}
+                  disabled={!postContent.trim()}
+                  className={`h-10 px-6 rounded-full font-bold text-[14px] text-white bg-gradient-to-br ${gradientClass} shadow-lg hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:hover:scale-100`}
+                >
+                  Post
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function NetworkPage() {
+  const { user, loading } = useUser();
+
+  if (loading) return <LoadingSkeleton variant="detail" />;
+
+  return (
+    <Suspense fallback={<LoadingSkeleton variant="detail" />}>
+      <NetworkContent />
+    </Suspense>
   );
 }

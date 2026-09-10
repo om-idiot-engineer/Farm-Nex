@@ -39,7 +39,7 @@ export default function NewProduceListingPage() {
   const [moisture, setMoisture] = useState<number | "">(11.2);
   const [harvestDate, setHarvestDate] = useState<string>("2026-08-28");
   const [notes, setNotes] = useState<string>("Cleaned and stored on wooden pallets. Moisture tested in morning sample.");
-  
+
   // Storage Location
   const [locationType, setLocationType] = useState<"farm_gate" | "mandi" | "warehouse" | "fpo">("farm_gate");
   const [location, setLocation] = useState<string>("Sanwer, Indore, Madhya Pradesh");

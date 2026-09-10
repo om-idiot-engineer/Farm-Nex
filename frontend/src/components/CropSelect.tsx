@@ -51,8 +51,8 @@ export function CropSelect({ value, onChange, crops = DEMO_CROPS, className, pla
 
   const filteredCrops = useMemo(() => {
     const s = search.toLowerCase();
-    return crops.filter(c => 
-      c.name_en.toLowerCase().includes(s) || 
+    return crops.filter(c =>
+      c.name_en.toLowerCase().includes(s) ||
       c.name_hi.includes(s)
     );
   }, [crops, search]);

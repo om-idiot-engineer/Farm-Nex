@@ -3,18 +3,18 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Building2, 
-  CheckCircle2, 
-  Clock, 
-  MapPin, 
-  ShieldCheck, 
-  Scale, 
-  DollarSign, 
-  FileText, 
-  Check, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  ShieldCheck,
+  Scale,
+  DollarSign,
+  FileText,
+  Check,
   PlusCircle,
   Eye
 } from "lucide-react";
@@ -39,7 +39,7 @@ export default function NewBuyerRequirementPage() {
   const [requiredDate, setRequiredDate] = useState("2026-09-25");
   const [destination, setDestination] = useState("Dewas Industrial Processing Facility (Bay #3)");
   const [specNotes, setSpecNotes] = useState("Grain purity > 98%, no field infestation. Certified electronic weighbridge slips required.");
-  
+
   const [submitting, setSubmitting] = useState(false);
 
   if (userLoading || !user || !hasAccess) return <LoadingSkeleton variant="detail" />;
@@ -69,11 +69,11 @@ export default function NewBuyerRequirementPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-6 space-y-8 theme-buyer pb-16">
-      
+
       {/* Header */}
       <div className="space-y-2 border-b border-border pb-5">
-        <Link 
-          href="/buyer" 
+        <Link
+          href="/buyer"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Buyer Center
@@ -117,7 +117,7 @@ export default function NewBuyerRequirementPage() {
 
       {/* Form Steps */}
       <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs space-y-6">
-        
+
         {/* STEP 1: CROP & VOLUME */}
         {step === 1 && (
           <div className="space-y-5">
@@ -131,7 +131,7 @@ export default function NewBuyerRequirementPage() {
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Commodity Variety</label>
-                <select 
+                <select
                   value={crop}
                   onChange={(e) => setCrop(e.target.value)}
                   className="w-full h-11 px-3.5 bg-background border border-border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -147,7 +147,7 @@ export default function NewBuyerRequirementPage() {
 
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Required Quantity (Quintals)</label>
-                <input 
+                <input
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
@@ -182,7 +182,7 @@ export default function NewBuyerRequirementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-foreground block mb-1.5">Target Grade</label>
-                  <select 
+                  <select
                     value={qualityGrade}
                     onChange={(e) => setQualityGrade(e.target.value)}
                     className="w-full h-11 px-3 bg-background border border-border rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -195,7 +195,7 @@ export default function NewBuyerRequirementPage() {
 
                 <div>
                   <label className="font-bold text-foreground block mb-1.5">Max Moisture (%)</label>
-                  <input 
+                  <input
                     type="number"
                     step="0.1"
                     value={maxMoisture}
@@ -208,7 +208,7 @@ export default function NewBuyerRequirementPage() {
 
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Detailed Quality Notes & Requirements</label>
-                <textarea 
+                <textarea
                   rows={3}
                   value={specNotes}
                   onChange={(e) => setSpecNotes(e.target.value)}
@@ -241,7 +241,7 @@ export default function NewBuyerRequirementPage() {
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Target Buying Price (₹/Quintal)</label>
-                <input 
+                <input
                   type="number"
                   value={targetPrice}
                   onChange={(e) => setTargetPrice(Number(e.target.value))}
@@ -254,7 +254,7 @@ export default function NewBuyerRequirementPage() {
 
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Payment Terms & Settlement</label>
-                <select 
+                <select
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   className="w-full h-11 px-3.5 bg-background border border-border rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -290,7 +290,7 @@ export default function NewBuyerRequirementPage() {
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Processing Facility Destination</label>
-                <input 
+                <input
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
@@ -300,7 +300,7 @@ export default function NewBuyerRequirementPage() {
 
               <div>
                 <label className="font-bold text-foreground block mb-1.5">Quote Submission Deadline</label>
-                <input 
+                <input
                   type="date"
                   value={requiredDate}
                   onChange={(e) => setRequiredDate(e.target.value)}
@@ -390,15 +390,15 @@ export default function NewBuyerRequirementPage() {
                 Back to Edit
               </Button>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => handleSubmit("Draft")}
                   disabled={submitting}
                   className="font-bold text-xs h-10"
                 >
                   Save Draft
                 </Button>
-                <Button 
+                <Button
                   onClick={() => handleSubmit("Broadcast")}
                   disabled={submitting}
                   className="font-black text-xs h-10 px-6 shadow-sm"

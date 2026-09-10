@@ -2,16 +2,16 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  ArrowLeft, 
-  CheckCircle2, 
-  XCircle, 
-  ShieldCheck, 
-  Phone, 
-  MapPin, 
+import {
+  Users,
+  Search,
+  Filter,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+  Phone,
+  MapPin,
   FileText,
   Clock,
   Building2,
@@ -45,8 +45,8 @@ export default function AdminUsersPage() {
       u.location.toLowerCase().includes(search.toLowerCase()) ||
       (u.documentId || "").toLowerCase().includes(search.toLowerCase());
     const matchesRole = roleFilter === "all" || u.role.toLowerCase() === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "pending" && !u.verified) || 
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "pending" && !u.verified) ||
       (statusFilter === "verified" && u.verified);
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -172,9 +172,9 @@ export default function AdminUsersPage() {
                       </Button>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
-                        <Button 
+                        <Button
                           onClick={() => handleApprove(u.id)}
-                          size="sm" 
+                          size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
                         >
                           Approve KYC
