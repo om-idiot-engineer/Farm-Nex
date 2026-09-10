@@ -10,7 +10,6 @@ from app.core.security import get_current_user, require_role
 from app.models.schemas import (
     UserOut,
     UserRole,
-    Commodity,
     MatchStatus,
     TradeStatus,
     LogisticsEstimate,
@@ -179,13 +178,13 @@ async def get_best_buyers(
             status_code=status.HTTP_404_NOT_FOUND, detail="Crop listing not found."
         )
 
-    commodity = listing["commodity"]
+    crop_id = listing["crop_id"]
     farmer_qty = listing["quantity"]
 
     opportunities: List[BuyerMatchOpportunity] = []
 
     for demand_id, demand in db.demand_posts.items():
-        if demand["commodity"] != commodity:
+        if demand["crop_id"] != crop_id:
             continue
 
         buyer = db.users.get(demand["buyer_id"], {})
@@ -255,7 +254,7 @@ async def get_best_buyers(
                     "business_name", buyer.get("name", "Agri Buyer")
                 ),
                 buyer_verified=buyer.get("verified", True),
-                commodity=Commodity(commodity),
+                crop_id=crop_id,
                 quantity_demanded=demand["quantity_needed"],
                 quantity_matched=matched_qty,
                 offered_price_per_quintal=offered_price,
@@ -361,7 +360,7 @@ async def accept_match(
         "farmer_name": current_user.name,
         "buyer_id": demand["buyer_id"],
         "buyer_name": demand.get("business_name") or "Verified Buyer",
-        "commodity": listing["commodity"],
+        "commodity": listing["crop_id"],
         "quantity": matched_qty,
         "price": price_per_q,
         "delivery_date": delivery_date,
@@ -380,7 +379,7 @@ async def accept_match(
         farmer_name=current_user.name,
         buyer_id=demand["buyer_id"],
         buyer_name=trade_agreement["buyer_name"],
-        commodity=Commodity(listing["commodity"]),
+        crop_id=listing["crop_id"],
         quantity=matched_qty,
         price_per_quintal=price_per_q,
         delivery_date=delivery_date,

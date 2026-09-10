@@ -106,6 +106,7 @@ export interface NetworkPost extends CommunityPostItem {
   quantitySpec?: string;
   actionText?: string;
   actionHref?: string;
+  images?: string[];
 }
 
 export interface ConversationMessage {
@@ -199,7 +200,7 @@ export interface RfqSupplierMatch {
 export interface ProcurementRequirement {
   id: string;
   title: string;
-  crop: "soybean" | "wheat" | "cotton";
+  crop: "c0000000-0000-0000-0000-000000000001" | "c0000000-0000-0000-0000-000000000002" | "c0000000-0000-0000-0000-000000000003";
   quantity: number;
   quantityUnit: string;
   quality: string;
@@ -212,7 +213,7 @@ export interface ProcurementRequirement {
   responseCount: number;
   matchedSuppliers?: RfqSupplierMatch[];
   notes?: string;
-  commodity?: string;
+  crop_id?: string;
   quantityQuintals?: number;
   targetPricePerQuintal?: number;
   maxMoisturePercentage?: number;
@@ -368,7 +369,7 @@ export const demoProfiles: DemoProfile[] = [
     verified: true,
     avatar: "RP",
     about: "Growing high-oil soybean and certified sharbati wheat across 18 acres in Sanwer tehsil. Active member of Malwa Kisan Samriddhi FPO focused on standardized quality and honest net realization.",
-    crops: ["Soybean", "Wheat", "Gram"],
+    crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Gram"],
     fpo: "Malwa Kisan Samriddhi FPO",
     stats: [
       { label: "Completed trades", value: "18" },
@@ -400,7 +401,7 @@ export const demoProfiles: DemoProfile[] = [
     verified: true,
     avatar: "AC",
     about: "Agrocorp operates a 1,200 MT/day processing mill in Dewas. We source Grade A soybean and mustard directly from farmers and FPOs with guaranteed transparent weighing, instant assay slips, and payment within 24 hours.",
-    crops: ["Soybean", "Mustard"],
+    crops: ["c0000000-0000-0000-0000-000000000001", "Mustard"],
     business: "Agrocorp Central Processing Pvt Ltd",
     gstNumber: "23AAACA1122D1Z4",
     procurementCapacity: "35,000 Quintals / Month",
@@ -432,7 +433,7 @@ export const demoProfiles: DemoProfile[] = [
     verified: true,
     avatar: "MK",
     about: "Registered under Companies Act with 248 verified smallholder members. We operate 2 collection centers in Rau and Sanwer, offering centralized cleaning, grading, digital moisture assays, and collective bargaining for bulk processor contracts.",
-    crops: ["Soybean", "Wheat", "Onion", "Gram"],
+    crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Onion", "Gram"],
     stats: [
       { label: "Active members", value: "248" },
       { label: "Pooled volume", value: "1,840Q" },
@@ -478,7 +479,7 @@ export const demoProfiles: DemoProfile[] = [
     verified: true,
     avatar: "KR",
     about: "Ph.D. in Agronomy with 16 years advising central Indian farmers on oilseed quality, post-harvest drying, pest mitigation, and mandi assay compliance.",
-    crops: ["Soybean", "Wheat", "Mustard"],
+    crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Mustard"],
     stats: [
       { label: "Questions answered", value: "140+" },
       { label: "Farmers assisted", value: "1,200+" },
@@ -497,7 +498,7 @@ export const demoListings: CropListing[] = [
     id: "demo-lot-fn-28492",
     farmer_id: demoUsers.farmer.id,
     farmer_name: "Ramesh Patel",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity: 250,
     quality_grade: "Grade A",
     moisture_percent: 11.2,
@@ -516,7 +517,7 @@ export const demoListings: CropListing[] = [
     id: "demo-lot-fn-28473",
     farmer_id: "demo-farmer-sunita",
     farmer_name: "Sunita Verma",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity: 180,
     quality_grade: "Grade A",
     moisture_percent: 10.8,
@@ -535,7 +536,7 @@ export const demoListings: CropListing[] = [
     id: "demo-lot-fn-28411",
     farmer_id: "demo-farmer-rajesh",
     farmer_name: "Rajesh Pawar",
-    commodity: "wheat",
+    crop_id: "c0000000-0000-0000-0000-000000000002",
     quantity: 420,
     quality_grade: "Grade B",
     moisture_percent: 11.8,
@@ -554,7 +555,7 @@ export const demoListings: CropListing[] = [
     id: "demo-lot-fn-28399",
     farmer_id: "demo-farmer-anil",
     farmer_name: "Anil Jat",
-    commodity: "cotton",
+    crop_id: "c0000000-0000-0000-0000-000000000003",
     quantity: 120,
     quality_grade: "Grade A",
     moisture_percent: 8.5,
@@ -577,7 +578,7 @@ export const demoDemands: DemandPost[] = [
     buyer_id: demoUsers.buyer.id,
     buyer_name: "Anita Sharma",
     business_name: "Agrocorp Central Processing",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_needed: 500,
     quality_grade: "Grade A",
     moisture_max: 12,
@@ -593,7 +594,7 @@ export const demoDemands: DemandPost[] = [
     buyer_id: "demo-buyer-bhopal",
     buyer_name: "Vikram Singh",
     business_name: "Bhopal Solvex & Oils",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_needed: 300,
     quality_grade: "Grade A",
     moisture_max: 12,
@@ -609,7 +610,7 @@ export const demoDemands: DemandPost[] = [
     buyer_id: "demo-buyer-ujjain",
     buyer_name: "Mahakal Feeds",
     business_name: "Mahakal Feeds & Grain",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_needed: 150,
     quality_grade: "Grade B",
     moisture_max: 13,
@@ -625,7 +626,7 @@ export const demoDemands: DemandPost[] = [
     buyer_id: "demo-buyer-bhopal",
     buyer_name: "Central Grain Foods",
     business_name: "Central Grain Foods Ltd",
-    commodity: "wheat",
+    crop_id: "c0000000-0000-0000-0000-000000000002",
     quantity_needed: 600,
     quality_grade: "Grade B",
     moisture_max: 12,
@@ -646,7 +647,7 @@ export const demoMatches: BuyerMatchOpportunity[] = [
     buyer_name: "Anita Sharma",
     business_name: "Agrocorp Central Processing",
     buyer_verified: true,
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_demanded: 500,
     quantity_matched: 250,
     offered_price_per_quintal: 5350,
@@ -683,7 +684,7 @@ export const demoMatches: BuyerMatchOpportunity[] = [
     buyer_name: "Mahakal Feeds",
     business_name: "Mahakal Feeds & Grain",
     buyer_verified: true,
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_demanded: 150,
     quantity_matched: 150,
     offered_price_per_quintal: 5290,
@@ -718,7 +719,7 @@ export const demoMatches: BuyerMatchOpportunity[] = [
     buyer_name: "Vikram Singh",
     business_name: "Bhopal Solvex & Oils",
     buyer_verified: true,
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity_demanded: 300,
     quantity_matched: 250,
     offered_price_per_quintal: 5480,
@@ -759,7 +760,7 @@ export const demoAgreements: ExtendedTradeAgreement[] = [
     farmer_name: "Ramesh Patel",
     buyer_id: demoUsers.buyer.id,
     buyer_name: "Agrocorp Central Processing",
-    commodity: "soybean",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity: 250,
     price_per_quintal: 5350,
     delivery_date: "2026-09-08",
@@ -798,7 +799,7 @@ export const demoAgreements: ExtendedTradeAgreement[] = [
     farmer_name: "Ramesh Patel",
     buyer_id: demoUsers.buyer.id,
     buyer_name: "Agrocorp Central Processing",
-    commodity: "wheat",
+    crop_id: "c0000000-0000-0000-0000-000000000002",
     quantity: 420,
     price_per_quintal: 2450,
     delivery_date: "2026-07-14",
@@ -929,6 +930,7 @@ export const demoPosts: NetworkPost[] = [
     author_role: "fpo",
     tag: "market",
     topic: "market",
+    images: ["https://images.unsplash.com/photo-1592982537447-6f296d1eb258?auto=format&fit=crop&q=80&w=400"],
     content: "FPO ANNOUNCEMENT: We have successfully pooled 740Q of Grade A soybean across 4 member clusters at Rau center. Institutional buyers can tender for the full lot with single-point inspection and dispatch scheduling.",
     expert_verified: false,
     replies: [],
@@ -969,7 +971,7 @@ export const demoConversations: Conversation[] = [
     unread: 1,
     context: {
       label: "Regarding Soybean Lot #FN-28492",
-      crop: "Soybean",
+      crop: "c0000000-0000-0000-0000-000000000001",
       quantity: 250,
       quality: "Grade A · 11.2% moisture",
       offer: 5350,
@@ -1026,7 +1028,7 @@ export const demoConversations: Conversation[] = [
     unread: 0,
     context: {
       label: "FPO Pooling Coordination",
-      crop: "Soybean",
+      crop: "c0000000-0000-0000-0000-000000000001",
       quantity: 250,
       quality: "Grade A",
       offer: 5320,
@@ -1057,7 +1059,7 @@ export const demoNotifications: AppNotification[] = [
     title: "Pickup scheduled for 8 September",
     description: "Multi-axle truck MP-09-GH-8214 assigned for your 250Q consignment to Dewas.",
     createdAt: "2026-09-03T08:25:00.000Z",
-    href: "/orders/demo-deal-fn-28492",
+    href: "/deals/demo-deal-fn-28492",
     unread: true,
   },
   {
@@ -1075,7 +1077,7 @@ export const demoNotifications: AppNotification[] = [
     title: "Your buyer RFQ received 3 new responses",
     description: "Local farmers and Malwa FPO submitted matching Grade A soybean lots.",
     createdAt: "2026-09-02T12:00:00.000Z",
-    href: "/buyer/procurement/rfq-1008",
+    href: "/buyer/requirements/rfq-1008",
     unread: false,
   },
   {
@@ -1090,16 +1092,16 @@ export const demoNotifications: AppNotification[] = [
 ];
 
 export const demoMembers: FpoMember[] = [
-  { id: "m-ramesh", name: "Ramesh Patel", verified: true, village: "Sanwer", phone: "9876543210", crops: ["Soybean", "Wheat"], availableQuantity: 250, deliveredQuantity: 680, pendingQuantity: 250, joinedDate: "Jan 2024" },
-  { id: "m-sunita", name: "Sunita Verma", verified: true, village: "Dewas Road", phone: "9826011223", crops: ["Soybean"], availableQuantity: 180, deliveredQuantity: 420, pendingQuantity: 180, joinedDate: "Mar 2024" },
-  { id: "m-rajesh", name: "Rajesh Pawar", verified: false, village: "Depalpur", phone: "9425099881", crops: ["Wheat", "Onion"], availableQuantity: 420, deliveredQuantity: 310, pendingQuantity: 420, joinedDate: "Aug 2024" },
-  { id: "m-anil", name: "Anil Jat", verified: true, village: "Rau", phone: "9827055443", crops: ["Soybean", "Wheat"], availableQuantity: 310, deliveredQuantity: 510, pendingQuantity: 90, joinedDate: "Feb 2024" },
+  { id: "m-ramesh", name: "Ramesh Patel", verified: true, village: "Sanwer", phone: "9876543210", crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002"], availableQuantity: 250, deliveredQuantity: 680, pendingQuantity: 250, joinedDate: "Jan 2024" },
+  { id: "m-sunita", name: "Sunita Verma", verified: true, village: "Dewas Road", phone: "9826011223", crops: ["c0000000-0000-0000-0000-000000000001"], availableQuantity: 180, deliveredQuantity: 420, pendingQuantity: 180, joinedDate: "Mar 2024" },
+  { id: "m-rajesh", name: "Rajesh Pawar", verified: false, village: "Depalpur", phone: "9425099881", crops: ["c0000000-0000-0000-0000-000000000002", "Onion"], availableQuantity: 420, deliveredQuantity: 310, pendingQuantity: 420, joinedDate: "Aug 2024" },
+  { id: "m-anil", name: "Anil Jat", verified: true, village: "Rau", phone: "9827055443", crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002"], availableQuantity: 310, deliveredQuantity: 510, pendingQuantity: 90, joinedDate: "Feb 2024" },
   { id: "m-kailash", name: "Kailash Solanki", verified: true, village: "Manpur", phone: "9977012345", crops: ["Cotton", "Gram"], availableQuantity: 190, deliveredQuantity: 280, pendingQuantity: 190, joinedDate: "May 2024" },
 ];
 
 export const demoSupplyLots: FpoSupplyLot[] = [
-  { id: "pool-soy-01", crop: "Soybean", quantity: 740, quality: "Grade A", moisture: "10.8–11.6%", members: 4, collectionCenter: "Rau Collection Center", availableDate: "6 Sep 2026", status: "pooled", targetPrice: 5350 },
-  { id: "pool-wheat-02", crop: "Wheat", quantity: 560, quality: "Grade B", moisture: "11.4–12.1%", members: 6, collectionCenter: "Sanwer Collection Center", availableDate: "8 Sep 2026", status: "partially_allocated", targetPrice: 2450 },
+  { id: "pool-soy-01", crop: "c0000000-0000-0000-0000-000000000001", quantity: 740, quality: "Grade A", moisture: "10.8–11.6%", members: 4, collectionCenter: "Rau Collection Center", availableDate: "6 Sep 2026", status: "pooled", targetPrice: 5350 },
+  { id: "pool-wheat-02", crop: "c0000000-0000-0000-0000-000000000002", quantity: 560, quality: "Grade B", moisture: "11.4–12.1%", members: 6, collectionCenter: "Sanwer Collection Center", availableDate: "8 Sep 2026", status: "partially_allocated", targetPrice: 2450 },
   { id: "pool-cotton-03", crop: "Cotton", quantity: 280, quality: "Grade A", moisture: "8.2–8.8%", members: 3, collectionCenter: "Sanwer Collection Center", availableDate: "12 Sep 2026", status: "pooled", targetPrice: 7200 },
 ];
 
@@ -1109,16 +1111,16 @@ export const demoCollectionCenters: FpoCollectionCenter[] = [
 ];
 
 export const demoLogisticsBatches: FpoLogisticsBatch[] = [
-  { id: "batch-101", crop: "Soybean", quantity: 250, collectionCenter: "Rau Regional Collection Center", destination: "Dewas Industrial Area", buyerName: "Agrocorp Central Processing", vehicleNumber: "MP-09-GH-8214", driverName: "Dharmendra Yadav", driverPhone: "+91 94251 44810", scheduledPickup: "8 Sep 2026", status: "scheduled" },
-  { id: "batch-102", crop: "Wheat", quantity: 300, collectionCenter: "Sanwer Agri-Logistics Hub", destination: "Bhopal Warehouse", buyerName: "Central Grain Foods Ltd", vehicleNumber: "MP-09-KL-4091", driverName: "Mukesh Chouhan", driverPhone: "+91 98260 12040", scheduledPickup: "10 Sep 2026", status: "scheduled" },
+  { id: "batch-101", crop: "c0000000-0000-0000-0000-000000000001", quantity: 250, collectionCenter: "Rau Regional Collection Center", destination: "Dewas Industrial Area", buyerName: "Agrocorp Central Processing", vehicleNumber: "MP-09-GH-8214", driverName: "Dharmendra Yadav", driverPhone: "+91 94251 44810", scheduledPickup: "8 Sep 2026", status: "scheduled" },
+  { id: "batch-102", crop: "c0000000-0000-0000-0000-000000000002", quantity: 300, collectionCenter: "Sanwer Agri-Logistics Hub", destination: "Bhopal Warehouse", buyerName: "Central Grain Foods Ltd", vehicleNumber: "MP-09-KL-4091", driverName: "Mukesh Chouhan", driverPhone: "+91 98260 12040", scheduledPickup: "10 Sep 2026", status: "scheduled" },
 ];
 
 export const demoRequirements: ProcurementRequirement[] = [
   {
     id: "rfq-1008",
     title: "Grade A Soybean for September Crushing Run",
-    crop: "soybean",
-    commodity: "Soybean",
+    crop: "c0000000-0000-0000-0000-000000000001",
+    crop_id: "c0000000-0000-0000-0000-000000000001",
     quantity: 500,
     quantityQuintals: 500,
     quantityUnit: "Q",
@@ -1143,8 +1145,8 @@ export const demoRequirements: ProcurementRequirement[] = [
   {
     id: "rfq-1004",
     title: "Certified Sharbati Wheat for Premium Flour Line",
-    crop: "wheat",
-    commodity: "Wheat",
+    crop: "c0000000-0000-0000-0000-000000000002",
+    crop_id: "c0000000-0000-0000-0000-000000000002",
     quantity: 800,
     quantityQuintals: 800,
     quantityUnit: "Q",
@@ -1272,8 +1274,8 @@ export const demoAdminUsers: AdminUserItem[] = [
 ];
 
 export const demoAdminDisputes: AdminDisputeCase[] = [
-  { id: "DSP-401", orderNumber: "FN-DEAL-27902", dealId: "FN-DEAL-27902", crop: "Soybean", parties: "Suresh Patidar vs Ujjain Solvex", raisedBy: "Suresh Patidar", against: "Ujjain Solvex", reason: "Discrepancy in recorded moisture percentage (11.4% field vs 12.8% factory gate)", amount: 48200, disputedAmount: 48200, status: "Under Review", filedDate: "28 Aug 2026", createdAt: "28 Aug 2026" },
-  { id: "DSP-398", orderNumber: "FN-DEAL-26810", dealId: "FN-DEAL-26810", crop: "Wheat", parties: "Kisan Morcha FPO vs Malwa Flour", raisedBy: "Kisan Morcha FPO", against: "Malwa Flour", reason: "Transporter delay of 48 hours causing demurrage charges", amount: 15400, disputedAmount: 15400, status: "Resolved", filedDate: "12 Jul 2026", createdAt: "12 Jul 2026" },
+  { id: "DSP-401", orderNumber: "FN-DEAL-27902", dealId: "FN-DEAL-27902", crop: "c0000000-0000-0000-0000-000000000001", parties: "Suresh Patidar vs Ujjain Solvex", raisedBy: "Suresh Patidar", against: "Ujjain Solvex", reason: "Discrepancy in recorded moisture percentage (11.4% field vs 12.8% factory gate)", amount: 48200, disputedAmount: 48200, status: "Under Review", filedDate: "28 Aug 2026", createdAt: "28 Aug 2026" },
+  { id: "DSP-398", orderNumber: "FN-DEAL-26810", dealId: "FN-DEAL-26810", crop: "c0000000-0000-0000-0000-000000000002", parties: "Kisan Morcha FPO vs Malwa Flour", raisedBy: "Kisan Morcha FPO", against: "Malwa Flour", reason: "Transporter delay of 48 hours causing demurrage charges", amount: 15400, disputedAmount: 15400, status: "Resolved", filedDate: "12 Jul 2026", createdAt: "12 Jul 2026" },
 ];
 
 export function getDemoProfile(id: string) {

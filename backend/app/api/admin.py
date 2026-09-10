@@ -63,7 +63,7 @@ async def get_platform_map_nodes():
                 "type": "supply",
                 "lat": listing["lat"],
                 "lng": listing["lng"],
-                "title": f"{listing['commodity'].capitalize()} ({listing['quantity']}Q)",
+                "title": f"{listing['crop_id'].capitalize()} ({listing['quantity']}Q)",
                 "location": listing["location"],
                 "status": listing["status"],
             }
@@ -77,7 +77,7 @@ async def get_platform_map_nodes():
                 "type": "demand",
                 "lat": d["lat"],
                 "lng": d["lng"],
-                "title": f"Procuring {d['commodity'].capitalize()} ({d['quantity_needed']}Q)",
+                "title": f"Procuring {d['crop_id'].capitalize()} ({d['quantity_needed']}Q)",
                 "location": d["location"],
                 "buyer_name": d.get("business_name") or d.get("buyer_name", "Buyer"),
             }

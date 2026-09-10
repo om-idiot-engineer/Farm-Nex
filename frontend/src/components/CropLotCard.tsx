@@ -28,7 +28,7 @@ export default function CropLotCard({
     cotton: { bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-900 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800" },
   };
 
-  const color = cropColors[listing.commodity] || { bg: "bg-muted/40", text: "text-foreground", border: "border-border" };
+  const color = cropColors[listing.crop_id] || { bg: "bg-muted/40", text: "text-foreground", border: "border-border" };
   const tonnes = (listing.quantity / 10).toFixed(1);
 
   return (
@@ -38,7 +38,7 @@ export default function CropLotCard({
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded border ${color.bg} ${color.text} ${color.border}`}>
-              {listing.commodity}
+              {listing.crop_id}
             </span>
             <span className="text-xs font-bold text-muted-foreground">{listing.quality_grade}</span>
           </div>

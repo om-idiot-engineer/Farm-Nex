@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, status, Query
 
 from app.core.database import db
 from app.models.schemas import (
-    Commodity,
     PriceDataPoint,
     PriceTrendResponse,
     DemandForecastResponse,
@@ -45,7 +44,7 @@ def load_market_prices_dataset():
         for row in reader:
             records.append(
                 {
-                    "commodity": row["commodity"],
+                    "crop_id": {"soybean":"c0000000-0000-0000-0000-000000000001", "wheat":"c0000000-0000-0000-0000-000000000002", "cotton":"c0000000-0000-0000-0000-000000000003"}.get(row["commodity"], "c0000000-0000-0000-0000-000000000001"),
                     "region": row["region"],
                     "date": datetime.strptime(row["date"], "%Y-%m-%d").date(),
                     "price": float(row["price"]),
@@ -76,7 +75,9 @@ load_market_prices_dataset()
 
 @router.get("/price-trend", response_model=PriceTrendResponse)
 async def get_price_trend(
-    commodity: Commodity = Query(Commodity.SOYBEAN, description="Crop commodity"),
+    crop_id: str = Query("c0000000-0000-0000-0000-000000000001", description="Crop ID"),
+    #
+    
     region: str = Query("Madhya Pradesh", description="Target region/state"),
     timeframe: str = Query("6m", description="Timeframe: 1m, 3m, 6m, 1y"),
 ):
@@ -89,13 +90,13 @@ async def get_price_trend(
     filtered = [
         r
         for r in MARKET_DATA
-        if r["commodity"] == commodity.value and r["region"] == region
+        if r["crop_id"] == crop_id and r["region"] == region
     ]
 
     if not filtered:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No mandi price history found for {commodity.value} in {region}.",
+            detail=f"No mandi price history found for {crop_id} in {region}.",
         )
 
     # Filter by timeframe
@@ -116,7 +117,7 @@ async def get_price_trend(
     ]
 
     return PriceTrendResponse(
-        commodity=commodity,
+        crop_id=crop_id,
         region=region,
         history=points,
         currency="INR",
@@ -133,7 +134,7 @@ async def get_price_trend(
 
 @router.get("/demand-forecast", response_model=DemandForecastResponse)
 async def get_demand_forecast(
-    commodity: Commodity = Query(Commodity.SOYBEAN, description="Crop commodity"),
+    crop_id: str = "c0000000-0000-0000-0000-000000000001",
     region: str = Query("Madhya Pradesh", description="Target region/state"),
 ):
     """
@@ -148,12 +149,12 @@ async def get_demand_forecast(
     series = [
         r
         for r in MARKET_DATA
-        if r["commodity"] == commodity.value and r["region"] == region
+        if r["crop_id"] == crop_id and r["region"] == region
     ]
     if not series:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dataset not found for commodity.",
+            detail="Dataset not found for crop_id.",
         )
 
     # 1. 30-Day Historical Baseline Average
@@ -186,7 +187,7 @@ async def get_demand_forecast(
     )
 
     return DemandForecastResponse(
-        commodity=commodity,
+        crop_id=crop_id,
         region=region,
         historical_avg_price=avg_price,
         forecasted_next_30d_price=forecast_price,
@@ -205,7 +206,7 @@ async def get_demand_forecast(
 
 @router.get("/why-price-moved", response_model=WhyPriceMovedResponse)
 async def get_why_price_moved(
-    commodity: Commodity = Query(Commodity.SOYBEAN, description="Crop commodity"),
+    crop_id: str = "c0000000-0000-0000-0000-000000000001",
     region: str = Query("Madhya Pradesh", description="Target region/state"),
 ):
     """
@@ -220,7 +221,7 @@ async def get_why_price_moved(
     series = [
         r
         for r in MARKET_DATA
-        if r["commodity"] == commodity.value and r["region"] == region
+        if r["crop_id"] == crop_id and r["region"] == region
     ]
     if len(series) < 28:
         raise HTTPException(
@@ -268,7 +269,7 @@ async def get_why_price_moved(
         )
 
     # Heuristic Rule 2: Commodity-Specific Seasonal Drivers
-    if commodity == Commodity.SOYBEAN:
+    if crop_id == "c0000000-0000-0000-0000-000000000001":
         if recent_price_avg >= 4892.0:
             factors.append(
                 "MSP Support: Trading comfortably at or above the Government Minimum Support Price (₹4,892/Q)."
@@ -280,14 +281,14 @@ async def get_why_price_moved(
         factors.append(
             "Solvent Extraction Demand: Continuous off-take by central MP de-oiled cake (DOC) export processing units."
         )
-    elif commodity == Commodity.WHEAT:
+    elif crop_id == "c0000000-0000-0000-0000-000000000002":
         factors.append(
             "Flour Mill Pipeline: Stable off-take from roller flour mills in Bhopal-Indore industrial belt."
         )
         factors.append(
             "Buffer Stock Dynamics: FCI procurement targets anchor state-wide farm-gate price expectations."
         )
-    elif commodity == Commodity.COTTON:
+    elif crop_id == "c0000000-0000-0000-0000-000000000003":
         factors.append(
             "Spinning Mill Off-take: Raw fiber demand from central India textile clusters in Nimar and Khandwa."
         )
@@ -297,14 +298,14 @@ async def get_why_price_moved(
 
     # Summary text
     if price_change_pct > 0:
-        summary = f"Prices for {commodity.value.capitalize()} in {region} advanced by {price_change_pct}% over the last 14 trading days."
+        summary = f"Prices for {crop_id.capitalize()} in {region} advanced by {price_change_pct}% over the last 14 trading days."
     elif price_change_pct < 0:
-        summary = f"Prices for {commodity.value.capitalize()} in {region} softened by {abs(price_change_pct)}% over the last 14 trading days."
+        summary = f"Prices for {crop_id.capitalize()} in {region} softened by {abs(price_change_pct)}% over the last 14 trading days."
     else:
-        summary = f"Prices for {commodity.value.capitalize()} in {region} held steady over the last 14 trading days."
+        summary = f"Prices for {crop_id.capitalize()} in {region} held steady over the last 14 trading days."
 
     return WhyPriceMovedResponse(
-        commodity=commodity,
+        crop_id=crop_id,
         region=region,
         period_change_percentage=price_change_pct,
         summary=summary,

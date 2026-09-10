@@ -44,6 +44,7 @@ export default function NetworkPostDetailPage() {
 
   useEffect(() => {
     loadPost();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const submitReply = async (event: React.FormEvent) => {

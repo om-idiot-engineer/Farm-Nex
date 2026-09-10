@@ -34,6 +34,7 @@ class InMemoryStore:
         self.trade_agreements: Dict[str, Dict[str, Any]] = {}
         self.market_prices: List[Dict[str, Any]] = []
         self.community_posts: Dict[str, Dict[str, Any]] = {}
+        self.ratings: Dict[str, Dict[str, Any]] = {}
         self.otp_codes: Dict[str, str] = {}  # phone -> otp
         self.passwords: Dict[str, str] = {}  # email -> hashed_password
 
@@ -138,7 +139,7 @@ class InMemoryStore:
         self.demand_posts[d1_id] = {
             "id": d1_id,
             "buyer_id": buyer1_id,
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity_needed": 150.0,
             "quality_grade": "Grade A",
             "offered_price": 4900.0,
@@ -153,7 +154,7 @@ class InMemoryStore:
         self.demand_posts[d2_id] = {
             "id": d2_id,
             "buyer_id": buyer2_id,
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity_needed": 200.0,
             "quality_grade": "Grade A",
             "offered_price": 5050.0,
@@ -168,7 +169,7 @@ class InMemoryStore:
         self.demand_posts[d3_id] = {
             "id": d3_id,
             "buyer_id": buyer3_id,
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity_needed": 80.0,
             "quality_grade": "Grade A",
             "offered_price": 4750.0,

@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { ShieldCheck, Info, CheckCircle2, Award, Building2 } from "lucide-react";
+import { ReliabilityScoreCard, ReliabilityScore } from "./ReliabilityScoreCard";
 
 interface TrustBadgeProps {
   type?: "producer" | "buyer" | "fpo" | "expert";
   size?: "sm" | "md";
   showPopover?: boolean;
+  score?: ReliabilityScore;
 }
 
 export default function TrustBadge({
   type = "producer",
   size = "md",
   showPopover = true,
+  score,
 }: TrustBadgeProps) {
   const [open, setOpen] = useState(false);
 
@@ -80,20 +83,30 @@ export default function TrustBadge({
                 <p className="text-[10px] text-muted-foreground">{config.subtitle}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              {config.description}
-            </p>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Verification signals
-              </p>
-              {config.signals.map((signal) => (
-                <div key={signal} className="flex items-center gap-1.5 text-[11px] text-foreground">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
-                  <span>{signal}</span>
+            
+            {score ? (
+              <div className="mb-4">
+                <ReliabilityScoreCard score={score} />
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  {config.description}
+                </p>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Verification signals
+                  </p>
+                  {config.signals.map((signal) => (
+                    <div key={signal} className="flex items-center gap-1.5 text-[11px] text-foreground">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                      <span>{signal}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
+            
             <div className="mt-3 pt-2 border-t border-border flex justify-end">
               <button
                 type="button"

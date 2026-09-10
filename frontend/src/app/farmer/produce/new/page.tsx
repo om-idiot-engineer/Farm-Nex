@@ -32,7 +32,7 @@ export default function NewProduceListingPage() {
   const [step, setStep] = useState<number>(1);
 
   // Form State
-  const [commodity, setCommodity] = useState<"soybean" | "wheat" | "cotton">("soybean");
+  const [crop_id, setCropId] = useState<"soybean" | "wheat" | "cotton">("soybean");
   const [quantity, setQuantity] = useState<number>(200);
   const [unit, setUnit] = useState<string>("Quintals");
   const [qualityGrade, setQualityGrade] = useState<string>("Grade A");
@@ -70,7 +70,7 @@ export default function NewProduceListingPage() {
     cotton: 7160,
   };
 
-  const currentBenchmark = benchmarkRates[commodity];
+  const currentBenchmark = benchmarkRates[crop_id];
   const grossEstimatedValue = quantity * (expectedPrice || currentBenchmark);
   const estimatedFreightPerQ = 82;
   const estimatedNetRealizationPerQ = (expectedPrice || currentBenchmark) - estimatedFreightPerQ - 35;
@@ -127,7 +127,7 @@ export default function NewProduceListingPage() {
     try {
       const res = await createListing(
         {
-          commodity,
+          crop_id,
           quantity: Number(quantity),
           quality_grade: qualityGrade,
           moisture_percent: moisture === "" ? null : Number(moisture),
@@ -178,7 +178,7 @@ export default function NewProduceListingPage() {
         {/* 3 Step Progress Bar */}
         <div className="grid grid-cols-3 gap-2 pt-1">
           {[
-            { stepNum: 1, title: "1. Commodity & Volume" },
+            { stepNum: 1, title: "1. CropId & Volume" },
             { stepNum: 2, title: "2. Quality & Origin" },
             { stepNum: 3, title: "3. Target Realization" },
           ].map((item) => (
@@ -202,11 +202,11 @@ export default function NewProduceListingPage() {
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in-50">
             <div>
-              <h2 className="text-lg font-black text-foreground">Select Commodity & Quantity</h2>
+              <h2 className="text-lg font-black text-foreground">Select CropId & Quantity</h2>
               <p className="text-xs text-muted-foreground">Choose what you harvested and enter your available volume.</p>
             </div>
 
-            {/* Commodity Selector */}
+            {/* CropId Selector */}
             <div className="grid sm:grid-cols-3 gap-3">
               {[
                 { id: "soybean", label: "Soybean", benchmark: "₹5,420/q", desc: "Yellow seeded oilseed" },
@@ -216,9 +216,9 @@ export default function NewProduceListingPage() {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setCommodity(c.id as any)}
+                  onClick={() => setCropId(c.id as any)}
                   className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between space-y-2 ${
-                    commodity === c.id
+                    crop_id === c.id
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border hover:border-primary/40 bg-card"
                   }`}
@@ -227,7 +227,7 @@ export default function NewProduceListingPage() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">
                       <Sprout className="h-4 w-4" />
                     </span>
-                    {commodity === c.id && <CheckCircle2 className="h-5 w-5 text-primary" />}
+                    {crop_id === c.id && <CheckCircle2 className="h-5 w-5 text-primary" />}
                   </div>
 
                   <div>
@@ -431,7 +431,7 @@ export default function NewProduceListingPage() {
                 <div>
                   <span className="text-xs font-bold text-primary uppercase tracking-wider">Lot Summary</span>
                   <p className="text-lg font-black text-foreground">
-                    {quantity} Quintals {commodity.toUpperCase()} ({qualityGrade})
+                    {quantity} Quintals {crop_id.toUpperCase()} ({qualityGrade})
                   </p>
                   <p className="text-xs text-muted-foreground">{location}</p>
                 </div>
@@ -487,22 +487,35 @@ export default function NewProduceListingPage() {
             Back
           </Button>
 
-          {step < 3 ? (
-            <Button type="button" onClick={handleNext} className="font-bold text-xs px-6">
-              Continue
-              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Button>
-          ) : (
+          <div className="flex items-center gap-2">
             <Button
               type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="font-bold text-sm px-8 shadow-md"
+              variant="outline"
+              onClick={() => {
+                alert("Draft saved to your farm device storage.");
+                router.push("/farmer");
+              }}
+              className="text-xs font-semibold"
             >
-              {submitting ? "Publishing Lot..." : "Publish & Find Buyers"}
-              <ArrowRight className="h-4 w-4 ml-1.5" />
+              Save Draft
             </Button>
-          )}
+            {step < 3 ? (
+              <Button type="button" onClick={handleNext} className="font-bold text-xs px-6">
+                Continue
+                <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="font-bold text-sm px-8 shadow-md"
+              >
+                {submitting ? "Publishing Lot..." : "Publish & Find Buyers"}
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

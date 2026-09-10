@@ -150,8 +150,8 @@ export default function MyProduceWorkspacePage() {
         viewMode === "cards" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((lot) => {
-              const marketBenchmark = lot.commodity === "soybean" ? 5420 : 2385;
-              const estNetRealization = lot.commodity === "soybean" ? 5233 : 2320;
+              const marketBenchmark = lot.crop_id === "soybean" ? 5420 : 2385;
+              const estNetRealization = lot.crop_id === "soybean" ? 5233 : 2320;
 
               return (
                 <article
@@ -165,7 +165,7 @@ export default function MyProduceWorkspacePage() {
                           Lot #{lot.id.slice(0, 10)}
                         </span>
                         <h2 className="text-2xl font-black capitalize text-foreground mt-0.5">
-                          {lot.quantity}Q {lot.commodity}
+                          {lot.quantity}Q {lot.crop_id}
                         </h2>
                       </div>
                       <StatusBadge status={lot.status} size="sm" />
@@ -268,7 +268,7 @@ export default function MyProduceWorkspacePage() {
                   <tr key={lot.id} className="hover:bg-muted/20">
                     <td className="px-4 py-3.5">
                       <p className="font-bold text-foreground capitalize">
-                        {lot.commodity}
+                        {lot.crop_id}
                       </p>
                       <span className="text-[10px] text-muted-foreground">#{lot.id.slice(0, 10)}</span>
                     </td>

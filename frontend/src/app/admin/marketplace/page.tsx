@@ -131,7 +131,7 @@ export default function AdminMarketplaceModerationPage() {
                 {listings.map((lot) => (
                   <tr key={lot.id} className="transition-colors hover:bg-muted/20">
                     <td className="px-5 py-3.5">
-                      <span className="font-bold text-foreground">{lot.commodity}</span>
+                      <span className="font-bold text-foreground">{lot.crop_id}</span>
                       <span className="block text-[11px] text-muted-foreground">ID: {lot.id} · {lot.quality_grade}</span>
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">
@@ -192,7 +192,7 @@ export default function AdminMarketplaceModerationPage() {
                   <tr key={demand.id} className="transition-colors hover:bg-muted/20">
                     <td className="px-5 py-3.5">
                       <span className="font-bold text-foreground">{demand.business_name}</span>
-                      <span className="block text-[11px] text-muted-foreground">Seeking {demand.commodity} ({demand.quality_grade})</span>
+                      <span className="block text-[11px] text-muted-foreground">Seeking {demand.crop_id} ({demand.quality_grade})</span>
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">
                       {demand.location}

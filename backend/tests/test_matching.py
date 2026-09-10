@@ -46,7 +46,7 @@ def test_smart_sell_ranking_and_net_realization():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": 100.0,
             "quality_grade": "Grade A",
             "harvest_date": (date.today() + timedelta(days=7)).isoformat(),
@@ -96,7 +96,7 @@ def test_accept_smart_sell_opportunity():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": 50.0,
             "quality_grade": "Grade A",
             "harvest_date": (date.today() + timedelta(days=5)).isoformat(),

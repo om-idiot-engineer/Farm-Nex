@@ -80,15 +80,21 @@ export default function GlobalSearch() {
       ? results
       : results.filter((r) => {
           if (activeCategory === "produce") return r.kind === "listing";
-          if (activeCategory === "buyer") return r.kind === "requirement";
+          if (activeCategory === "demand") return r.kind === "requirement";
           if (activeCategory === "people") return r.kind === "profile";
           if (activeCategory === "posts") return r.kind === "post";
           return true;
         });
 
+  // Grouping for 'all' mode
+  const produceGroup = results.filter((r) => r.kind === "listing");
+  const demandGroup = results.filter((r) => r.kind === "requirement");
+  const peopleGroup = results.filter((r) => r.kind === "profile");
+  const postGroup = results.filter((r) => r.kind === "post");
+
   return (
-    <div className="relative w-full max-w-md">
-      <div className="flex h-10 items-center gap-2 border border-border bg-card rounded-lg px-3 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+    <div className="relative w-full max-w-lg">
+      <div className="flex h-10 items-center gap-2.5 border border-border bg-card/80 backdrop-blur-xs rounded-xl px-3.5 shadow-2xs transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-card">
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           ref={inputRef}
@@ -101,8 +107,8 @@ export default function GlobalSearch() {
           onKeyDown={(event) => {
             if (event.key === "Enter" && filteredResults[0]) navigate(filteredResults[0]);
           }}
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          placeholder="Search farmers, crops, RFQs, Dewas..."
+          className="min-w-0 flex-1 bg-transparent text-xs sm:text-sm outline-none placeholder:text-muted-foreground font-medium"
+          placeholder="Search crops, farmers, buyers, requirements..."
           aria-label="Search FarmNex"
         />
         {query ? (
@@ -112,13 +118,13 @@ export default function GlobalSearch() {
               setQuery("");
               setResults([]);
             }}
-            className="text-muted-foreground hover:text-foreground p-0.5"
+            className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted/50 transition-colors"
             aria-label="Clear search"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         ) : (
-          <kbd className="hidden border border-border rounded px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline font-mono">
+          <kbd className="hidden border border-border/70 bg-muted/40 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline font-mono">
             /
           </kbd>
         )}
@@ -127,22 +133,28 @@ export default function GlobalSearch() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-12 z-40 border border-border bg-card rounded-lg shadow-2xl p-3 animate-in fade-in-50 zoom-in-95">
+          <div className="absolute left-0 right-0 top-12 z-40 border border-border bg-card rounded-xl shadow-2xl p-3 animate-in fade-in-50 zoom-in-95 max-h-[26rem] flex flex-col">
             {/* Filter pills if search active */}
             {query.trim() && (
-              <div className="flex items-center gap-1.5 pb-2.5 mb-2 border-b border-border overflow-x-auto text-xs">
-                {["all", "produce", "buyer", "people", "posts"].map((cat) => (
+              <div className="flex items-center gap-1.5 pb-2.5 mb-2 border-b border-border overflow-x-auto text-xs shrink-0">
+                {[
+                  { id: "all", label: "All Results" },
+                  { id: "produce", label: "Produce" },
+                  { id: "demand", label: "Requirements" },
+                  { id: "people", label: "Farmers & Buyers" },
+                  { id: "posts", label: "Discussions" }
+                ].map((cat) => (
                   <button
-                    key={cat}
+                    key={cat.id}
                     type="button"
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${
-                      activeCategory === cat
-                        ? "bg-primary text-primary-foreground font-bold"
-                        : "bg-muted/40 text-muted-foreground hover:text-foreground"
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                      activeCategory === cat.id
+                        ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
-                    {cat === "buyer" ? "Demands" : cat}
+                    {cat.label}
                   </button>
                 ))}
               </div>
@@ -152,7 +164,7 @@ export default function GlobalSearch() {
             {!query.trim() ? (
               <div className="space-y-3 py-1">
                 <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2">
-                  Popular Searches
+                  Recommended Market Searches
                 </p>
                 <div className="flex flex-wrap gap-1.5 px-2">
                   {SUGGESTED_QUERIES.map((s) => (
@@ -163,7 +175,7 @@ export default function GlobalSearch() {
                         setQuery(s);
                         setOpen(true);
                       }}
-                      className="text-xs bg-muted/30 border border-border hover:border-primary/40 px-2.5 py-1 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-xs bg-muted/30 border border-border hover:border-primary/40 px-3 py-1 rounded-full text-muted-foreground hover:text-foreground transition-colors font-medium"
                     >
                       {s}
                     </button>
@@ -172,12 +184,12 @@ export default function GlobalSearch() {
               </div>
             ) : loading ? (
               <div className="space-y-2 p-2" aria-label="Searching">
-                <div className="h-9 animate-pulse bg-muted rounded" />
-                <div className="h-9 animate-pulse bg-muted rounded" />
-                <div className="h-9 animate-pulse bg-muted rounded" />
+                <div className="h-9 animate-pulse bg-muted/60 rounded-lg" />
+                <div className="h-9 animate-pulse bg-muted/60 rounded-lg" />
+                <div className="h-9 animate-pulse bg-muted/60 rounded-lg" />
               </div>
             ) : filteredResults.length ? (
-              <div className="space-y-1 max-h-80 overflow-y-auto">
+              <div className="space-y-1 overflow-y-auto pr-1">
                 {filteredResults.map((result) => {
                   const Icon = kindIcons[result.kind] || Search;
                   return (
@@ -185,9 +197,9 @@ export default function GlobalSearch() {
                       key={`${result.kind}-${result.id}`}
                       type="button"
                       onClick={() => navigate(result)}
-                      className="flex w-full items-start gap-3 p-2 rounded-md text-left hover:bg-muted/40 transition-colors group"
+                      className="flex w-full items-start gap-3 p-2.5 rounded-lg text-left hover:bg-muted/40 transition-colors group"
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded bg-primary/10 text-primary shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-colors">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-colors">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -199,16 +211,16 @@ export default function GlobalSearch() {
                         </div>
                         <p className="text-[11px] text-muted-foreground truncate">{result.subtitle}</p>
                       </div>
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground opacity-60 self-center">
-                        {result.kind}
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground/70 bg-muted/40 px-2 py-0.5 rounded self-center">
+                        {result.kind === "requirement" ? "Demand" : result.kind}
                       </span>
                     </button>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center text-xs text-muted-foreground">
-                No matching results found for &ldquo;{query}&rdquo;.
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No matching agricultural results found for &ldquo;{query}&rdquo;.
               </div>
             )}
           </div>

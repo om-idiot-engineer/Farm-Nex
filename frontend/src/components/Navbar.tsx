@@ -184,38 +184,46 @@ export default function Navbar() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <LanguageSwitcher />
 
-            {/* Persona Switcher (Testing dropdown in demo mode) */}
+            {/* Persona Switcher (Visually labeled DEMO MODE per Section 49) */}
             {DEMO_MODE && user && (
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setPersonaOpen(!personaOpen)}
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted/70 transition-colors"
-                  title="Switch testing persona"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300/80 bg-amber-50/70 text-amber-900 hover:bg-amber-100/80 transition-colors"
+                  title="Switch testing persona (Development only)"
                 >
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="capitalize">{user.role}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-200/80 text-amber-950 px-1.5 py-0.5 rounded text-[9px]">
+                    DEMO MODE
+                  </span>
+                  <span className="capitalize font-bold text-foreground">{user.role}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-amber-800" />
                 </button>
 
                 {personaOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setPersonaOpen(false)} />
-                    <div className="absolute right-0 mt-2 z-40 w-52 rounded-lg border border-border bg-card shadow-xl py-1.5 text-xs animate-in fade-in-50 zoom-in-95">
-                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
-                        Switch Persona
+                    <div className="absolute right-0 mt-2 z-40 w-56 rounded-xl border border-border bg-card shadow-xl py-2 text-xs animate-in fade-in-50 zoom-in-95">
+                      <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between">
+                        <span>Demo Persona Switcher</span>
+                        <span className="text-[9px] text-amber-800 bg-amber-100 px-1 py-0.5 rounded font-bold">SAMPLE DATA</span>
                       </div>
-                      {(["farmer", "fpo", "buyer", "consumer", "admin"] as const).map((r) => (
+                      {(["farmer", "buyer", "fpo", "consumer", "admin"] as const).map((r) => (
                         <button
                           key={r}
                           type="button"
                           onClick={() => handleSwitchRole(r)}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors ${
-                            user.role === r ? "font-bold text-primary bg-primary/5" : "text-foreground"
+                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-muted/50 transition-colors ${
+                            user.role === r ? "font-black text-primary bg-primary/5" : "text-foreground"
                           }`}
                         >
-                          <span className="capitalize">{r}</span>
-                          {user.role === r && <Check className="h-3.5 w-3.5 text-primary" />}
+                          <div>
+                            <span className="capitalize font-bold block">{r}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {r === "farmer" ? "Indore Producer view" : r === "buyer" ? "Corporate Procurement view" : `${r} persona`}
+                            </span>
+                          </div>
+                          {user.role === r && <Check className="h-4 w-4 text-primary shrink-0" />}
                         </button>
                       ))}
                     </div>
@@ -430,7 +438,7 @@ export default function Navbar() {
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </Link>
               <Link
-                href="/community"
+                href="/network"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center justify-between px-3 py-2 rounded-md text-sm text-foreground hover:bg-muted/40"
               >
@@ -519,6 +527,20 @@ export default function Navbar() {
           </div>
         )}
       </header>
+
+      {/* MOBILE FLOATING ACTION BUTTON */}
+      {user && primaryAction && (
+        <div className="lg:hidden fixed bottom-16 right-4 z-40">
+          <Link
+            href={primaryAction.href}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg font-bold text-xs hover:bg-primary-hover active:scale-95 transition-all"
+            aria-label={primaryAction.label}
+          >
+            <primaryAction.icon className="h-4 w-4" />
+            <span>{primaryAction.label}</span>
+          </Link>
+        </div>
+      )}
 
       {/* MOBILE BOTTOM NAVIGATION BAR (Tailored per role) */}
       {user && (

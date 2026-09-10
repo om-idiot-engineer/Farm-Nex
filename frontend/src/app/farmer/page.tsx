@@ -3,464 +3,686 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  MapPin,
-  Plus,
-  ArrowRight,
-  TrendingUp,
-  Truck,
-  Camera,
-  CheckCircle2,
-  AlertCircle,
-  Sprout,
-  Image as ImageIcon,
-  CloudRain,
-  Sun,
-  Search,
+import { 
+  Plus, 
+  ArrowRight, 
+  Sprout, 
+  MapPin, 
+  Handshake, 
+  CheckCircle2, 
+  TrendingUp, 
+  ShieldCheck, 
+  Truck, 
+  AlertCircle, 
+  Clock, 
+  Check, 
   ChevronRight,
-  TrendingDown,
-  Calendar,
-  IndianRupee,
-  PackageCheck,
-  BellRing
+  Sparkles,
+  Award,
+  Layers,
+  ArrowUpRight
 } from "lucide-react";
-import type { CropListing } from "@/lib/api";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { getFarmerListings, getAgreements } from "@/lib/services/domain";
-import type { ExtendedTradeAgreement } from "@/lib/data/demo";
+import { getFarmerListings, getAgreements, getBuyerMatches, getNotifications } from "@/lib/services/domain";
+import type { CropListing, BuyerMatchOpportunity } from "@/lib/api";
+import type { ExtendedTradeAgreement, AppNotification } from "@/lib/data/demo";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
+import StatusBadge from "@/components/StatusBadge";
+import TrustBadge from "@/components/TrustBadge";
 import { Button } from "@/components/ui/button";
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-
-const mockSalesData = [
-  { name: 'May', sales: 40000 },
-  { name: 'Jun', sales: 60000 },
-  { name: 'Jul', sales: 85000 },
-  { name: 'Aug', sales: 55000 },
-];
 
 export default function FarmerHomePage() {
   const router = useRouter();
-  const { user, loading: userLoading, hasAccess } = useRequiredUser(["farmer"]);
+  const { user, loading: userLoading } = useRequiredUser(["farmer", "fpo"]);
   const [listings, setListings] = useState<CropListing[]>([]);
   const [agreements, setAgreements] = useState<ExtendedTradeAgreement[]>([]);
+  const [matches, setMatches] = useState<BuyerMatchOpportunity[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [listingsRes, agreementsRes] = await Promise.all([
-        getFarmerListings(),
-        getAgreements(),
-      ]);
-      setListings(listingsRes?.data || []);
-      setAgreements(agreementsRes?.data || []);
-    } catch (err: any) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (userLoading || !user) return;
+    async function loadData() {
+      try {
+        const [listingsRes, agreementsRes, notifRes] = await Promise.all([
+          getFarmerListings(),
+          getAgreements(),
+          getNotifications()
+        ]);
+        const lots = listingsRes.data || [];
+        setListings(lots);
+        setAgreements(agreementsRes.data || []);
+        setNotifications(notifRes.data || []);
+
+        if (lots[0]) {
+          const matchRes = await getBuyerMatches(lots[0].id);
+          setMatches(matchRes.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
+    loadData();
+  }, [user, userLoading]);
+
+  if (userLoading || loading) return <LoadingSkeleton />;
+
+  const firstName = user?.name ? user.name.split(" ")[0] : "Farmer";
+  const primaryLot = listings[0] || {
+    id: "lot-soybean-01",
+    crop_id: "soybean",
+    quantity: 40,
+    quality_grade: "Grade A",
+    expected_price: 4750,
+    location: "Indore, Madhya Pradesh",
+    status: "listed",
+    harvest_date: "Available in 10 days"
   };
 
-  useEffect(() => {
-    if (!user || !hasAccess) return;
-    loadData();
-  }, [hasAccess, user]);
+  const pendingOffers = agreements.filter(a => 
+    (a.status as string) === "matched" || 
+    (a.status as string) === "in_negotiation" || 
+    (a.status as string) === "trade_confirmed"
+  );
 
-  if (userLoading || !user || !hasAccess) return <LoadingSkeleton variant="detail" />;
-
-  const activeAgreements = agreements.filter((a) => a.status !== "completed");
-  const pendingActions = activeAgreements.filter((a) => a.status === "matched" || a.status === "trade_confirmed").length;
+  // Indicative market math
+  const minPrice = 4650;
+  const maxPrice = 4850;
+  const farmerPrice = primaryLot.expected_price || 4750;
+  const rangePercent = Math.min(100, Math.max(0, ((farmerPrice - minPrice) / (maxPrice - minPrice)) * 100));
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      {/* Header & Greeting */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-serif font-bold text-foreground tracking-tight">
-          Good afternoon, {user?.name?.split(' ')[0] || 'Farmer'} 👋
-        </h1>
-        <p className="text-lg text-muted-foreground mt-2 font-medium">
-          Here&apos;s what matters on your farm today.
-        </p>
-      </div>
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      
+      {/* 1. HERO COMMAND CENTER (Section 7) */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-background to-secondary/30 p-6 sm:p-8 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-black uppercase tracking-wider">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span>Indore District Ag-Hub · Live Mandi Session</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black font-serif text-foreground tracking-tight">
+              Good morning, {firstName}.
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+              Here’s what’s happening around your farm today. You have active buyer bids ready for immediate negotiation.
+            </p>
+          </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Main Column (Left) */}
-        <div className="xl:col-span-8 space-y-12">
-
-          {/* Section 1 — Today / Attention */}
-          <section>
-            <div className="flex items-center gap-2 mb-6">
-              <BellRing className="h-5 w-5 text-rose-600" />
-              <h2 className="text-lg font-bold text-foreground">Needs Your Attention</h2>
+          {/* YOUR FARM TODAY Command Strip */}
+          <div className="bg-card border border-primary/25 rounded-xl p-5 shadow-sm lg:min-w-[320px] flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                  YOUR FARM TODAY
+                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-2xl">🌾</span>
+                  <div>
+                    <h3 className="text-lg font-black capitalize text-foreground leading-none">
+                      {primaryLot.crop_id}
+                    </h3>
+                    <span className="text-xs font-bold text-primary mt-0.5 block">
+                      {primaryLot.quantity} Quintals available
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[10px] font-bold uppercase">
+                Harvest Ready
+              </span>
             </div>
 
-            <div className="space-y-4">
-              {pendingActions > 0 && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-2xl gap-4 transition-all hover:shadow-md">
+            <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/80 pt-3">
+              <span className="flex items-center gap-1 font-medium">
+                <MapPin className="h-3.5 w-3.5 text-primary" /> {primaryLot.location.split(",")[0]}
+              </span>
+              <span className="font-semibold text-foreground">
+                Ready in 10 days
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" className="w-full font-bold shadow-xs text-xs h-9">
+                <Link href="/marketplace?crop=soybean">
+                  Find Buyers
+                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="font-bold text-xs h-9 shrink-0">
+                <Link href="/farmer/produce/new">
+                  <Plus className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. COMPACT VISUAL STATS STRIP (Section 8) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Link 
+          href="/farmer/produce"
+          className="group rounded-xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-primary/50 hover:shadow-xs transition-all"
+        >
+          <div className="flex items-center justify-between text-muted-foreground group-hover:text-primary transition-colors">
+            <span className="text-[11px] font-black uppercase tracking-wider">Active Produce</span>
+            <Sprout className="h-4 w-4" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+              {listings.length || 3}
+            </span>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Lots Listed</span>
+          </div>
+        </Link>
+
+        <Link 
+          href="#opportunities"
+          className="group rounded-xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-primary/50 hover:shadow-xs transition-all"
+        >
+          <div className="flex items-center justify-between text-muted-foreground group-hover:text-primary transition-colors">
+            <span className="text-[11px] font-black uppercase tracking-wider">Buyer Matches</span>
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+              {matches.length || 12}
+            </span>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">High Affinity</span>
+          </div>
+        </Link>
+
+        <Link 
+          href="/deals"
+          className="group rounded-xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-primary/50 hover:shadow-xs transition-all"
+        >
+          <div className="flex items-center justify-between text-muted-foreground group-hover:text-primary transition-colors">
+            <span className="text-[11px] font-black uppercase tracking-wider">Active Deals</span>
+            <Handshake className="h-4 w-4" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+              {agreements.length || 2}
+            </span>
+            <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">In Escrow</span>
+          </div>
+        </Link>
+
+        <Link 
+          href="#action-center"
+          className="group rounded-xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-amber-400 hover:shadow-xs transition-all"
+        >
+          <div className="flex items-center justify-between text-muted-foreground group-hover:text-amber-700 transition-colors">
+            <span className="text-[11px] font-black uppercase tracking-wider">Pending Actions</span>
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-amber-700 tabular-nums">
+              {pendingOffers.length || 1}
+            </span>
+            <span className="text-xs font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">Awaiting You</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* 3. MARKET PULSE & ACTION CENTER (Split Layout - Sections 9 & 13) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        {/* MARKET PULSE (2 cols) */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <h2 className="text-base font-black uppercase tracking-wider text-foreground">
+                  Market Pulse · Soybean
+                </h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Benchmark rate spread for Malwa Mandi Hub (Indore, Dewas, Ujjain)
+              </p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-muted/60 text-muted-foreground border border-border self-start sm:self-auto">
+              Indicative Mandi Intelligence
+            </span>
+          </div>
+
+          {/* Price Range Visualizer */}
+          <div className="space-y-3 bg-muted/20 border border-border/60 rounded-xl p-5">
+            <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+              <span>Mandi Low: ₹{minPrice.toLocaleString("en-IN")}</span>
+              <span className="text-primary font-black text-sm">Your Asking Price: ₹{farmerPrice.toLocaleString("en-IN")}/Q</span>
+              <span>Mandi High: ₹{maxPrice.toLocaleString("en-IN")}</span>
+            </div>
+
+            {/* Slider track with position marker */}
+            <div className="relative w-full h-3 bg-muted rounded-full overflow-visible my-4">
+              <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400 via-primary to-emerald-500 rounded-full w-full opacity-80" />
+              {/* Target Marker */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none"
+                style={{ left: `${rangePercent}%` }}
+              >
+                <div className="h-5 w-5 rounded-full border-3 border-card bg-foreground shadow-md ring-2 ring-primary/40" />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center font-medium">
+              Your price of ₹{farmerPrice.toLocaleString("en-IN")} sits at the <strong className="text-foreground">top 60th percentile</strong> of verified processor bids this week.
+            </p>
+          </div>
+
+          {/* Demand & Nearby Buyers Bars */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-muted-foreground uppercase text-[10px]">Regional Demand Pressure</span>
+                <span className="text-emerald-700 font-black">High · 88%</span>
+              </div>
+              <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full w-[88%]" />
+              </div>
+              <span className="text-[11px] text-muted-foreground block">
+                Food processors actively procuring for next 14 days.
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-muted-foreground uppercase text-[10px]">Nearby Verified Buyers</span>
+                <span className="text-primary font-black">4 Active Entities</span>
+              </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                {["ITC", "Adani Wilmar", "Agrocorp", "Malwa Oils"].map((b, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-card border border-border text-[10px] font-bold text-foreground">
+                    {b}
+                  </span>
+                ))}
+              </div>
+              <Link href="/marketplace?crop=soybean" className="text-[11px] font-bold text-primary hover:underline inline-flex items-center gap-1 pt-1">
+                Explore buyer bids <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ACTION CENTER (Section 13) */}
+        <div id="action-center" className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+          <div className="border-b border-border/80 pb-3">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">
+              Priorities
+            </span>
+            <h2 className="text-base font-black text-foreground">
+              You May Want to Act On
+            </h2>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            {pendingOffers.length > 0 ? (
+              pendingOffers.map((deal) => (
+                <div key={deal.id} className="p-3.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/25 space-y-2">
+                  <div className="flex items-center justify-between font-bold text-amber-900">
+                    <span className="flex items-center gap-1">
+                      <Handshake className="h-3.5 w-3.5 text-amber-700" />
+                      Offer Awaiting Response
+                    </span>
+                    <span className="text-[10px] bg-amber-200/80 px-1.5 py-0.5 rounded">Action Req</span>
+                  </div>
+                  <p className="text-foreground font-semibold">
+                    {deal.buyer_name} proposed ₹{deal.price_per_quintal || 4800}/Q for {deal.quantity || 60}Q.
+                  </p>
+                  <Button asChild size="sm" className="w-full h-8 text-xs font-bold shadow-xs">
+                    <Link href={`/deals/${deal.id}`}>Review Commercial Offer</Link>
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <div className="p-3.5 rounded-xl bg-muted/30 border border-border space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>All Active Offers Handled</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  No pending buyer proposals require your signature right now.
+                </p>
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-xl bg-muted/20 border border-border space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-foreground">Buyer Matches Ready</span>
+                <span className="text-primary font-black">{matches.length || 3} New</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                High-fit requirements matching your harvest moisture specifications.
+              </p>
+              <Button asChild variant="outline" size="sm" className="w-full h-8 text-xs font-bold">
+                <a href="#opportunities">Review Matched Buyers</a>
+              </Button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-muted/20 border border-border space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-foreground">Farm Profile Status</span>
+                <span className="text-emerald-700 font-black">85% Complete</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-600 rounded-full w-[85%]" />
+              </div>
+              <span className="text-[11px] text-muted-foreground block">
+                Add land GPS survey to unlock Institutional Fast-Pay.
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 4. OPPORTUNITIES FOR YOU (Section 10) */}
+      <section id="opportunities" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="text-xl font-black text-foreground tracking-tight">
+                Opportunities For You
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              High-affinity procurement tenders algorithmically matched against your active harvest lots
+            </p>
+          </div>
+          <span className="text-xs font-bold text-muted-foreground">
+            Ranked by Net Realization (In-Pocket)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {(matches.length > 0 ? matches : [
+            {
+              match_id: "m-01",
+              demand_id: "dem-01",
+              buyer_id: "b-01",
+              business_name: "Agrocorp Central Processing",
+              buyer_verified: true,
+              crop_id: "soybean",
+              quantity_matched: 60,
+              offered_price_per_quintal: 4800,
+              net_realization_per_quintal: 4683,
+              distance_km: 18,
+              why_this_offer: ["Quantity compatible (60 Q)", "Grade A certified match", "Delivery date match (< 7 days)"]
+            },
+            {
+              match_id: "m-02",
+              demand_id: "dem-02",
+              buyer_id: "b-02",
+              business_name: "ITC Agri Sourcing Division",
+              buyer_verified: true,
+              crop_id: "soybean",
+              quantity_matched: 100,
+              offered_price_per_quintal: 4850,
+              net_realization_per_quintal: 4720,
+              distance_km: 24,
+              why_this_offer: ["Instant farm-gate pickup", "Escrow protected payout", "Moisture specification met"]
+            }
+          ]).map((opp, idx) => (
+            <div
+              key={opp.match_id || idx}
+              className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-5"
+            >
+              <div>
+                {/* Header with Match Badge */}
+                <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-3">
                   <div>
-                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
-                      1 order is waiting for confirmation
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1 ml-4">
-                      Buyer requested 500Q soybean. Confirm to proceed with the trade.
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-foreground">{opp.business_name}</h3>
+                      <TrustBadge type="buyer" size="sm" />
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                      <MapPin className="h-3 w-3 text-primary shrink-0" />
+                      <span>{opp.distance_km} km away · Farm-gate collection available</span>
                     </p>
                   </div>
-                  <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white shrink-0 shadow-sm ml-4 sm:ml-0">
-                    Review Order
-                  </Button>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-black text-xs shrink-0 flex items-center gap-1">
+                    <Award className="h-3 w-3" />
+                    {idx === 0 ? "96% MATCH" : "91% MATCH"}
+                  </span>
                 </div>
-              )}
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-card border border-border rounded-2xl gap-4 transition-all hover:border-primary/30 hover:shadow-sm">
-                <div>
-                  <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    Your farm profile is 80% complete
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1 ml-6">
-                    Add harvest photos to improve buyer trust and get 3x more views.
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" className="shrink-0 shadow-sm ml-6 sm:ml-0 font-semibold border-border">
-                  Complete Profile
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 2 — Opportunities for You */}
-          <section>
-            <h2 className="text-lg font-bold text-foreground mb-6">Opportunities for you</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Opportunity Card 1 */}
-              <div className="bg-card border border-border rounded-2xl p-6 transition-all hover:shadow-md hover:border-primary/40 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <TrendingUp className="h-16 w-16 text-primary" />
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-bold uppercase tracking-wider mb-3">
-                  🔥 High Demand
-                </div>
-                <h3 className="text-xl font-serif font-bold text-foreground leading-tight">
-                  Wheat demand is up 23% near Indore
-                </h3>
-                <p className="text-sm text-muted-foreground mt-3 font-medium">
-                  4 verified buyers are currently looking for premium quality.
-                </p>
-                <div className="mt-6 flex items-center text-primary font-bold group-hover:underline">
-                  Find Buyers <ArrowRight className="h-4 w-4 ml-1.5 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-
-              {/* Opportunity Card 2 */}
-              <div className="bg-card border border-border rounded-2xl p-6 transition-all hover:shadow-md hover:border-primary/40 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <IndianRupee className="h-16 w-16 text-primary" />
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
-                  Price Alert
-                </div>
-                <h3 className="text-xl font-serif font-bold text-foreground leading-tight">
-                  Soybean prices increased 6.2%
-                </h3>
-                <p className="text-sm text-muted-foreground mt-3 font-medium">
-                  Current market range ₹4,500–₹4,700/Q. Good time to list.
-                </p>
-                <div className="mt-6 flex items-center text-primary font-bold group-hover:underline">
-                  View Market <ArrowRight className="h-4 w-4 ml-1.5 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 4 — My Produce */}
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-foreground">My Produce</h2>
-              <Button variant="ghost" size="sm" className="text-primary font-semibold hover:bg-primary/10">
-                <Plus className="h-4 w-4 mr-1.5" /> Add Crop
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Produce Item 1 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-card border border-border rounded-2xl hover:shadow-sm transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                    <Sprout className="h-7 w-7 text-amber-600 dark:text-amber-400" />
-                  </div>
+                {/* Offer Details */}
+                <div className="my-4 bg-muted/20 border border-border/60 rounded-xl p-4 flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Wheat <span className="text-sm font-normal text-muted-foreground ml-2">Sharbati</span></h3>
-                    <p className="text-sm font-semibold text-foreground mt-1">1,200 Q available</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Estimated value ₹29.0L</p>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">
+                      Procurement Need
+                    </span>
+                    <p className="text-base font-black text-foreground capitalize">
+                      {opp.quantity_matched} Q · Grade A Soybean
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase text-emerald-800 block">
+                      Gross Offer Rate
+                    </span>
+                    <p className="text-xl font-black text-emerald-800 tabular-nums">
+                      ₹{opp.offered_price_per_quintal.toLocaleString("en-IN")}
+                      <span className="text-xs font-normal text-muted-foreground">/Q</span>
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-border">
-                  <div className="flex flex-col md:items-end">
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                      ₹2,420/Q
-                      <span className="flex items-center text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded font-bold">
-                        <TrendingUp className="h-3 w-3 mr-0.5" /> 4.2%
-                      </span>
-                    </div>
+                {/* Verification Checkmarks */}
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                    Compatibility Factors
+                  </span>
+                  <div className="space-y-1 pt-1">
+                    {(opp.why_this_offer || [
+                      "Quantity fully compatible with lot",
+                      "Certified moisture assay accepted",
+                      "Direct digital weighbridge verification"
+                    ]).map((reason, rIdx) => (
+                      <div key={rIdx} className="flex items-center gap-2 text-foreground text-xs font-medium">
+                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>{reason}</span>
+                      </div>
+                    ))}
                   </div>
-                  <Button size="sm" className="mt-0 md:mt-3 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm">
-                    Find Buyers
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-border flex items-center justify-between gap-3">
+                <Link
+                  href={`/profile/${opp.buyer_id}`}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                >
+                  Buyer Credentials →
+                </Link>
+                <div className="flex items-center gap-2">
+                  <Button asChild size="sm" variant="outline" className="text-xs h-8 font-bold">
+                    <Link href={`/messages?recipientId=${opp.buyer_id}`}>
+                      Message
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
+                    <Link href={`/deals/new?matchId=${opp.match_id || "demo"}&buyerId=${opp.buyer_id}`}>
+                      View Opportunity
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Link>
                   </Button>
                 </div>
               </div>
-
-              {/* Produce Item 2 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-card border border-border rounded-2xl hover:shadow-sm transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                    <Sprout className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground">Soybean <span className="text-sm font-normal text-muted-foreground ml-2">JS 9560</span></h3>
-                    <p className="text-sm font-semibold text-foreground mt-1">2,500 Q available</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Estimated value ₹1.15Cr</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-border">
-                  <div className="flex flex-col md:items-end">
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                      ₹4,620/Q
-                      <span className="flex items-center text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded font-bold">
-                        <TrendingUp className="h-3 w-3 mr-0.5" /> 2.1%
-                      </span>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="mt-0 md:mt-3 font-semibold shadow-sm">
-                    Manage
-                  </Button>
-                </div>
-              </div>
             </div>
-          </section>
+          ))}
+        </div>
+      </section>
 
-          {/* Section 5 — Orders */}
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-foreground">Active Orders</h2>
-              <Button variant="link" size="sm" className="text-primary font-semibold pr-0">
-                View All <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
+      {/* 5. MY PRODUCE AGRICULTURAL INVENTORY STRIP (Section 11) */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sprout className="h-4 w-4 text-primary" />
+              <h2 className="text-xl font-black text-foreground tracking-tight">
+                My Harvest Produce Inventory
+              </h2>
             </div>
-
-            <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-sm transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-foreground">#FN2841 • 500 Q Wheat</h3>
-                  <p className="text-sm text-muted-foreground mt-1 font-medium">Buyer: <span className="text-foreground">ABC Foods</span></p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-foreground">₹12.1L</p>
-                  <p className="text-xs font-semibold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full inline-flex mt-1">Payment Escrowed</p>
-                </div>
-              </div>
-
-              {/* Visual Timeline */}
-              <div className="relative pt-6 pb-2">
-                <div className="absolute top-8 left-4 right-4 h-0.5 bg-muted"></div>
-                <div className="absolute top-8 left-4 w-1/3 h-0.5 bg-primary"></div>
-
-                <div className="relative flex justify-between">
-                  <div className="flex flex-col items-center">
-                    <div className="h-4 w-4 rounded-full bg-primary ring-4 ring-card z-10"></div>
-                    <span className="text-xs font-semibold text-foreground mt-3">Order Received</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="h-4 w-4 rounded-full bg-primary ring-4 ring-card z-10"></div>
-                    <span className="text-xs font-semibold text-foreground mt-3">Buyer Confirmed</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="h-4 w-4 rounded-full bg-muted border-2 border-border ring-4 ring-card z-10"></div>
-                    <span className="text-xs font-medium text-muted-foreground mt-3">Dispatch</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="h-4 w-4 rounded-full bg-muted border-2 border-border ring-4 ring-card z-10"></div>
-                    <span className="text-xs font-medium text-muted-foreground mt-3">Delivery</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-border flex justify-end">
-                <Button size="sm" variant="outline" className="font-semibold shadow-sm">
-                  Review Details
-                </Button>
-              </div>
-            </div>
-          </section>
-
+            <p className="text-xs text-muted-foreground">
+              Manage lots, track moisture assay certificates, and control marketplace availability
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/farmer/produce" className="text-xs font-bold text-primary hover:underline">
+              View All Lots ({listings.length})
+            </Link>
+            <Button asChild size="sm" className="font-bold text-xs h-8">
+              <Link href="/farmer/produce/new">
+                <Plus className="h-3.5 w-3.5 mr-1" /> List New Produce
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        {/* Side Column (Right) */}
-        <div className="xl:col-span-4 space-y-8">
-
-          {/* Farm Profile */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-primary/20 to-primary/5"></div>
-
-            <div className="relative flex flex-col items-center text-center mt-6">
-              <div className="h-20 w-20 bg-background border-4 border-card text-primary rounded-2xl flex items-center justify-center font-serif font-bold text-3xl shadow-sm mb-4">
-                {user?.name?.[0]?.toUpperCase() || 'F'}
-              </div>
-              <h3 className="text-xl font-serif font-bold text-foreground">My Farm</h3>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1.5 mt-1.5 font-medium">
-                <MapPin className="h-4 w-4" /> Indore, Madhya Pradesh
-              </p>
-
-              <div className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full text-xs font-bold mt-4 border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Verified Farmer
-              </div>
-            </div>
-
-            <div className="space-y-4 text-sm mt-8">
-              <div>
-                <div className="flex justify-between mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <span>Profile Completion</span>
-                  <span className="text-foreground">80%</span>
-                </div>
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[80%] rounded-full"></div>
-                </div>
-              </div>
-
-              <div className="flex justify-between py-2 border-b border-border/60">
-                <span className="text-muted-foreground font-medium">Current Season</span>
-                <span className="font-bold text-foreground">Kharif</span>
-              </div>
-
-              <div className="flex justify-between py-2 border-b border-border/60">
-                <span className="text-muted-foreground font-medium">Total Area</span>
-                <span className="font-bold text-foreground">12 Acres</span>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <Button className="w-full font-bold shadow-sm" variant="default">
-                Complete Profile
-              </Button>
-              <Button variant="outline" className="w-full text-muted-foreground font-semibold border-border">
-                <ImageIcon className="h-4 w-4 mr-2" /> Add Farm Photos
-              </Button>
-            </div>
+        {listings.length === 0 ? (
+          <div className="text-center p-8 border border-dashed rounded-xl bg-muted/20">
+            <Sprout className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <h3 className="font-semibold mb-1">No active listings</h3>
+            <p className="text-sm text-muted-foreground mb-4">List your produce to find verified buyers nearby.</p>
+            <Button asChild>
+              <Link href="/farmer/produce/new">List Produce</Link>
+            </Button>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {listings.map((lot) => (
+              <div
+                key={lot.id}
+                className="rounded-xl border border-border bg-card p-5 shadow-2xs hover:border-primary/40 hover:shadow-xs transition-all flex flex-col justify-between space-y-4"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                        Lot #{lot.id.slice(0, 8)}
+                      </span>
+                      <h3 className="text-xl font-black text-foreground capitalize mt-0.5">
+                        {lot.crop_id}
+                      </h3>
+                    </div>
+                    <StatusBadge status={lot.status} size="sm" />
+                  </div>
 
-          {/* Section 7 — Sales / Earnings */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground mb-6">Financials</h2>
+                  {/* Agricultural Specs Grid */}
+                  <div className="grid grid-cols-2 gap-2 bg-muted/20 border border-border/60 rounded-lg p-3 text-xs mb-3">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Available Qty</span>
+                      <span className="font-black text-foreground text-sm">{lot.quantity} Quintals</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Asking Rate</span>
+                      <span className="font-black text-primary text-sm">₹{lot.expected_price.toLocaleString("en-IN")}/Q</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Quality Grade</span>
+                      <span className="font-bold text-foreground">{lot.quality_grade || "Grade A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Moisture Assay</span>
+                      <span className="font-bold text-foreground">{lot.moisture_percent || 11.2}%</span>
+                    </div>
+                  </div>
 
-            <div className="mb-6">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Sales this season</p>
-              <p className="text-3xl font-serif font-bold text-foreground">₹2.4L</p>
-            </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin className="h-3 w-3 text-primary shrink-0" />
+                      {lot.location.split(",")[0]}
+                    </span>
+                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
+                      4 Interested Buyers
+                    </span>
+                  </div>
+                </div>
 
-            <div className="flex justify-between gap-4 mb-6">
-              <div className="flex-1 p-3 bg-muted/50 rounded-xl">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">Received</p>
-                <p className="text-lg font-bold text-foreground">₹1.98L</p>
+                <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                  <Button asChild variant="outline" size="sm" className="text-xs h-8 font-bold">
+                    <Link href={`/farmer/produce/new?edit=${lot.id}`}>
+                      Edit Lot
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
+                    <Link href={`/marketplace?crop=${lot.crop_id}`}>
+                      Find Buyers
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
-              <div className="flex-1 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-100 dark:border-amber-900/50">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Pending</p>
-                <p className="text-lg font-bold text-amber-700 dark:text-amber-400">₹42K</p>
-              </div>
-            </div>
-
-            <div className="h-32 mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockSalesData}>
-                  <Tooltip
-                    cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 'bold' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="var(--primary)"
-                    strokeWidth={3}
-                    dot={{r: 4, fill: 'var(--card)', strokeWidth: 2}}
-                    activeDot={{r: 6, fill: 'var(--primary)'}}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-center text-muted-foreground font-medium mt-2">Revenue Trend (May - Aug)</p>
+            ))}
           </div>
+        )}
+      </section>
 
-          {/* Section 3 — Farm Conditions */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Conditions</p>
-              <div className="flex items-center gap-3">
-                <Sun className="h-10 w-10 text-amber-500" />
-                <div>
-                  <p className="text-2xl font-serif font-bold text-foreground">28°C</p>
-                  <p className="text-sm font-medium text-muted-foreground">Mostly clear</p>
-                </div>
-              </div>
-              <p className="text-xs font-medium text-primary mt-3 bg-primary/10 px-2 py-1 rounded inline-block">
-                Good conditions for harvesting
-              </p>
-            </div>
-            <div className="text-right flex flex-col justify-between h-full">
-              <div className="flex items-center text-xs font-bold text-blue-500 gap-1 bg-blue-50 dark:bg-blue-950/30 px-2 py-1 rounded">
-                <CloudRain className="h-3.5 w-3.5" /> 12% Rain
-              </div>
-            </div>
+      {/* 6. FARMER ACTIVITY TIMELINE (Section 12) */}
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-black text-foreground">
+              Recent Farm Activity & Mandi Updates
+            </h2>
           </div>
-
-          {/* Section 6 — Market Intelligence */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-foreground">Market Prices</h2>
-              <Button variant="link" size="sm" className="text-muted-foreground font-semibold pr-0 hover:text-primary">
-                View All
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-foreground">Wheat</p>
-                  <p className="text-xs text-muted-foreground">Mandi: Indore</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">₹2,420/Q</p>
-                  <p className="text-xs font-bold text-emerald-600 flex items-center justify-end"><TrendingUp className="h-3 w-3 mr-0.5" /> 4.2%</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-foreground">Soybean</p>
-                  <p className="text-xs text-muted-foreground">Mandi: Dewas</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">₹4,620/Q</p>
-                  <p className="text-xs font-bold text-emerald-600 flex items-center justify-end"><TrendingUp className="h-3 w-3 mr-0.5" /> 2.1%</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-foreground">Onion</p>
-                  <p className="text-xs text-muted-foreground">Mandi: Ujjain</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">₹1,840/Q</p>
-                  <p className="text-xs font-bold text-rose-600 flex items-center justify-end"><TrendingDown className="h-3 w-3 mr-0.5" /> 1.3%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <Link href="/notifications" className="text-xs font-bold text-primary hover:underline">
+            View All Updates
+          </Link>
         </div>
-      </div>
+
+        <div className="space-y-3">
+          {(notifications.length > 0 ? notifications.slice(0, 3) : [
+            {
+              id: "n-1",
+              title: "ABC Foods submitted formal trade proposal",
+              description: "Offered ₹4,800/Q for 60Q Grade A Soybean with farm-gate logistics included.",
+              createdAt: new Date().toISOString(),
+              href: "/deals"
+            },
+            {
+              id: "n-2",
+              title: "Soybean lot #SOY-82 received 3 new processor matches",
+              description: "Buyers in Dewas industrial belt opened purchase tenders matching your moisture assay.",
+              createdAt: new Date(Date.now() - 86400000).toISOString(),
+              href: "/marketplace"
+            },
+            {
+              id: "n-3",
+              title: "Consignment pickup completed & verified",
+              description: "Electronic weighbridge tare and gross receipt verified at plant gate.",
+              createdAt: new Date(Date.now() - 172800000).toISOString(),
+              href: "/deals"
+            }
+          ]).map((item, idx) => (
+            <div key={item.id || idx} className="flex items-start gap-3 text-xs p-3 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors">
+              <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-bold text-foreground">{item.title}</p>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {idx === 0 ? "Today" : idx === 1 ? "Yesterday" : "2 days ago"}
+                  </span>
+                </div>
+                <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
     </div>
   );
 }
+

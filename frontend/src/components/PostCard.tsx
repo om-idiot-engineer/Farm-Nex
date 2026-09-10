@@ -154,31 +154,72 @@ export default function PostCard({ post, currentUserId, onReact, onReply }: Post
         {/* Post Content */}
         <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">{post.content}</p>
 
-        {/* Structured Spec Pill / Callout if available */}
-        {(post.quantitySpec || post.targetPrice || post.actionText) && (
-          <div className="bg-muted/30 border border-border p-3.5 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3 flex-wrap">
-              {post.quantitySpec && (
-                <span className="bg-card border border-border px-2.5 py-1 rounded font-bold text-foreground">
-                  {post.quantitySpec}
-                </span>
-              )}
-              {post.targetPrice && (
-                <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded font-bold">
-                  Target Price: {post.targetPrice}
-                </span>
-              )}
-            </div>
-            {post.actionHref && post.actionText && (
+        {/* Post Media Carousel */}
+        {post.images && post.images.length > 0 && (
+          <div className="relative mt-3 rounded-lg overflow-hidden border border-border bg-muted/20 flex gap-2 overflow-x-auto snap-x py-2 px-2 hide-scrollbar">
+            {post.images.map((img: string, idx: number) => (
+              <img 
+                key={idx} 
+                src={img} 
+                alt={`Media ${idx}`} 
+                className="h-48 w-auto object-cover rounded-md snap-center shrink-0 border border-border shadow-sm"
+              />
+            ))}
+          </div>
+        )}
+
+
+        {/* Structured Spec Pill / Callout with Commerce Action */}
+        <div className="bg-muted/30 border border-border p-3.5 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            {post.quantitySpec ? (
+              <span className="bg-card border border-border px-2.5 py-1 rounded font-bold text-foreground">
+                {post.quantitySpec}
+              </span>
+            ) : (
+              <span className="bg-card border border-border px-2.5 py-1 rounded font-semibold text-muted-foreground">
+                Agricultural Post
+              </span>
+            )}
+            {post.targetPrice && (
+              <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded font-bold">
+                Benchmark: {post.targetPrice}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {post.actionHref && post.actionText ? (
               <Button size="sm" variant="outline" asChild className="h-7 text-xs font-bold">
                 <Link href={post.actionHref}>
                   {post.actionText}
                   <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
               </Button>
+            ) : post.topic === "procurement" ? (
+              <Button size="sm" variant="outline" asChild className="h-7 text-xs font-bold">
+                <Link href="/marketplace?mode=demand">
+                  View Demand RFQ
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
+              </Button>
+            ) : post.topic === "harvest" ? (
+              <Button size="sm" variant="outline" asChild className="h-7 text-xs font-bold">
+                <Link href="/marketplace?mode=supply">
+                  Inspect Harvest Lot
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" asChild className="h-7 text-xs font-bold text-primary">
+                <Link href={`/messages?recipientId=${post.user_id}`}>
+                  Message
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
+              </Button>
             )}
           </div>
-        )}
+        </div>
 
         {/* Post Actions Toolbar */}
         <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">

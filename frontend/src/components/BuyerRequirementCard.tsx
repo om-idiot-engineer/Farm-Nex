@@ -20,7 +20,7 @@ export default function BuyerRequirementCard({ demand, showActions = true }: Buy
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded border bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-              {demand.commodity}
+              {demand.crop_id}
             </span>
             <span className="text-xs font-bold text-muted-foreground">{demand.quality_grade}</span>
           </div>

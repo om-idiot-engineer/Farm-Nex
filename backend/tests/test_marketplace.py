@@ -30,7 +30,7 @@ def test_farmer_create_crop_listing_success():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": 100.0,
             "quality_grade": "Grade A",
             "harvest_date": harvest_date_str,
@@ -42,7 +42,7 @@ def test_farmer_create_crop_listing_success():
     )
     assert res.status_code == 201
     data = res.json()
-    assert data["commodity"] == "soybean"
+    assert data["crop_id"] == "c0000000-0000-0000-0000-000000000001"
     assert data["quantity"] == 100.0
     assert data["expected_price"] == 4800.0
     assert data["status"] == "listed"
@@ -65,7 +65,7 @@ def test_crop_listing_validation():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": -5.0,
             "quality_grade": "Grade A",
             "harvest_date": date.today().isoformat(),
@@ -82,7 +82,7 @@ def test_crop_listing_validation():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "wheat",
+            "crop_id": "c0000000-0000-0000-0000-000000000002",
             "quantity": 50.0,
             "quality_grade": "Grade A",
             "harvest_date": date.today().isoformat(),
@@ -102,7 +102,7 @@ def test_buyer_create_demand_post_success():
         "/api/v1/marketplace/demands",
         headers={"Authorization": f"Bearer {buyer_token}"},
         json={
-            "commodity": "cotton",
+            "crop_id": "c0000000-0000-0000-0000-000000000003",
             "quantity_needed": 120.0,
             "quality_grade": "Grade A",
             "offered_price": 6800.0,
@@ -113,7 +113,7 @@ def test_buyer_create_demand_post_success():
     )
     assert res.status_code == 201
     data = res.json()
-    assert data["commodity"] == "cotton"
+    assert data["crop_id"] == "c0000000-0000-0000-0000-000000000003"
     assert data["quantity_needed"] == 120.0
     assert data["offered_price"] == 6800.0
 
@@ -134,7 +134,7 @@ def test_role_enforcement_on_marketplace():
         "/api/v1/marketplace/demands",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity_needed": 50.0,
             "quality_grade": "Grade A",
             "offered_price": 5000.0,
@@ -150,7 +150,7 @@ def test_role_enforcement_on_marketplace():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {buyer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": 50.0,
             "quality_grade": "Grade A",
             "harvest_date": date.today().isoformat(),
@@ -161,3 +161,22 @@ def test_role_enforcement_on_marketplace():
         },
     )
     assert res2.status_code == 403
+
+
+def test_list_all_listings_and_demands():
+    res_listings = client.get("/api/v1/marketplace/listings")
+    assert res_listings.status_code == 200
+    assert isinstance(res_listings.json(), list)
+
+    res_demands = client.get("/api/v1/marketplace/demands")
+    assert res_demands.status_code == 200
+    assert isinstance(res_demands.json(), list)
+
+    # Test filtering by crop_id
+    crop_id = "c0000000-0000-0000-0000-000000000001"
+    res_filtered_listings = client.get(f"/api/v1/marketplace/listings?crop_id={crop_id}")
+    assert res_filtered_listings.status_code == 200
+
+    res_filtered_demands = client.get(f"/api/v1/marketplace/demands?crop_id={crop_id}")
+    assert res_filtered_demands.status_code == 200
+

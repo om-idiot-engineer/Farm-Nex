@@ -8,7 +8,6 @@ from app.core.security import get_current_user, require_role
 from app.models.schemas import (
     UserOut,
     UserRole,
-    Commodity,
     CropListingStatus,
     CropListingCreate,
     CropListingOut,
@@ -53,7 +52,7 @@ async def create_crop_listing(
         "id": listing_id,
         "farmer_id": current_user.id,
         "farmer_name": current_user.name,
-        "commodity": payload.commodity.value,
+        "crop_id": payload.crop_id,
         "quantity": float(payload.quantity),
         "quality_grade": payload.quality_grade.value,
         "harvest_date": payload.harvest_date,
@@ -72,7 +71,7 @@ async def create_crop_listing(
         id=new_listing["id"],
         farmer_id=new_listing["farmer_id"],
         farmer_name=new_listing["farmer_name"],
-        commodity=Commodity(new_listing["commodity"]),
+        crop_id=new_listing["crop_id"],
         quantity=new_listing["quantity"],
         quality_grade=new_listing["quality_grade"],
         harvest_date=new_listing["harvest_date"],
@@ -88,7 +87,7 @@ async def create_crop_listing(
 
 @router.get("/listings", response_model=List[CropListingOut])
 async def list_all_crop_listings(
-    commodity: Optional[Commodity] = Query(
+    crop_id: Optional[str] = Query(
         None, description="Filter by crop commodity"
     ),
     status: Optional[CropListingStatus] = Query(None, description="Filter by status"),
@@ -98,7 +97,7 @@ async def list_all_crop_listings(
     """
     results: List[CropListingOut] = []
     for item in db.crop_listings.values():
-        if commodity and item["commodity"] != commodity.value:
+        if crop_id and item["crop_id"] != crop_id:
             continue
         if status and item["status"] != status.value:
             continue
@@ -109,7 +108,7 @@ async def list_all_crop_listings(
                 farmer_id=item["farmer_id"],
                 farmer_name=item.get("farmer_name")
                 or db.users.get(item["farmer_id"], {}).get("name", "Farmer"),
-                commodity=Commodity(item["commodity"]),
+                crop_id=item["crop_id"],
                 quantity=item["quantity"],
                 quality_grade=item["quality_grade"],
                 harvest_date=item["harvest_date"],
@@ -140,7 +139,7 @@ async def get_my_crop_listings(
             id=item["id"],
             farmer_id=item["farmer_id"],
             farmer_name=current_user.name,
-            commodity=Commodity(item["commodity"]),
+            crop_id=item["crop_id"],
             quantity=item["quantity"],
             quality_grade=item["quality_grade"],
             harvest_date=item["harvest_date"],
@@ -222,7 +221,7 @@ async def create_demand_post(
         "buyer_id": current_user.id,
         "buyer_name": current_user.name,
         "business_name": business_name or current_user.name,
-        "commodity": payload.commodity.value,
+        "crop_id": payload.crop_id,
         "quantity_needed": float(payload.quantity_needed),
         "quality_grade": payload.quality_grade.value,
         "offered_price": float(payload.offered_price),
@@ -239,7 +238,7 @@ async def create_demand_post(
         buyer_id=new_demand["buyer_id"],
         buyer_name=new_demand["buyer_name"],
         business_name=new_demand["business_name"],
-        commodity=Commodity(new_demand["commodity"]),
+        crop_id=new_demand["crop_id"],
         quantity_needed=new_demand["quantity_needed"],
         quality_grade=new_demand["quality_grade"],
         offered_price=new_demand["offered_price"],
@@ -252,14 +251,14 @@ async def create_demand_post(
 
 @router.get("/demands", response_model=List[DemandPostOut])
 async def list_all_demands(
-    commodity: Optional[Commodity] = Query(None, description="Filter by crop commodity")
+    crop_id: Optional[str] = Query(None, description="Filter by crop commodity")
 ):
     """
     Returns all active buyer demand posts.
     """
     results: List[DemandPostOut] = []
     for item in db.demand_posts.values():
-        if commodity and item["commodity"] != commodity.value:
+        if crop_id and item["crop_id"] != crop_id:
             continue
 
         results.append(
@@ -270,7 +269,7 @@ async def list_all_demands(
                 or db.users.get(item["buyer_id"], {}).get("name", "Buyer"),
                 business_name=item.get("business_name")
                 or db.buyer_profiles.get(item["buyer_id"], {}).get("business_name"),
-                commodity=Commodity(item["commodity"]),
+                crop_id=item["crop_id"],
                 quantity_needed=item["quantity_needed"],
                 quality_grade=item["quality_grade"],
                 offered_price=item["offered_price"],
@@ -302,7 +301,7 @@ async def get_my_demands(
                 if current_user.buyer_profile
                 else current_user.name
             ),
-            commodity=Commodity(item["commodity"]),
+            crop_id=item["crop_id"],
             quantity_needed=item["quantity_needed"],
             quality_grade=item["quality_grade"],
             offered_price=item["offered_price"],

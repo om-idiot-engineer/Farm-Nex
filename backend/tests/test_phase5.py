@@ -21,7 +21,7 @@ def test_trade_agreement_lifecycle_and_status_advancement():
         "/api/v1/marketplace/listings",
         headers={"Authorization": f"Bearer {farmer_token}"},
         json={
-            "commodity": "soybean",
+            "crop_id": "c0000000-0000-0000-0000-000000000001",
             "quantity": 100.0,
             "quality_grade": "Grade A",
             "harvest_date": (date.today() + timedelta(days=5)).isoformat(),

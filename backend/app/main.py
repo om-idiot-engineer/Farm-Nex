@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.api import auth, marketplace, matching, intelligence, community, admin
+from app.api import auth, marketplace, matching, intelligence, community, admin, reliability, heatmap, agreements_expanded
 
 app = FastAPI(
     title=f"{settings.APP_NAME} API",

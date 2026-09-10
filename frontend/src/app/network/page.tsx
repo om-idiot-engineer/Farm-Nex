@@ -29,14 +29,14 @@ import {
   MapPin,
   ArrowRight,
   Filter,
-  CheckCircle2,
+  CheckCircle2, Truck,
   Building2,
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 
-type FeedFilter = "all" | "harvest" | "procurement" | "market" | "question" | "expert" | "machinery";
+type FeedFilter = "all" | "market" | "demand" | "supply" | "farm update" | "question" | "knowledge" | "machinery" | "logistics" | "success story";
 
 export default function NetworkFeedPage() {
   const { t } = useTranslation();
@@ -72,6 +72,7 @@ export default function NetworkFeedPage() {
 
   useEffect(() => {
     loadPosts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter]);
 
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -197,13 +198,16 @@ export default function NetworkFeedPage() {
               Feed Channels
             </p>
             {[
-              { id: "all", label: t("network.forYou", "For You (All)"), icon: UsersRound },
-              { id: "harvest", label: t("tagHarvest", "Harvest Updates"), icon: Sparkles },
-              { id: "procurement", label: t("marketplace.buyerDemands", "Buyer Requirements"), icon: TrendingUp },
-              { id: "market", label: t("tagMarket", "Market Trends"), icon: TrendingUp },
-              { id: "expert", label: t("tagExpert", "Verified Advisories"), icon: ShieldCheck },
-              { id: "question", label: t("tagQuestion", "Agronomy Q&A"), icon: HelpCircle },
-              { id: "machinery", label: t("tagMachinery", "Machinery & Rentals"), icon: Wrench },
+              { id: "all", label: "For You (All)", icon: UsersRound },
+              { id: "market", label: "Market", icon: TrendingUp },
+              { id: "demand", label: "Demand", icon: Building2 },
+              { id: "supply", label: "Supply", icon: Sparkles },
+              { id: "farm update", label: "Farm Update", icon: UsersRound },
+              { id: "question", label: "Question", icon: HelpCircle },
+              { id: "knowledge", label: "Knowledge", icon: ShieldCheck },
+              { id: "machinery", label: "Machinery", icon: Wrench },
+              { id: "logistics", label: "Logistics", icon: Truck },
+              { id: "success story", label: "Success Story", icon: CheckCircle2 },
             ].map((f) => {
               const Icon = f.icon;
               const isActive = activeFilter === f.id;

@@ -1,355 +1,518 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  MapPin,
-  PackageSearch,
+import { useSearchParams } from "next/navigation";
+import { 
+  Filter, 
+  Search, 
+  Sprout, 
+  Building2, 
+  MapPin, 
+  CheckCircle2, 
+  ShieldCheck, 
+  ArrowRight, 
+  SlidersHorizontal, 
+  Check, 
+  Calendar, 
+  Layers, 
+  Scale, 
+  DollarSign, 
+  Clock, 
   Plus,
-  Scale,
-  ShieldCheck,
-  Sprout,
-  Filter,
-  SlidersHorizontal,
-  Search,
-  Handshake,
-  Truck,
-  DollarSign,
-  TrendingUp,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import type { CropListing, DemandPost } from "@/lib/api";
 import { useUser } from "@/lib/auth/UserContext";
-import {
-  getDemandPosts,
-  getMarketplaceListings,
-  getAgreements,
-  type DataSource,
-} from "@/lib/services/domain";
-import type { ExtendedTradeAgreement } from "@/lib/data/demo";
-import CropLotCard from "@/components/CropLotCard";
-import BuyerRequirementCard from "@/components/BuyerRequirementCard";
+import { getDemandPosts, getMarketplaceListings } from "@/lib/services/domain";
 import StatusBadge from "@/components/StatusBadge";
-import DemoNotice from "@/components/DemoNotice";
+import TrustBadge from "@/components/TrustBadge";
 import EmptyState from "@/components/EmptyState";
-import ErrorState from "@/components/ErrorState";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
 
-type MarketplaceView = "buy" | "sell" | "requirements" | "deals";
+type MarketplaceView = "supply" | "demand";
 
-export default function MarketplacePage() {
+function MarketplaceContent() {
   const { user } = useUser();
-  const [view, setView] = useState<MarketplaceView>("buy");
-  const [commodity, setCommodity] = useState<string>("all");
-  const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const searchParams = useSearchParams();
+  const initialView = (searchParams.get("view") as MarketplaceView) || "supply";
+  const initialCrop = searchParams.get("crop") || "all";
+
+  const [view, setView] = useState<MarketplaceView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCrop, setSelectedCrop] = useState<string>(initialCrop);
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [onlyVerified, setOnlyVerified] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+
   const [listings, setListings] = useState<CropListing[]>([]);
   const [demands, setDemands] = useState<DemandPost[]>([]);
-  const [agreements, setAgreements] = useState<ExtendedTradeAgreement[]>([]);
-  const [source, setSource] = useState<DataSource>("api");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const loadMarketplace = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const selectedCommodity = commodity === "all" ? undefined : commodity;
-      const [supplyResult, demandResult, agreementsResult] = await Promise.all([
-        getMarketplaceListings(selectedCommodity),
-        getDemandPosts(selectedCommodity),
-        getAgreements(),
-      ]);
-      setListings(supplyResult.data);
-      setDemands(demandResult.data);
-      setAgreements(agreementsResult.data);
-      setSource(supplyResult.source === "demo" || demandResult.source === "demo" ? "demo" : "api");
-    } catch (err: any) {
-      setError(err.message || "We could not load marketplace records.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    loadMarketplace();
-  }, [commodity]);
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [listingsRes, demandsRes] = await Promise.all([
+          getMarketplaceListings(),
+          getDemandPosts()
+        ]);
+        setListings(listingsRes.data || []);
+        setDemands(demandsRes.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
+  // Filter listings
   const filteredListings = listings.filter((l) => {
-    if (gradeFilter !== "all" && l.quality_grade !== gradeFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        l.commodity.toLowerCase().includes(q) ||
-        l.location.toLowerCase().includes(q) ||
-        (l.farmer_name && l.farmer_name.toLowerCase().includes(q))
-      );
-    }
-    return true;
+    const matchesSearch = 
+      l.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      l.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCrop = selectedCrop === "all" || l.crop_id.toLowerCase() === selectedCrop.toLowerCase();
+    const matchesLoc = selectedLocation === "all" || l.location.toLowerCase().includes(selectedLocation.toLowerCase());
+    return matchesSearch && matchesCrop && matchesLoc;
   });
 
+  // Filter demands
   const filteredDemands = demands.filter((d) => {
-    if (gradeFilter !== "all" && d.quality_grade !== gradeFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        d.commodity.toLowerCase().includes(q) ||
-        d.location.toLowerCase().includes(q) ||
-        (d.business_name && d.business_name.toLowerCase().includes(q))
-      );
-    }
-    return true;
+    const matchesSearch = 
+      d.crop_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      d.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCrop = selectedCrop === "all" || d.crop_id.toLowerCase() === selectedCrop.toLowerCase();
+    const matchesLoc = selectedLocation === "all" || d.location.toLowerCase().includes(selectedLocation.toLowerCase());
+    return matchesSearch && matchesCrop && matchesLoc;
   });
 
-  const actionHref =
-    user?.role === "buyer"
-      ? "/buyer/procurement"
-      : user?.role === "farmer"
-      ? "/farmer/produce/new"
-      : user?.role === "fpo"
-      ? "/fpo/supply"
-      : "/";
-  const actionLabel =
-    user?.role === "buyer"
-      ? "+ Publish RFQ"
-      : user?.role === "farmer"
-      ? "+ List Produce"
-      : user?.role === "fpo"
-      ? "+ Pool Supply"
-      : "Sign In to Trade";
+  const totalAvailableQty = listings.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const totalDemandQty = demands.reduce((sum, item) => sum + (item.quantity_needed || (item as any).quantity || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto py-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-5">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      
+      {/* 1. TRADING FLOOR HEADER & AGGREGATE STRIP */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
               <Sprout className="h-3.5 w-3.5" />
             </span>
             <span className="text-xs font-black uppercase tracking-wider text-primary">
-              Unified Agricultural Commerce Exchange
+              FarmNex Agricultural Trading Network
             </span>
           </div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Agricultural Marketplace</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Discover verified supply, broadcast procurement requirements, and trade with transparent net realization.
+          <h1 className="text-3xl font-black text-foreground tracking-tight">
+            Live Agricultural Marketplace
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Transparent farm-gate supply and aggregated processor demand with zero broker deductions.
           </p>
         </div>
 
-        <Button asChild className="font-bold shrink-0 shadow-sm">
-          <Link href={actionHref}>
-            {actionLabel}
-          </Link>
-        </Button>
+        {/* Aggregated Market Liquidity Metrics */}
+        <div className="flex items-center gap-4 text-xs bg-muted/20 border border-border/80 p-3 rounded-xl shrink-0">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Active Harvest Supply</span>
+            <span className="font-black text-sm text-foreground tabular-nums">
+              {totalAvailableQty.toLocaleString("en-IN")} Quintals
+            </span>
+          </div>
+          <div className="h-7 w-px bg-border" />
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Processor Sourcing Demand</span>
+            <span className="font-black text-sm text-primary tabular-nums">
+              {totalDemandQty.toLocaleString("en-IN")} Quintals
+            </span>
+          </div>
+        </div>
       </div>
 
-      {source === "demo" && (
-        <DemoNotice>
-          Marketplace exchange lots and buyer demands are authenticated development records for Central India mandis.
-        </DemoNotice>
-      )}
+      {/* 2. DUAL MODE TOGGLE (SUPPLY vs DEMAND - Section 17) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex p-1.5 rounded-xl bg-muted/40 border border-border w-full sm:w-fit">
+          <button
+            type="button"
+            onClick={() => setView("supply")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+              view === "supply"
+                ? "bg-card text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Sprout className={`h-4 w-4 ${view === "supply" ? "text-primary" : ""}`} />
+            <span>SUPPLY · AVAILABLE HARVEST ({listings.length})</span>
+          </button>
 
-      {error && <ErrorState message={error} onRetry={loadMarketplace} />}
-
-      {/* TOP-LEVEL TABS (Section 9: BUY, SELL, REQUIREMENTS, DEALS) */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 border-b border-border pb-4">
-        {/* 4 Mental Model Tabs */}
-        <div className="inline-flex rounded-xl border border-border bg-card p-1 shrink-0">
           <button
             type="button"
-            onClick={() => setView("buy")}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-              view === "buy"
-                ? "bg-primary text-primary-foreground shadow-xs"
+            onClick={() => setView("demand")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+              view === "demand"
+                ? "bg-card text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            BUY (Find Produce)
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("sell")}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-              view === "sell"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            SELL (Find Buyers)
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("requirements")}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-              view === "requirements"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            REQUIREMENTS (RFQs)
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("deals")}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-              view === "deals"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            DEALS (Trades)
+            <Building2 className={`h-4 w-4 ${view === "demand" ? "text-primary" : ""}`} />
+            <span>DEMAND · BUYER RFQS ({demands.length})</span>
           </button>
         </div>
 
-        {/* Filters & Search */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search input */}
-          <div className="relative min-w-[200px] flex-1 sm:flex-none">
-            <Search className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+        {/* View Layout Mode (Cards vs Table) */}
+        <div className="flex items-center gap-1.5 self-end sm:self-center">
+          <button
+            type="button"
+            onClick={() => setViewMode("cards")}
+            className={`p-2 rounded-lg border text-xs font-bold transition-colors ${
+              viewMode === "cards" 
+                ? "bg-card text-primary border-primary/40 shadow-2xs" 
+                : "bg-muted/20 text-muted-foreground border-border hover:text-foreground"
+            }`}
+            title="Card View"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`p-2 rounded-lg border text-xs font-bold transition-colors ${
+              viewMode === "table" 
+                ? "bg-card text-primary border-primary/40 shadow-2xs" 
+                : "bg-muted/20 text-muted-foreground border-border hover:text-foreground"
+            }`}
+            title="Table View"
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 3. MULTI-DIMENSIONAL FILTER BAR (Section 17) */}
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+          
+          {/* Text Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by crop, town, producer..."
-              className="pl-8 pr-3 py-1.5 text-xs border border-input rounded-md bg-card outline-none focus:border-primary w-full"
+              placeholder={view === "supply" ? "Search crops, farmer names, tehsils..." : "Search procurement RFQs, buyer entities, destination plants..."}
+              className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
-          {/* Commodity chips */}
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {[
-              { id: "all", label: "All Crops" },
-              { id: "soybean", label: "Soybean" },
-              { id: "wheat", label: "Wheat" },
-              { id: "cotton", label: "Cotton" },
-            ].map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCommodity(c.id)}
-                className={`px-2.5 py-1.5 text-xs font-bold rounded-md border transition-colors ${
-                  commodity === c.id
-                    ? "bg-primary/10 border-primary text-primary"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedCrop}
+              onChange={(e) => setSelectedCrop(e.target.value)}
+              className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="all">All Crops</option>
+              <option value="soybean">Soybean (Yellow)</option>
+              <option value="wheat">Wheat (Sharbati)</option>
+              <option value="cotton">Cotton (Medium Staple)</option>
+            </select>
 
-          {/* Grade filter */}
-          <select
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-input rounded-md bg-card outline-none font-medium"
-          >
-            <option value="all">All Grades</option>
-            <option value="Grade A">Grade A</option>
-            <option value="Grade B">Grade B</option>
-          </select>
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="all">All Locations (Malwa)</option>
+              <option value="indore">Indore Region</option>
+              <option value="dewas">Dewas Industrial</option>
+              <option value="ujjain">Ujjain Region</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setOnlyVerified(!onlyVerified)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors border ${
+                onlyVerified 
+                  ? "bg-emerald-50 text-emerald-900 border-emerald-300" 
+                  : "bg-background text-muted-foreground border-border hover:text-foreground"
+              }`}
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
+              <span>Verified Only</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Content Display based on View Tab */}
+      {/* 4. MAIN CONTENT (SUPPLY VS DEMAND) */}
       {loading ? (
         <LoadingSkeleton variant="card" rows={6} />
-      ) : view === "buy" ? (
-        filteredListings.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Showing <strong>{filteredListings.length}</strong> available lots for direct purchase</span>
-              <span>All prices listed as farm-gate asking rates</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredListings.map((listing) => (
-                <CropLotCard
-                  key={listing.id}
-                  listing={listing}
-                  buyerMatchCount={listing.commodity === "soybean" ? 3 : 1}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
+      ) : view === "supply" ? (
+        filteredListings.length === 0 ? (
           <EmptyState
-            title="No produce lots match your filters"
-            description="Try changing crop or grade filters, or list your own lot to reach active buyers."
-            action="List Produce Lot"
-            href={actionHref}
-            icon={PackageSearch}
+            title="No harvest lots match your criteria"
+            description="Try loosening your filters or clear your search term to see all available farm lots."
+            action="Clear Filters"
+            href="/marketplace?view=supply"
+            icon={Sprout}
           />
-        )
-      ) : view === "sell" || view === "requirements" ? (
-        filteredDemands.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Showing <strong>{filteredDemands.length}</strong> active buyer demands & tenders</span>
-              <span>Broadcasted by certified processing mills & institutional buyers</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredDemands.map((demand) => (
-                <BuyerRequirementCard key={demand.id} demand={demand} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            title="No buyer requirements found"
-            description="Try broadening your crop selection or post a new procurement tender."
-            action="Post Procurement Demand"
-            href="/buyer/procurement"
-            icon={Building2}
-          />
-        )
-      ) : (
-        /* DEALS VIEW TAB */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Showing <strong>{agreements.length}</strong> active trading contracts & escrow settlements</span>
-            <span>100% digitally secured with weighbridge telemetry</span>
-          </div>
-
-          <div className="divide-y divide-border border border-border rounded-xl bg-card overflow-hidden">
-            {agreements.map((deal) => (
-              <div key={deal.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-base text-foreground">
-                      {deal.quantity}Q {deal.commodity}
-                    </span>
-                    <StatusBadge status={deal.status} />
+        ) : viewMode === "cards" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredListings.map((lot) => (
+              <div 
+                key={lot.id}
+                className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xl">🌾</span>
+                        <h3 className="text-lg font-black capitalize text-foreground">{lot.crop_id}</h3>
+                        <TrustBadge type="producer" size="sm" />
+                      </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>{lot.location.split(",")[0]} · Farm Gate</span>
+                      </p>
+                    </div>
+                    <StatusBadge status={lot.status} size="sm" />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Seller: <strong className="text-foreground">{deal.farmer_name || "Shiv Shakti Farmers"}</strong> → Buyer: <strong className="text-foreground">{deal.buyer_name}</strong>
-                  </p>
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                    <Truck className="h-3.5 w-3.5 text-primary" />
-                    Delivery: {deal.destination || "Indore Processing Facility"} · Pickup date: {deal.delivery_date}
-                  </p>
+
+                  {/* Agricultural Specs Box */}
+                  <div className="my-3.5 grid grid-cols-2 gap-2 bg-muted/20 border border-border/60 rounded-xl p-3 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Available Qty</span>
+                      <span className="font-black text-foreground text-sm">{lot.quantity} Quintals</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Farm Gate Asking</span>
+                      <span className="font-black text-primary text-sm">₹{lot.expected_price.toLocaleString("en-IN")}/Q</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Assay Grade</span>
+                      <span className="font-bold text-foreground">{lot.quality_grade || "Grade A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Moisture Assay</span>
+                      <span className="font-bold text-foreground">{lot.moisture_percent || 10.8}%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Seller: <strong className="text-foreground font-semibold">Ramesh Patel (FPO)</strong></span>
+                    <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
+                      Immediate Pickup
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
-                  <div className="sm:text-right">
-                    <span className="text-base font-black text-emerald-800 dark:text-emerald-400">
-                      ₹{deal.earnings_breakdown?.net_farmer_earnings?.toLocaleString("en-IN") || (deal.quantity * deal.price_per_quintal).toLocaleString("en-IN")}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground block">₹{deal.price_per_quintal.toLocaleString("en-IN")}/q agreed</span>
-                  </div>
-                  <Button size="sm" variant="outline" asChild className="h-8 text-xs font-bold">
-                    <Link href={`/orders/${deal.id}`}>
-                      Deal Workspace →
+                <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                  <Button asChild variant="outline" size="sm" className="text-xs h-8 font-bold">
+                    <Link href={`/marketplace/listings/${lot.id}`}>
+                      Inspect Assay Slip
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
+                    <Link href={`/messages?recipientId=demo-farmer&makeOffer=true&crop=${lot.crop_id}&lotId=${lot.id}`}>
+                      Make Buyer Offer
                     </Link>
                   </Button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
+            <table className="w-full min-w-[50rem] text-left text-xs">
+              <thead className="bg-muted/40 text-[10px] font-black uppercase tracking-wider text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="px-4 py-3">Crop & Lot ID</th>
+                  <th className="px-4 py-3 text-right">Available Volume</th>
+                  <th className="px-4 py-3">Quality Assay</th>
+                  <th className="px-4 py-3 text-right">Farm-Gate Rate</th>
+                  <th className="px-4 py-3">Location</th>
+                  <th className="px-4 py-3 text-center">Verification</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredListings.map((lot) => (
+                  <tr key={lot.id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3.5">
+                      <span className="font-bold text-foreground capitalize block">{lot.crop_id}</span>
+                      <span className="text-[10px] text-muted-foreground">#{lot.id.slice(0, 8)}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-black text-foreground">
+                      {lot.quantity} Quintals
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground">
+                      {lot.quality_grade || "Grade A"} · {lot.moisture_percent || 10.8}% Moisture
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-black text-primary text-sm">
+                      ₹{lot.expected_price.toLocaleString("en-IN")}/Q
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground">
+                      {lot.location.split(",")[0]}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+                        <CheckCircle2 className="h-3 w-3" /> Certified
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <Button asChild size="sm" className="text-xs h-7 font-bold">
+                        <Link href={`/marketplace/listings/${lot.id}`}>View Lot</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : (
+        /* DEMAND VIEW (BUYER RFQS) */
+        filteredDemands.length === 0 ? (
+          <EmptyState
+            title="No buyer requirements found"
+            description="Currently no active procurement tenders match your selected filters."
+            action="Clear Filters"
+            href="/marketplace?view=demand"
+            icon={Building2}
+          />
+        ) : viewMode === "cards" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredDemands.map((demand) => (
+              <div 
+                key={demand.id}
+                className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xl">🏭</span>
+                        <h3 className="text-lg font-black capitalize text-foreground">{demand.crop_id}</h3>
+                        <TrustBadge type="buyer" size="sm" />
+                      </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>{demand.location.split(",")[0]} · Processing Facility</span>
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase">
+                      Active RFQ
+                    </span>
+                  </div>
+
+                  {/* Procurement Specs Box */}
+                  <div className="my-3.5 grid grid-cols-2 gap-2 bg-muted/20 border border-border/60 rounded-xl p-3 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Volume Needed</span>
+                      <span className="font-black text-foreground text-sm">{demand.quantity_needed || (demand as any).quantity || 100} Quintals</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Target Price Ceiling</span>
+                      <span className="font-black text-emerald-800 text-sm">₹{(demand.offered_price || (demand as any).target_price || 4800).toLocaleString("en-IN")}/Q</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Moisture Tolerance</span>
+                      <span className="font-bold text-foreground">&lt; 11.5% Maximum</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground block">Payment Terms</span>
+                      <span className="font-bold text-foreground">100% Escrow on Gate In</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Buyer: <strong className="text-foreground font-semibold">{demand.buyer_name || demand.business_name || "ITC Agri Division"}</strong></span>
+                    <span className="text-primary font-bold bg-primary/10 px-2 py-0.5 rounded text-[11px]">
+                      Needed within 7 days
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                  <Button asChild variant="outline" size="sm" className="text-xs h-8 font-bold">
+                    <Link href={`/marketplace/requirements/${demand.id}`}>
+                      View Full Specifications
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" className="text-xs h-8 font-bold shadow-xs">
+                    <Link href={`/messages?recipientId=demo-buyer&submitBid=true&demandId=${demand.id}`}>
+                      Submit Farm Proposal
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
+            <table className="w-full min-w-[50rem] text-left text-xs">
+              <thead className="bg-muted/40 text-[10px] font-black uppercase tracking-wider text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="px-4 py-3">Crop & RFQ</th>
+                  <th className="px-4 py-3 text-right">Required Volume</th>
+                  <th className="px-4 py-3">Quality Threshold</th>
+                  <th className="px-4 py-3 text-right">Target Buying Rate</th>
+                  <th className="px-4 py-3">Delivery Facility</th>
+                  <th className="px-4 py-3 text-center">Settlement Guarantee</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredDemands.map((demand) => (
+                  <tr key={demand.id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3.5">
+                      <span className="font-bold text-foreground capitalize block">{demand.crop_id}</span>
+                      <span className="text-[10px] text-muted-foreground">#{demand.id.slice(0, 8)}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-black text-foreground">
+                      {demand.quantity_needed || (demand as any).quantity || 100} Quintals
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground">
+                      Grade A · Moisture &lt; 11.5%
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-black text-emerald-800 text-sm">
+                      ₹{(demand.offered_price || (demand as any).target_price || 4800).toLocaleString("en-IN")}/Q
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground">
+                      {demand.location.split(",")[0]}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+                        <CheckCircle2 className="h-3 w-3" /> Escrow Backed
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <Button asChild size="sm" className="text-xs h-7 font-bold">
+                        <Link href={`/marketplace/requirements/${demand.id}`}>Submit Bid</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
+
     </div>
   );
 }
+
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton variant="card" rows={4} />}>
+      <MarketplaceContent />
+    </Suspense>
+  );
+}
+

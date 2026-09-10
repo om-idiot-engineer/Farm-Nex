@@ -6,11 +6,11 @@ client = TestClient(app)
 
 def test_price_trend_endpoint():
     res = client.get(
-        "/api/v1/intelligence/price-trend?commodity=soybean&region=Madhya%20Pradesh&timeframe=6m"
+        "/api/v1/intelligence/price-trend?crop_id=c0000000-0000-0000-0000-000000000001&region=Madhya%20Pradesh&timeframe=6m"
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["commodity"] == "soybean"
+    assert data["crop_id"] == "c0000000-0000-0000-0000-000000000001"
     assert data["region"] == "Madhya Pradesh"
     assert (
         len(data["history"]) > 50
@@ -23,11 +23,11 @@ def test_price_trend_endpoint():
 
 def test_demand_forecast_endpoint_transparency():
     res = client.get(
-        "/api/v1/intelligence/demand-forecast?commodity=soybean&region=Madhya%20Pradesh"
+        "/api/v1/intelligence/demand-forecast?crop_id=c0000000-0000-0000-0000-000000000001&region=Madhya%20Pradesh"
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["commodity"] == "soybean"
+    assert data["crop_id"] == "c0000000-0000-0000-0000-000000000001"
     assert data["forecasted_next_30d_price"] > 0
     assert data["price_direction"] in ["upward", "stable", "downward"]
     # Check transparency guarantee
@@ -39,11 +39,11 @@ def test_demand_forecast_endpoint_transparency():
 
 def test_why_price_moved_rule_based_explainer():
     res = client.get(
-        "/api/v1/intelligence/why-price-moved?commodity=wheat&region=Madhya%20Pradesh"
+        "/api/v1/intelligence/why-price-moved?crop_id=c0000000-0000-0000-0000-000000000002&region=Madhya%20Pradesh"
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["commodity"] == "wheat"
+    assert data["crop_id"] == "c0000000-0000-0000-0000-000000000002"
     assert "period_change_percentage" in data
     assert len(data["primary_factors"]) >= 2
     assert "Rule-Based Heuristic" in data["confidence_label"]

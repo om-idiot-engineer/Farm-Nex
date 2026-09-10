@@ -67,7 +67,7 @@ export interface SearchResult {
 }
 
 export interface CreateListingInput {
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity: number;
   quality_grade: string;
   moisture_percent?: number | null;
@@ -83,7 +83,7 @@ export interface CreateListingInput {
 }
 
 export interface CreateDemandInput {
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity_needed: number;
   quality_grade: string;
   moisture_max?: number | null;
@@ -267,9 +267,9 @@ export function getMarketListings(): ServiceResult<CropListing[]> {
   return demoFallback(combineListings(demoListings));
 }
 
-export async function getMarketplaceListings(commodity?: string): Promise<ServiceResult<CropListing[]>> {
-  const result = await fetchApiOrDemo(() => api.getAllCropListings(commodity), demoListings);
-  const filtered = commodity ? result.data.filter((listing) => listing.commodity === commodity) : result.data;
+export async function getMarketplaceListings(crop_id?: string): Promise<ServiceResult<CropListing[]>> {
+  const result = await fetchApiOrDemo(() => api.getAllCropListings(crop_id), demoListings);
+  const filtered = crop_id ? result.data.filter((listing) => listing.crop_id === crop_id) : result.data;
   const data = combineListings(filtered);
   if (result.source === "api" && data.length === 0 && DEMO_MODE) return demoFallback(demoListings);
   return { data, source: result.source };
@@ -290,9 +290,9 @@ export function getDemands(): ServiceResult<DemandPost[]> {
   return demoFallback(combineDemands(demoDemands));
 }
 
-export async function getDemandPosts(commodity?: string): Promise<ServiceResult<DemandPost[]>> {
-  const result = await fetchApiOrDemo(() => api.getAllDemands(commodity), demoDemands);
-  const filtered = commodity ? result.data.filter((demand) => demand.commodity === commodity) : result.data;
+export async function getDemandPosts(crop_id?: string): Promise<ServiceResult<DemandPost[]>> {
+  const result = await fetchApiOrDemo(() => api.getAllDemands(crop_id), demoDemands);
+  const filtered = crop_id ? result.data.filter((demand) => demand.crop_id === crop_id) : result.data;
   const data = combineDemands(filtered);
   if (result.source === "api" && data.length === 0 && DEMO_MODE) return demoFallback(demoDemands);
   return { data, source: result.source };
@@ -325,7 +325,7 @@ export async function createListing(input: CreateListingInput, owner: UserProfil
       id: `demo-local-lot-${Date.now()}`,
       farmer_id: owner.id,
       farmer_name: owner.name,
-      commodity: input.commodity,
+      crop_id: input.crop_id,
       quantity: input.quantity,
       quality_grade: input.quality_grade,
       moisture_percent: input.moisture_percent,
@@ -367,7 +367,7 @@ export async function createDemand(input: CreateDemandInput, owner: UserProfile)
       buyer_id: owner.id,
       buyer_name: owner.name,
       business_name: owner.buyer_profile?.business_name || owner.name,
-      commodity: input.commodity,
+      crop_id: input.crop_id,
       quantity_needed: input.quantity_needed,
       quality_grade: input.quality_grade,
       moisture_max: input.moisture_max,
@@ -395,7 +395,7 @@ export async function removeDemand(id: string): Promise<ServiceResult<boolean>> 
 }
 
 function matchesForListing(listing: CropListing): BuyerMatchOpportunity[] {
-  const demands = combineDemands(demoDemands).filter((demand) => demand.commodity === listing.commodity);
+  const demands = combineDemands(demoDemands).filter((demand) => demand.crop_id === listing.crop_id);
 
   return demands
     .map((demand): BuyerMatchOpportunity => {
@@ -420,7 +420,7 @@ function matchesForListing(listing: CropListing): BuyerMatchOpportunity[] {
         buyer_name: demand.buyer_name || "Verified buyer",
         business_name: demand.business_name || demand.buyer_name || "Verified buyer",
         buyer_verified: true,
-        commodity: listing.commodity,
+        crop_id: listing.crop_id,
         quantity_demanded: demand.quantity_needed,
         quantity_matched: quantityMatched,
         offered_price_per_quintal: demand.offered_price,
@@ -490,7 +490,7 @@ export async function acceptBuyerMatch(listingId: string, demandId: string, owne
       farmer_name: owner.name,
       buyer_id: demand.buyer_id,
       buyer_name: demand.business_name || "Agrocorp Central Processing",
-      commodity: listing.commodity,
+      crop_id: listing.crop_id,
       quantity,
       price_per_quintal: demand.offered_price,
       delivery_date: "2026-09-08",
@@ -569,7 +569,7 @@ export async function raiseDealDispute(id: string, reason: string): Promise<Serv
   const newDisputeCase: AdminDisputeCase = {
     id: `DSP-${Date.now().toString().slice(-3)}`,
     orderNumber: updated.orderNumber,
-    crop: updated.commodity,
+    crop: updated.crop_id,
     parties: `${updated.farmer_name} vs ${updated.buyer_name}`,
     reason,
     amount: updated.earnings_breakdown.gross_produce_value,
@@ -581,8 +581,8 @@ export async function raiseDealDispute(id: string, reason: string): Promise<Serv
   return demoFallback(updated);
 }
 
-function makeDemoTrend(commodity: "soybean" | "wheat" | "cotton"): PriceTrendResponse {
-  const base = commodity === "soybean" ? 5420 : commodity === "wheat" ? 2385 : 7160;
+function makeDemoTrend(crop_id: string): PriceTrendResponse {
+  const base = crop_id === "soybean" ? 5420 : crop_id === "wheat" ? 2385 : 7160;
   const history = Array.from({ length: 30 }, (_, index) => {
     const date = new Date("2026-08-05T00:00:00.000Z");
     date.setUTCDate(date.getUTCDate() + index);
@@ -593,17 +593,17 @@ function makeDemoTrend(commodity: "soybean" | "wheat" | "cotton"): PriceTrendRes
       source: DEMO_SOURCE_LABEL,
     };
   });
-  return { commodity, region: "Madhya Pradesh", history, currency: "INR", unit: "per quintal", data_source: DEMO_SOURCE_LABEL, last_updated: "2026-09-04T06:00:00.000Z" };
+  return { crop_id, region: "Madhya Pradesh", history, currency: "INR", unit: "per quintal", data_source: DEMO_SOURCE_LABEL, last_updated: "2026-09-04T06:00:00.000Z" };
 }
 
-export async function getMarketTrend(commodity: "soybean" | "wheat" | "cotton", timeframe = "6m"): Promise<ServiceResult<PriceTrendResponse>> {
-  return fetchApiOrDemo(() => api.getPriceTrend(commodity, "Madhya Pradesh", timeframe), makeDemoTrend(commodity));
+export async function getMarketTrend(crop_id: string, timeframe = "6m"): Promise<ServiceResult<PriceTrendResponse>> {
+  return fetchApiOrDemo(() => api.getPriceTrend(crop_id, "Madhya Pradesh", timeframe), makeDemoTrend(crop_id));
 }
 
-export async function getMarketForecast(commodity: "soybean" | "wheat" | "cotton"): Promise<ServiceResult<DemandForecastResponse>> {
-  const base = commodity === "soybean" ? 5420 : commodity === "wheat" ? 2385 : 7160;
+export async function getMarketForecast(crop_id: string): Promise<ServiceResult<DemandForecastResponse>> {
+  const base = crop_id === "soybean" ? 5420 : crop_id === "wheat" ? 2385 : 7160;
   const fallback: DemandForecastResponse = {
-    commodity,
+    crop_id,
     region: "Madhya Pradesh",
     historical_avg_price: base - 45,
     forecasted_next_30d_price: base + 85,
@@ -613,15 +613,15 @@ export async function getMarketForecast(commodity: "soybean" | "wheat" | "cotton
     explanation: "Moderate upward trend observed as regional crushing plants ramp up seasonal inventory. Farm-gate prices in Malwa are holding 2.5% above the minimum support baseline.",
     formula: "Forecast = 0.65 * ExpSmooth(recent 14d, alpha=0.3) + 0.35 * MovingAvg(30d)",
   };
-  return fetchApiOrDemo(() => api.getDemandForecast(commodity, "Madhya Pradesh"), fallback);
+  return fetchApiOrDemo(() => api.getDemandForecast(crop_id, "Madhya Pradesh"), fallback);
 }
 
-export async function getMarketExplanation(commodity: "soybean" | "wheat" | "cotton"): Promise<ServiceResult<WhyPriceMovedResponse>> {
+export async function getMarketExplanation(crop_id: string): Promise<ServiceResult<WhyPriceMovedResponse>> {
   const fallback: WhyPriceMovedResponse = {
-    commodity,
+    crop_id,
     region: "Madhya Pradesh",
     period_change_percentage: 1.8,
-    summary: `${commodity[0].toUpperCase() + commodity.slice(1)} benchmark rates in Madhya Pradesh improved +1.8% over the past week due to steady solvent plant inquiries and moderate initial arrivals.`,
+    summary: `${crop_id[0].toUpperCase() + crop_id.slice(1)} benchmark rates in Madhya Pradesh improved +1.8% over the past week due to steady solvent plant inquiries and moderate initial arrivals.`,
     primary_factors: [
       "Early harvest arrivals in Dewas and Indore mandis are 12% lower than corresponding week last year.",
       "Local solvent extractors operating at 85% capacity with active restocking tenders.",
@@ -630,7 +630,7 @@ export async function getMarketExplanation(commodity: "soybean" | "wheat" | "cot
     confidence_label: "Market Advisory Factor Analysis",
     disclaimer: "Real-time mandi data synthesized from Agmarknet MP nodes and platform transactions.",
   };
-  return fetchApiOrDemo(() => api.getWhyPriceMoved(commodity, "Madhya Pradesh"), fallback);
+  return fetchApiOrDemo(() => api.getWhyPriceMoved(crop_id, "Madhya Pradesh"), fallback);
 }
 
 export async function getNetworkPosts(topic?: string): Promise<ServiceResult<NetworkPost[]>> {
@@ -744,8 +744,8 @@ export async function markNotificationsRead(): Promise<ServiceResult<boolean>> {
 export async function searchFarmNex(query: string): Promise<ServiceResult<SearchResult[]>> {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return demoFallback([]);
-  const listings = combineListings(demoListings).filter((l) => `${l.commodity} ${l.location} ${l.farmer_name}`.toLowerCase().includes(normalized));
-  const demands = combineDemands(demoDemands).filter((d) => `${d.commodity} ${d.location} ${d.business_name}`.toLowerCase().includes(normalized));
+  const listings = combineListings(demoListings).filter((l) => `${l.crop_id} ${l.location} ${l.farmer_name}`.toLowerCase().includes(normalized));
+  const demands = combineDemands(demoDemands).filter((d) => `${d.crop_id} ${d.location} ${d.business_name}`.toLowerCase().includes(normalized));
   const profiles = demoProfiles.filter((p) => `${p.name} ${p.headline} ${p.location} ${p.crops.join(" ")}`.toLowerCase().includes(normalized));
   const posts = localPosts().filter((p) => `${p.content} ${p.location} ${p.author_name}`.toLowerCase().includes(normalized));
 
@@ -753,7 +753,7 @@ export async function searchFarmNex(query: string): Promise<ServiceResult<Search
     ...listings.map((l) => ({
       id: l.id,
       kind: "listing" as const,
-      title: `${l.commodity[0].toUpperCase() + l.commodity.slice(1)} · ${l.quantity}Q`,
+      title: `${l.crop_id[0].toUpperCase() + l.crop_id.slice(1)} · ${l.quantity}Q`,
       subtitle: `${l.location} · ₹${l.expected_price}/q · ${l.quality_grade}`,
       href: `/marketplace/listings/${l.id}`,
       verified: true,
@@ -761,7 +761,7 @@ export async function searchFarmNex(query: string): Promise<ServiceResult<Search
     ...demands.map((d) => ({
       id: d.id,
       kind: "requirement" as const,
-      title: `${d.business_name || "Buyer"} needs ${d.quantity_needed}Q ${d.commodity}`,
+      title: `${d.business_name || "Buyer"} needs ${d.quantity_needed}Q ${d.crop_id}`,
       subtitle: `${d.location} · Offer ₹${d.offered_price.toLocaleString("en-IN")}/q`,
       href: `/marketplace/requirements/${d.id}`,
       verified: true,
@@ -830,9 +830,9 @@ export function getProcurementRequirement(id: string): ServiceResult<Procurement
 export function createProcurementRfq(rfq: Partial<ProcurementRequirement>): ServiceResult<ProcurementRequirement> {
   const newRfq: ProcurementRequirement = {
     id: `rfq-${Date.now().toString().slice(-4)}`,
-    title: rfq.title || `${rfq.quantity || rfq.quantityQuintals || 100}Q ${rfq.crop || rfq.commodity || "Produce"}`,
+    title: rfq.title || `${rfq.quantity || rfq.quantityQuintals || 100}Q ${rfq.crop || rfq.crop_id || "Produce"}`,
     crop: (rfq.crop as any) || "soybean",
-    commodity: rfq.commodity || (rfq.crop as any) || "Soybean",
+    crop_id: rfq.crop_id || (rfq.crop as any) || "Soybean",
     quantity: rfq.quantity || rfq.quantityQuintals || 100,
     quantityQuintals: rfq.quantityQuintals || rfq.quantity || 100,
     quantityUnit: rfq.quantityUnit || "Q",
@@ -919,7 +919,7 @@ export async function getAdminMap(): Promise<ServiceResult<AdminMapResponse>> {
       type: "supply" as const,
       lat: listing.lat,
       lng: listing.lng,
-      title: `${listing.commodity} · ${listing.quantity}Q`,
+      title: `${listing.crop_id} · ${listing.quantity}Q`,
       location: listing.location,
       status: listing.status,
     })),
@@ -928,7 +928,7 @@ export async function getAdminMap(): Promise<ServiceResult<AdminMapResponse>> {
       type: "demand" as const,
       lat: demand.lat,
       lng: demand.lng,
-      title: `${demand.commodity} · ${demand.quantity_needed}Q`,
+      title: `${demand.crop_id} · ${demand.quantity_needed}Q`,
       location: demand.location,
       buyer_name: demand.business_name,
     })),
@@ -963,4 +963,84 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
 
 export function getDataSourceLabel(source: DataSource) {
   return source === "api" ? "Backend data" : DEMO_SOURCE_LABEL;
+}
+
+
+
+const demoReliabilityScores: Record<string, any> = {
+  "f0000000-0000-0000-0000-000000000001": {
+    role: "farmer",
+    total_transactions: 12,
+    successful_transactions: 11,
+    quality_consistency_percent: 92,
+    average_rating: 4.6,
+    verification_status: true
+  },
+  "b0000000-0000-0000-0000-000000000001": {
+    role: "buyer",
+    total_transactions: 45,
+    successful_transactions: 44,
+    payment_reliability_percent: 98,
+    average_rating: 4.8,
+    verification_status: true
+  }
+};
+
+
+export async function getUserReliabilityScore(userId: string) {
+  try {
+    const res = await api.getUserReliability(userId);
+    return res;
+  } catch (err) {
+    console.warn("Failed to fetch reliability score, using fallback:", err);
+    return demoReliabilityScores[userId] || {
+      role: "farmer",
+      total_transactions: 0,
+      successful_transactions: 0,
+      average_rating: 0,
+      verification_status: false
+    };
+  }
+}
+
+
+export async function getHeatmapData() {
+  try {
+    const res = await api.getHeatmapData();
+    return res;
+  } catch (err) {
+    console.warn("Failed to fetch heatmap data:", err);
+    return [];
+  }
+}
+
+
+export async function confirmOrderDelivery(agreementId: string) {
+  try {
+    const res = await api.confirmDelivery(agreementId);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
+export async function confirmOrderPayment(agreementId: string) {
+  try {
+    const res = await api.confirmPayment(agreementId);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
+export async function rateOrderTransaction(agreementId: string, stars: number, review: string) {
+  try {
+    const res = await api.rateTransaction(agreementId, stars, review);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 }

@@ -73,6 +73,7 @@ function MessagesContent() {
   useEffect(() => {
     if (!user || !hasAccess) return;
     loadMessages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasAccess, requestedConversation, user]);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId);
@@ -208,7 +209,7 @@ function MessagesContent() {
         `Deal accepted! Order #${res.data.orderNumber} created. Pickup scheduled for 8 September.`,
         "acceptance"
       );
-      router.push(`/orders/${res.data.id}`);
+      router.push(`/deals/${res.data.id}`);
     } catch (err: any) {
       alert("Could not process deal acceptance.");
     } finally {

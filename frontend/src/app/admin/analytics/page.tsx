@@ -20,6 +20,7 @@ import type { AdminKPIData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import DemoNotice from "@/components/DemoNotice";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
+import HeatmapWidget from "@/components/HeatmapWidget";
 
 export default function AdminAnalyticsPage() {
   const { user, loading, hasAccess } = useRequiredUser(["admin"]);

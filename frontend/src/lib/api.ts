@@ -218,7 +218,7 @@ export const api = {
 
   // Marketplace: Crop Listings
   async createCropListing(data: {
-    commodity: "soybean" | "wheat" | "cotton";
+    crop_id: string;
     quantity: number;
     quality_grade: string;
     moisture_percent?: number | null;
@@ -242,8 +242,8 @@ export const api = {
     return this.request<CropListing[]>("/marketplace/listings/my");
   },
 
-  async getAllCropListings(commodity?: string): Promise<CropListing[]> {
-    const query = commodity ? `?commodity=${commodity}` : "";
+  async getAllCropListings(crop_id?: string): Promise<CropListing[]> {
+    const query = crop_id ? `?crop_id=${crop_id}` : "";
     return this.request<CropListing[]>(`/marketplace/listings${query}`);
   },
 
@@ -255,7 +255,7 @@ export const api = {
 
   // Marketplace: Demand Posts
   async createDemandPost(data: {
-    commodity: "soybean" | "wheat" | "cotton";
+    crop_id: string;
     quantity_needed: number;
     quality_grade: string;
     moisture_max?: number | null;
@@ -275,8 +275,8 @@ export const api = {
     return this.request<DemandPost[]>("/marketplace/demands/my");
   },
 
-  async getAllDemands(commodity?: string): Promise<DemandPost[]> {
-    const query = commodity ? `?commodity=${commodity}` : "";
+  async getAllDemands(crop_id?: string): Promise<DemandPost[]> {
+    const query = crop_id ? `?crop_id=${crop_id}` : "";
     return this.request<DemandPost[]>(`/marketplace/demands${query}`);
   },
 
@@ -298,16 +298,16 @@ export const api = {
   },
 
   // Market Intelligence
-  async getPriceTrend(commodity: string, region: string = "Madhya Pradesh", timeframe: string = "6m"): Promise<PriceTrendResponse> {
-    return this.request<PriceTrendResponse>(`/intelligence/price-trend?commodity=${commodity}&region=${encodeURIComponent(region)}&timeframe=${timeframe}`);
+  async getPriceTrend(crop_id: string, region: string = "Madhya Pradesh", timeframe: string = "6m"): Promise<PriceTrendResponse> {
+    return this.request<PriceTrendResponse>(`/intelligence/price-trend?crop_id=${crop_id}&region=${encodeURIComponent(region)}&timeframe=${timeframe}`);
   },
 
-  async getDemandForecast(commodity: string, region: string = "Madhya Pradesh"): Promise<DemandForecastResponse> {
-    return this.request<DemandForecastResponse>(`/intelligence/demand-forecast?commodity=${commodity}&region=${encodeURIComponent(region)}`);
+  async getDemandForecast(crop_id: string, region: string = "Madhya Pradesh"): Promise<DemandForecastResponse> {
+    return this.request<DemandForecastResponse>(`/intelligence/demand-forecast?crop_id=${crop_id}&region=${encodeURIComponent(region)}`);
   },
 
-  async getWhyPriceMoved(commodity: string, region: string = "Madhya Pradesh"): Promise<WhyPriceMovedResponse> {
-    return this.request<WhyPriceMovedResponse>(`/intelligence/why-price-moved?commodity=${commodity}&region=${encodeURIComponent(region)}`);
+  async getWhyPriceMoved(crop_id: string, region: string = "Madhya Pradesh"): Promise<WhyPriceMovedResponse> {
+    return this.request<WhyPriceMovedResponse>(`/intelligence/why-price-moved?crop_id=${crop_id}&region=${encodeURIComponent(region)}`);
   },
 
   // Trade Agreements / Orders
@@ -348,6 +348,28 @@ export const api = {
   // Admin Portal
   async getAdminStats(): Promise<AdminKPIData> {
     return this.request<AdminKPIData>("/admin/stats");
+  },
+
+  
+  async confirmDelivery(agreementId: string) {
+    return this.request<any>(`/marketplace/agreements/${agreementId}/delivery`, { method: "PATCH" });
+  },
+  async confirmPayment(agreementId: string) {
+    return this.request<any>(`/marketplace/agreements/${agreementId}/payment`, { method: "PATCH" });
+  },
+  async rateTransaction(agreementId: string, stars: number, review: string) {
+    return this.request<any>(`/marketplace/agreements/${agreementId}/rate`, {
+      method: "POST",
+      body: JSON.stringify({ stars, review })
+    });
+  },
+
+  async getUserReliability(userId: string) {
+    return this.request<any>(`/users/${userId}/reliability`);
+  },
+
+  async getHeatmapData() {
+    return this.request<any>(`/intelligence/heatmap`);
   },
 
   async getAdminMapNodes(): Promise<AdminMapResponse> {
@@ -418,7 +440,7 @@ export interface PriceDataPoint {
 }
 
 export interface PriceTrendResponse {
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   region: string;
   history: PriceDataPoint[];
   currency: string;
@@ -428,7 +450,7 @@ export interface PriceTrendResponse {
 }
 
 export interface DemandForecastResponse {
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   region: string;
   historical_avg_price: number;
   forecasted_next_30d_price: number;
@@ -440,7 +462,7 @@ export interface DemandForecastResponse {
 }
 
 export interface WhyPriceMovedResponse {
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   region: string;
   period_change_percentage: number;
   summary: string;
@@ -468,7 +490,7 @@ export interface BuyerMatchOpportunity {
   buyer_name: string;
   business_name: string;
   buyer_verified: boolean;
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity_demanded: number;
   quantity_matched: number;
   offered_price_per_quintal: number;
@@ -499,7 +521,7 @@ export interface TradeAgreement {
   farmer_name: string;
   buyer_id: string;
   buyer_name: string;
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity: number;
   price_per_quintal: number;
   delivery_date: string;
@@ -512,7 +534,7 @@ export interface CropListing {
   id: string;
   farmer_id: string;
   farmer_name?: string;
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity: number;
   quality_grade: string;
   moisture_percent?: number | null;
@@ -534,7 +556,7 @@ export interface DemandPost {
   buyer_id: string;
   buyer_name?: string;
   business_name?: string;
-  commodity: "soybean" | "wheat" | "cotton";
+  crop_id: string;
   quantity_needed: number;
   quality_grade: string;
   moisture_max?: number | null;

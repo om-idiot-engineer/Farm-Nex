@@ -111,7 +111,7 @@ export default function AdminDisputesPage() {
 
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" asChild className="text-xs">
-                  <Link href={`/orders/ord-${(d.dealId || d.orderNumber || "deal").toLowerCase()}`}>
+                  <Link href={`/deals/ord-${(d.dealId || d.orderNumber || "deal").toLowerCase()}`}>
                     Inspect Deal Documents <ExternalLink className="ml-1 h-3 w-3" />
                   </Link>
                 </Button>

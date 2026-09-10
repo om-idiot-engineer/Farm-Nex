@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, EmailStr, field_validator
 
 # ----------------- Enums -----------------
@@ -41,12 +41,6 @@ class CommunityTag(str, Enum):
     MARKET = "market"
     MACHINERY = "machinery"
     EXPERT_VERIFIED = "expert_verified"
-
-
-class Commodity(str, Enum):
-    SOYBEAN = "soybean"
-    WHEAT = "wheat"
-    COTTON = "cotton"
 
 
 class QualityGrade(str, Enum):
@@ -149,7 +143,8 @@ class TokenResponse(BaseModel):
 
 
 class CropListingCreate(BaseModel):
-    commodity: Commodity
+    origin_post_id: Optional[str] = None
+    crop_id: str
     quantity: float = Field(..., gt=0, description="Quantity in quintals")
     quality_grade: QualityGrade = QualityGrade.GRADE_A
     moisture_percent: Optional[float] = None
@@ -172,10 +167,11 @@ class CropListingCreate(BaseModel):
 
 
 class CropListingOut(BaseModel):
+    origin_post_id: Optional[str] = None
     id: str
     farmer_id: str
     farmer_name: Optional[str] = None
-    commodity: Commodity
+    crop_id: str
     quantity: float
     quality_grade: str
     moisture_percent: Optional[float] = None
@@ -196,7 +192,8 @@ class CropListingOut(BaseModel):
 
 
 class DemandPostCreate(BaseModel):
-    commodity: Commodity
+    origin_post_id: Optional[str] = None
+    crop_id: str
     quantity_needed: float = Field(..., gt=0, description="Quantity needed in quintals")
     quality_grade: QualityGrade = QualityGrade.GRADE_A
     moisture_max: Optional[float] = None
@@ -210,11 +207,12 @@ class DemandPostCreate(BaseModel):
 
 
 class DemandPostOut(BaseModel):
+    origin_post_id: Optional[str] = None
     id: str
     buyer_id: str
     buyer_name: Optional[str] = None
     business_name: Optional[str] = None
-    commodity: Commodity
+    crop_id: str
     quantity_needed: float
     quality_grade: str
     moisture_max: Optional[float] = None
@@ -258,7 +256,7 @@ class BuyerMatchOpportunity(BaseModel):
     buyer_name: str
     business_name: str
     buyer_verified: bool
-    commodity: Commodity
+    crop_id: str
     quantity_demanded: float
     quantity_matched: float
     offered_price_per_quintal: float
@@ -283,6 +281,7 @@ class BuyerMatchOpportunity(BaseModel):
 
 
 class TradeAgreementCreate(BaseModel):
+    quality_spec: Optional[Dict[str, Any]] = None
     match_id: str
     delivery_date: date
 
@@ -295,6 +294,10 @@ class TradeEarningsBreakdown(BaseModel):
 
 
 class TradeAgreementOut(BaseModel):
+    quality_spec: Optional[Dict[str, Any]] = None
+    payment_status: str = "Not Started"
+    delivery_confirmed_by_farmer_at: Optional[datetime] = None
+    delivery_confirmed_by_buyer_at: Optional[datetime] = None
     id: str
     match_id: str
     listing_id: str
@@ -303,7 +306,7 @@ class TradeAgreementOut(BaseModel):
     farmer_name: str
     buyer_id: str
     buyer_name: str
-    commodity: Commodity
+    crop_id: str
     quantity: float
     price_per_quintal: float
     delivery_date: date
@@ -323,7 +326,7 @@ class PriceDataPoint(BaseModel):
 
 
 class PriceTrendResponse(BaseModel):
-    commodity: Commodity
+    crop_id: str
     region: str
     history: List[PriceDataPoint]
     currency: str = "INR"
@@ -333,7 +336,7 @@ class PriceTrendResponse(BaseModel):
 
 
 class DemandForecastResponse(BaseModel):
-    commodity: Commodity
+    crop_id: str
     region: str
     historical_avg_price: float
     forecasted_next_30d_price: float
@@ -345,7 +348,7 @@ class DemandForecastResponse(BaseModel):
 
 
 class WhyPriceMovedResponse(BaseModel):
-    commodity: Commodity
+    crop_id: str
     region: str
     period_change_percentage: float
     summary: str
@@ -384,3 +387,108 @@ class AdminKPIData(BaseModel):
     total_buyers_connected: int
     total_estimated_logistics_savings_inr: float
     total_trade_volume_quintals: float
+from datetime import datetime, date
+from enum import Enum
+from typing import Optional, List, Dict, Any, Any
+from pydantic import BaseModel, Field, EmailStr, field_validator
+
+# ----------------- New Enums -----------------
+
+class CropCategory(str, Enum):
+    CEREAL = "cereal"
+    PULSE = "pulse"
+    OILSEED = "oilseed"
+    CASH_CROP = "cash_crop"
+    VEGETABLE = "vegetable"
+    FRUIT = "fruit"
+    SPICE = "spice"
+    OTHER = "other"
+
+class DisputeReason(str, Enum):
+    QUALITY_MISMATCH = "quality_mismatch"
+    QUANTITY_MISMATCH = "quantity_mismatch"
+    NON_PAYMENT = "non_payment"
+    NON_DELIVERY = "non_delivery"
+    OTHER = "other"
+
+class DisputeStatus(str, Enum):
+    OPEN = "open"
+    INVESTIGATING = "investigating"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+# ----------------- New Schemas -----------------
+
+class CropBase(BaseModel):
+    name_en: str
+    name_hi: str
+    category: CropCategory
+    icon: Optional[str] = None
+    common_units: str = "quintal"
+    is_active: bool = True
+
+class CropOut(CropBase):
+    id: str
+
+class PostMedia(BaseModel):
+    id: str
+    url: str
+    sort_order: int = 0
+    alt_text: Optional[str] = None
+
+class PostCommentBase(BaseModel):
+    content: str
+    parent_comment_id: Optional[str] = None
+
+class PostCommentOut(PostCommentBase):
+    id: str
+    post_id: str
+    user_id: str
+    created_at: datetime
+    edited_at: Optional[datetime] = None
+
+class RatingCreate(BaseModel):
+    ratee_id: str
+    trade_agreement_id: Optional[str] = None
+    stars: int = Field(..., ge=1, le=5)
+    quality_score: Optional[int] = Field(None, ge=1, le=5)
+    payment_or_reliability_score: Optional[int] = Field(None, ge=1, le=5)
+    comment: Optional[str] = None
+
+class RatingOut(RatingCreate):
+    id: str
+    rater_id: str
+    created_at: datetime
+
+class DisputeCreate(BaseModel):
+    trade_agreement_id: str
+    against_id: str
+    reason_category: DisputeReason
+    explanation: str
+    photo_url: Optional[str] = None
+
+class DisputeOut(DisputeCreate):
+    id: str
+    raiser_id: str
+    status: DisputeStatus
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
+
+class TradeAgreementEventCreate(BaseModel):
+    event_type: str
+    event_data: Optional[Dict[str, Any]] = None
+
+class TradeAgreementEventOut(TradeAgreementEventCreate):
+    id: str
+    trade_agreement_id: str
+    user_id: str
+    created_at: datetime
+
+class UserReliabilityScore(BaseModel):
+    role: str
+    total_transactions: int
+    successful_transactions: int
+    quality_consistency_percent: Optional[float] = None
+    payment_reliability_percent: Optional[float] = None
+    average_rating: float
+    verification_status: bool

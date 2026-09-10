@@ -35,7 +35,7 @@ export default function AdminTransactionsPage() {
       contractId: "CTR-2026-089",
       buyer: "ITC Agri Business Division",
       seller: "Malwa Kisan Samriddhi FPC",
-      commodity: "Soybean (500Q)",
+      crop_id: "Soybean (500Q)",
       grossAmount: 2660000,
       platformFee: 26600,
       netDisbursement: 2633400,
@@ -48,7 +48,7 @@ export default function AdminTransactionsPage() {
       contractId: "CTR-2026-062",
       buyer: "Adani Wilmar Limited",
       seller: "Ramesh Patel (Farmer)",
-      commodity: "Wheat (250Q)",
+      crop_id: "Wheat (250Q)",
       grossAmount: 800000,
       platformFee: 8000,
       netDisbursement: 792000,
@@ -61,7 +61,7 @@ export default function AdminTransactionsPage() {
       contractId: "CTR-2026-041",
       buyer: "Kargil Feeds India",
       seller: "Nimar Maize Producers FPC",
-      commodity: "Maize (750Q)",
+      crop_id: "Maize (750Q)",
       grossAmount: 1785000,
       platformFee: 17850,
       netDisbursement: 1767150,
@@ -160,7 +160,7 @@ export default function AdminTransactionsPage() {
                     {tx.seller}
                   </td>
                   <td className="px-5 py-4">
-                    {tx.commodity}
+                    {tx.crop_id}
                   </td>
                   <td className="px-5 py-4 text-right font-bold text-foreground">
                     ₹{tx.grossAmount.toLocaleString("en-IN")}
@@ -183,7 +183,7 @@ export default function AdminTransactionsPage() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <Button variant="outline" size="sm" asChild className="text-xs h-7">
-                      <Link href={`/orders/ord-${tx.contractId.toLowerCase()}`}>
+                      <Link href={`/deals/ord-${tx.contractId.toLowerCase()}`}>
                         Order <ExternalLink className="ml-1 h-3 w-3" />
                       </Link>
                     </Button>

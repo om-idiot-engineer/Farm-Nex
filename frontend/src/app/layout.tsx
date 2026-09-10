@@ -6,6 +6,7 @@ import MainLayoutWrapper from "@/components/MainLayoutWrapper";
 import AppFooter from "@/components/AppFooter";
 import PWAProvider from "@/components/PWAProvider";
 import { UserProvider } from "@/lib/auth/UserContext";
+import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Farm-Nex | Direct Farmer-to-Buyer Sales",
@@ -28,9 +29,11 @@ export default function RootLayout({
         <PWAProvider>
           <LanguageProvider>
             <UserProvider>
-              <Navbar />
-              <MainLayoutWrapper>{children}</MainLayoutWrapper>
-              <AppFooter />
+              <ThemeProvider>
+                <Navbar />
+                <MainLayoutWrapper>{children}</MainLayoutWrapper>
+                <AppFooter />
+              </ThemeProvider>
             </UserProvider>
           </LanguageProvider>
         </PWAProvider>
