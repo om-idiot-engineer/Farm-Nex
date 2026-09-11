@@ -361,7 +361,7 @@ async def accept_match(
         "farmer_name": current_user.name,
         "buyer_id": demand["buyer_id"],
         "buyer_name": demand.get("business_name") or "Verified Buyer",
-        "commodity": listing["crop_id"],
+        "crop_id": listing["crop_id"],
         "quantity": matched_qty,
         "price": price_per_q,
         "delivery_date": delivery_date,

@@ -167,7 +167,7 @@ async def send_message(
         "body": payload.body,
         "created_at": now,
         "kind": payload.kind,
-        "offerData": payload.offerData.dict() if payload.offerData else None
+        "offerData": payload.offerData.model_dump() if payload.offerData else None
     }
 
     db.messages[msg_id] = msg

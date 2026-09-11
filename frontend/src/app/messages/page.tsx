@@ -64,6 +64,7 @@ function MessagesContent() {
   useEffect(() => {
     if (!user || userLoading) return;
     loadConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userLoading, recipientIdParam]);
 
   const handleSendMessage = async (e: React.FormEvent) => {

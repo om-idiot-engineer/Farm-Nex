@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   UsersRound,
   UserPlus,
@@ -65,6 +66,7 @@ export default function NetworkConnectionsPage() {
     if (user && !userLoading) {
       reloadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userLoading]);
 
   const handleAccept = (reqId: string) => {
@@ -150,10 +152,9 @@ export default function NetworkConnectionsPage() {
 
         {/* User Identity & Stats */}
         <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200 p-3 rounded-2xl shrink-0">
-          <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 to-green-700 text-white flex items-center justify-center font-extrabold text-base shadow-sm">
+          <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 to-green-700 text-white flex items-center justify-center font-extrabold text-base shadow-sm">
             {user?.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+              <Image src={user.avatar} alt={user.name} className="h-full w-full object-cover" width={48} height={48} unoptimized />
             ) : (
               <span>{user?.name?.slice(0, 2).toUpperCase() || "ME"}</span>
             )}
@@ -255,10 +256,9 @@ export default function NetworkConnectionsPage() {
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
+                        <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
                           {conn.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={conn.avatarUrl} alt={conn.name} className="h-full w-full object-cover" />
+                            <Image src={conn.avatarUrl} alt={conn.name} className="h-full w-full object-cover" width={48} height={48} unoptimized />
                           ) : (
                             <span>{conn.avatar || conn.name.slice(0, 2).toUpperCase()}</span>
                           )}
@@ -335,10 +335,9 @@ export default function NetworkConnectionsPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
+                        <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
                           {req.requesterAvatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={req.requesterAvatarUrl} alt={req.requesterName} className="h-full w-full object-cover" />
+                            <Image src={req.requesterAvatarUrl} alt={req.requesterName} className="h-full w-full object-cover" width={48} height={48} unoptimized />
                           ) : (
                             <span>{req.requesterAvatar || req.requesterName.slice(0, 2).toUpperCase()}</span>
                           )}
@@ -506,10 +505,9 @@ export default function NetworkConnectionsPage() {
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
+                        <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-extrabold text-base shrink-0 border border-zinc-200">
                           {account.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" />
+                            <Image src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" width={48} height={48} unoptimized />
                           ) : (
                             <span>{account.avatar}</span>
                           )}

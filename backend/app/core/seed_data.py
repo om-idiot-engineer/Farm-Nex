@@ -1,4 +1,3 @@
-from datetime import datetime
 
 USERS_20_SEED = [
     # --- 8 FARMERS ---

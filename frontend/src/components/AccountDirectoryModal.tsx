@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   UsersRound,
@@ -183,10 +184,9 @@ export default function AccountDirectoryModal({
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-950 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs border border-zinc-200">
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-950 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs border border-zinc-200">
                             {acc.avatarUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={acc.avatarUrl} alt={acc.name} className="h-full w-full object-cover" />
+                              <Image src={acc.avatarUrl} alt={acc.name} className="h-full w-full object-cover" width={40} height={40} unoptimized />
                             ) : (
                               acc.avatar
                             )}

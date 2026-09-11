@@ -75,6 +75,7 @@ function BuyerComparisonPage() {
   useEffect(() => {
     if (!user || !hasAccess) return;
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasAccess, user, listingId]);
 
   if (userLoading || !user || !hasAccess) return <LoadingSkeleton variant="detail" />;

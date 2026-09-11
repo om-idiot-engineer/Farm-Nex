@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { X, Check, Save, User, MapPin, Building2, Sprout, Phone, Mail, Scale, Camera, Upload, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DemoProfile } from "@/lib/data/demo";
@@ -250,8 +251,7 @@ export default function EditProfileModal({
           <div className="flex items-center gap-3">
             <div className="relative h-12 w-12 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-black text-base shadow-sm shrink-0 border border-zinc-200">
               {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+                <Image src={avatarUrl} alt={name} className="h-full w-full object-cover" width={48} height={48} unoptimized />
               ) : (
                 <span>{name ? name.slice(0, 2).toUpperCase() : "PR"}</span>
               )}
@@ -295,10 +295,9 @@ export default function EditProfileModal({
 
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative group shrink-0">
-                <div className="h-20 w-20 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 to-green-700 text-white flex items-center justify-center font-extrabold text-2xl shadow-md border-2 border-white ring-2 ring-emerald-500/20">
+                <div className="relative h-20 w-20 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 to-green-700 text-white flex items-center justify-center font-extrabold text-2xl shadow-md border-2 border-white ring-2 ring-emerald-500/20">
                   {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <Image src={avatarUrl} alt="Preview" className="h-full w-full object-cover" width={80} height={80} unoptimized />
                   ) : (
                     <span>{name ? name.slice(0, 2).toUpperCase() : "ME"}</span>
                   )}
@@ -336,12 +335,11 @@ export default function EditProfileModal({
                       key={idx}
                       type="button"
                       onClick={() => setAvatarUrl(url)}
-                      className={`h-7 w-7 rounded-full overflow-hidden border-2 transition-all ${
+                      className={`relative h-7 w-7 rounded-full overflow-hidden border-2 transition-all ${
                         avatarUrl === url ? "border-emerald-600 ring-2 ring-emerald-400" : "border-zinc-300 hover:border-zinc-500"
                       }`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`Preset ${idx + 1}`} className="h-full w-full object-cover" />
+                      <Image src={url} alt={`Preset ${idx + 1}`} className="h-full w-full object-cover" width={28} height={28} unoptimized />
                     </button>
                   ))}
                 </div>

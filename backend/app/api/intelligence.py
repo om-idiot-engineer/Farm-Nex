@@ -393,8 +393,6 @@ async def get_trending_crops(
         top_losers=losers
     )
 
-import asyncio
-import random
 
 # Background refresh task
 async def refresh_live_prices():
@@ -406,7 +404,10 @@ async def refresh_live_prices():
 
         # Simulate successful API response
         for cid in ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "c0000000-0000-0000-0000-000000000003"]:
-            last_record = [r for r in MARKET_DATA if r["crop_id"] == cid][-1]
+            records = [r for r in MARKET_DATA if r["crop_id"] == cid]
+            if not records:
+                continue
+            last_record = records[-1]
             new_date = last_record["date"] + timedelta(days=1)
             # Random walk
             new_price = last_record["price"] * (1 + random.uniform(-0.02, 0.02))

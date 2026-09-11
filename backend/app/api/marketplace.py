@@ -129,11 +129,14 @@ async def list_all_crop_listings(
 
 @router.get("/listings/my", response_model=List[CropListingOut])
 async def get_my_crop_listings(
-    current_user: UserOut = Depends(require_role([UserRole.FARMER, UserRole.ADMIN]))
+    current_user: UserOut = Depends(get_current_user)
 ):
     """
     Fetches listings belonging to the authenticated farmer.
     """
+    if current_user.role not in [UserRole.FARMER, UserRole.ADMIN]:
+        return []
+
     my_listings = [
         CropListingOut(
             id=item["id"],
@@ -286,11 +289,14 @@ async def list_all_demands(
 
 @router.get("/demands/my", response_model=List[DemandPostOut])
 async def get_my_demands(
-    current_user: UserOut = Depends(require_role([UserRole.BUYER, UserRole.ADMIN]))
+    current_user: UserOut = Depends(get_current_user)
 ):
     """
     Returns demand requirements posted by the authenticated buyer.
     """
+    if current_user.role not in [UserRole.BUYER, UserRole.ADMIN]:
+        return []
+
     my_demands = [
         DemandPostOut(
             id=item["id"],

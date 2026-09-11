@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
+import { isTestAccount } from "@/lib/data/userDirectory";
 import { getFarmerListings, getAgreements, getBuyerMatches, getNotifications } from "@/lib/services/domain";
 import type { CropListing, BuyerMatchOpportunity, TradeAgreement } from "@/lib/api";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
@@ -116,20 +117,33 @@ export default function FarmerDashboard() {
 
   const firstName = user?.name ? user.name.split(" ")[0] : "Farmer";
 
-  // Calculate stats from real data
-  const totalVolume = listings.reduce((acc, curr) => acc + curr.quantity, 0);
-  const totalEstRevenue = listings.reduce((acc, curr) => acc + (curr.quantity * curr.expected_price), 0);
+  const isTest = isTestAccount(user?.id);
 
-  // Dummy data for visual chart because API doesn't have historical chart data
-  const revenueData = [
-    { label: "Mon", value: 18000 },
-    { label: "Tue", value: 34000 },
-    { label: "Wed", value: 48000 },
-    { label: "Thu", value: 29000 },
-    { label: "Fri", value: 50000 },
-    { label: "Sat", value: 45000 },
-    { label: "Sun", value: 55000 }
-  ];
+  // Calculate stats from real data
+  const totalVolume = listings.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+  const totalEstRevenue = listings.reduce((acc, curr) => acc + ((curr.quantity || 0) * (curr.expected_price || 0)), 0);
+
+  // Revenue analytics: for real user with no listings/agreements, show empty state
+  const hasRevenueData = isTest ? true : (listings.length > 0 || agreements.length > 0);
+  const revenueData = isTest
+    ? [
+        { label: "Mon", value: 18000 },
+        { label: "Tue", value: 34000 },
+        { label: "Wed", value: 48000 },
+        { label: "Thu", value: 29000 },
+        { label: "Fri", value: 50000 },
+        { label: "Sat", value: 45000 },
+        { label: "Sun", value: 55000 }
+      ]
+    : [
+        { label: "Mon", value: Math.round(totalEstRevenue * 0.1) },
+        { label: "Tue", value: Math.round(totalEstRevenue * 0.15) },
+        { label: "Wed", value: Math.round(totalEstRevenue * 0.2) },
+        { label: "Thu", value: Math.round(totalEstRevenue * 0.12) },
+        { label: "Fri", value: Math.round(totalEstRevenue * 0.25) },
+        { label: "Sat", value: Math.round(totalEstRevenue * 0.08) },
+        { label: "Sun", value: Math.round(totalEstRevenue * 0.1) }
+      ];
 
   const yAxisFormatter = (value: number) => {
     if (value === 0) return '₹0';
@@ -147,13 +161,21 @@ export default function FarmerDashboard() {
     { date: "Today", Tomato: 52, Wheat: 51, Onion: 48 }
   ];
 
-  // Order Funnel stages
-  const orderFunnel = [
-    { label: "Pending", count: 12, max: 50, color: "bg-emerald-500" },
-    { label: "Negotiating", count: 8, max: 50, color: "bg-amber-400" },
-    { label: "Shipped", count: 15, max: 50, color: "bg-blue-500" },
-    { label: "Delivered", count: 42, max: 50, color: "bg-emerald-600" }
-  ];
+  // Order Funnel stages calculated dynamically from user's agreements
+  const maxFunnel = Math.max(10, agreements.length);
+  const orderFunnel = isTest && agreements.length === 0
+    ? [
+        { label: "Pending", count: 12, max: 50, color: "bg-emerald-500" },
+        { label: "Negotiating", count: 8, max: 50, color: "bg-amber-400" },
+        { label: "Shipped", count: 15, max: 50, color: "bg-blue-500" },
+        { label: "Delivered", count: 42, max: 50, color: "bg-emerald-600" }
+      ]
+    : [
+        { label: "Pending", count: agreements.filter(a => a.status === 'matched').length, max: maxFunnel, color: "bg-emerald-500" },
+        { label: "Negotiating", count: agreements.filter(a => a.status === 'trade_confirmed' || a.status === 'pickup_scheduled').length, max: maxFunnel, color: "bg-amber-400" },
+        { label: "Shipped", count: agreements.filter(a => a.status === 'in_transit').length, max: maxFunnel, color: "bg-blue-500" },
+        { label: "Delivered", count: agreements.filter(a => a.status === 'delivered' || a.status === 'completed' || a.status === 'payment_confirmed').length, max: maxFunnel, color: "bg-emerald-600" }
+      ];
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-[1440px] mx-auto theme-farmer">
@@ -192,10 +214,10 @@ export default function FarmerDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
         {[
-          { label: "Est. Revenue", value: `₹${totalEstRevenue.toLocaleString()}`, change: "+12.5%", up: true, icon: TrendingUp, grad: "from-emerald-500 to-green-600" },
-          { label: "Active Listings", value: listings.length.toString(), change: "+1 new", up: true, icon: Store, grad: "from-amber-400 to-orange-500" },
-          { label: "Total Volume", value: `${totalVolume} Qtl`, change: "Stable", up: true, icon: Package, grad: "from-violet-500 to-purple-600" },
-          { label: "Buyer Matches", value: suggestions.length.toString(), change: "New alerts", up: true, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500", href: "/notifications" }
+          { label: "Est. Revenue", value: `₹${totalEstRevenue.toLocaleString()}`, change: totalEstRevenue > 0 ? "+12.5%" : "₹0", up: totalEstRevenue > 0, icon: TrendingUp, grad: "from-emerald-500 to-green-600" },
+          { label: "Active Listings", value: listings.length.toString(), change: listings.length > 0 ? `${listings.length} live` : "0 active", up: listings.length > 0, icon: Store, grad: "from-amber-400 to-orange-500" },
+          { label: "Total Volume", value: `${totalVolume} Qtl`, change: totalVolume > 0 ? "In stock" : "0 Qtl", up: totalVolume > 0, icon: Package, grad: "from-violet-500 to-purple-600" },
+          { label: "Buyer Matches", value: suggestions.length.toString(), change: suggestions.length > 0 ? `${suggestions.length} matches` : "0 alerts", up: suggestions.length > 0, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500", href: "/deals" }
         ].map((stat, idx) => {
           const Icon = stat.icon;
           const CardContent = (
@@ -232,7 +254,7 @@ export default function FarmerDashboard() {
         <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
           <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
             🔥 Hot Crops (Live Mandi Trending)
-            <Link href="/intelligence" className="text-[11px] font-semibold text-emerald-600 hover:underline">Market Intelligence</Link>
+            <Link href="/farmer" className="text-[11px] font-semibold text-emerald-600 hover:underline">Market Intelligence</Link>
           </h3>
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
             {trending.map((crop, i) => (
@@ -269,56 +291,75 @@ export default function FarmerDashboard() {
             </div>
           </div>
 
-          <div className="h-[260px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={revenueData} margin={{ top: 20, right: 0, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#71717A' }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#A1A1AA' }}
-                  tickFormatter={yAxisFormatter}
-                  domain={[0, 60000]}
-                  ticks={[0, 10000, 30000, 50000]}
-                />
-                <Tooltip
-                  cursor={{ fill: '#F4F4F5' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
-                />
-                <Bar
-                  dataKey="value"
-                  fill="#10B981"
-                  radius={[6, 6, 0, 0]}
-                  barSize={45}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#34D399"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: '#fff', stroke: '#10B981', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#10B981', stroke: '#fff', strokeWidth: 2 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          {!hasRevenueData ? (
+            <div className="h-[260px] flex flex-col items-center justify-center text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-3">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <p className="text-[13px] font-semibold text-zinc-700">No revenue data yet</p>
+              <p className="text-[11px] text-zinc-400 mt-1 max-w-[240px]">
+                Your weekly revenue analytics and trends will appear here once you list produce and finalize trades.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 rounded-full text-xs font-semibold">
+                <Link href="/farmer/produce/new">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Crop Lot
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="h-[260px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={revenueData} margin={{ top: 20, right: 0, bottom: 0, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#71717A' }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#A1A1AA' }}
+                      tickFormatter={yAxisFormatter}
+                      domain={[0, 60000]}
+                      ticks={[0, 10000, 30000, 50000]}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#F4F4F5' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                    />
+                    <Bar
+                      dataKey="value"
+                      fill="#10B981"
+                      radius={[6, 6, 0, 0]}
+                      barSize={45}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#34D399"
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: '#fff', stroke: '#10B981', strokeWidth: 2 }}
+                      activeDot={{ r: 6, fill: '#10B981', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
 
-          <div className="flex items-center gap-4 mt-2 px-2 text-[12px] font-medium text-zinc-500">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-2 rounded-sm bg-emerald-500"></div> Revenue
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-white"></div> Trend
-            </div>
-          </div>
+              <div className="flex items-center gap-4 mt-2 px-2 text-[12px] font-medium text-zinc-500">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-2 rounded-sm bg-emerald-500"></div> Revenue
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-white"></div> Trend
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Crop Performance Card */}
@@ -498,7 +539,15 @@ export default function FarmerDashboard() {
                 </div>
               </div>
             )) : (
-              <div className="p-4 text-center text-zinc-500 text-[12px]">No active buyer matches for your listings right now.</div>
+              <div className="p-6 text-center text-zinc-500 text-[12px] bg-zinc-50 rounded-[16px] border border-dashed border-zinc-200">
+                <p className="font-semibold text-zinc-700">No active buyer matches</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">List produce to discover matched buyers and direct purchase offers.</p>
+                <Button asChild variant="outline" size="sm" className="mt-3 rounded-full text-xs font-semibold">
+                  <Link href="/farmer/produce/new">
+                    <Plus className="w-3.5 h-3.5 mr-1" /> List New Crop
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -526,7 +575,15 @@ export default function FarmerDashboard() {
                 </div>
               </div>
             )) : (
-              <div className="p-4 text-center text-zinc-500 text-[12px]">No agreements created yet.</div>
+              <div className="p-6 text-center text-zinc-500 text-[12px] bg-zinc-50 rounded-[16px] border border-dashed border-zinc-200">
+                <p className="font-semibold text-zinc-700">No agreements created yet</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">When you lock a deal or accept a buyer match, contract details will appear here.</p>
+                <Button asChild variant="outline" size="sm" className="mt-3 rounded-full text-xs font-semibold">
+                  <Link href="/deals">
+                    View Orders Hub
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>

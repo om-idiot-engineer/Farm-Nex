@@ -37,8 +37,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     // Load token from localStorage on initial mount before requesting current user
     if (typeof window !== "undefined") {
-      const storedToken = window.localStorage.getItem("farmnex_token");
-      if (storedToken) {
+      let storedToken = window.localStorage.getItem("farmnex_token");
+      const storedUser = api.getCurrentUser();
+      if (!storedToken && storedUser) {
+        storedToken = `demo_token_${storedUser.id || storedUser.role || "farmer"}`;
+        api.setToken(storedToken);
+      } else if (storedToken) {
         api.setToken(storedToken);
       }
     }

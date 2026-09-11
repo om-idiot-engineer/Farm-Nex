@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MoreVertical, UsersRound, Plus, Image as ImageIcon, Video, Calendar, FileText, Search, Star, Heart, MessageSquare, Share2, TrendingUp, CheckCircle2, Send, X, MapPin, Award, Play, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
@@ -59,6 +60,7 @@ function NetworkContent() {
   useEffect(() => {
     if (!user || userLoading) return;
     loadPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userLoading, activeTab]);
 
   const handlePostSubmit = async () => {
@@ -205,11 +207,10 @@ function NetworkContent() {
             <div className="p-4 -mt-10">
               <Link
                 href={`/profile/${user?.id || "f0000000-0000-0000-0000-000000000001"}`}
-                className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl hover:scale-105 transition-transform inline-flex"
+                className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl hover:scale-105 transition-transform inline-flex"
               >
                 {user?.avatar && user.avatar.startsWith("http") || user?.avatar?.startsWith("data:") ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatar} alt={currentUser} className="h-full w-full object-cover" />
+                  <Image src={user.avatar} alt={currentUser} className="h-full w-full object-cover" width={80} height={80} unoptimized />
                 ) : (
                   currentUser.substring(0, 2).toUpperCase()
                 )}

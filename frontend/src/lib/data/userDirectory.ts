@@ -654,7 +654,20 @@ export function convertAccountToUserProfile(account: TestUserAccount): UserProfi
   };
 }
 
+export function isTestAccount(userIdOrProfileId?: string | null): boolean {
+  if (!userIdOrProfileId) return false;
+  const clean = userIdOrProfileId.trim().toLowerCase().replace(/^@/, "");
+  return REAL_ACCOUNTS_20.some(
+    (acc) =>
+      acc.id.toLowerCase() === clean ||
+      (acc.profileId && acc.profileId.toLowerCase() === clean) ||
+      (acc.email && acc.email.toLowerCase() === clean) ||
+      (acc.phone && acc.phone === clean)
+  );
+}
+
 export function convertAccountToDemoProfile(account: TestUserAccount): DemoProfile {
+  const isPredefined = isTestAccount(account.id) || isTestAccount(account.profileId);
   return {
     id: account.id,
     role: account.role,
@@ -681,13 +694,13 @@ export function convertAccountToDemoProfile(account: TestUserAccount): DemoProfi
     gstNumber: account.role === "buyer" ? "23AAACA1122D1Z4" : undefined,
     procurementCapacity: account.procurementCapacity,
     paymentReliability: "Direct bank settlement (< 24h)",
-    rating: account.rating || 4.85,
-    completedDealsCount: parseInt(account.stats[0]?.value || "12", 10),
+    rating: account.rating || 5.0,
+    completedDealsCount: isPredefined ? parseInt(account.stats[0]?.value || "12", 10) : 0,
     farmSizeAcres: account.farmSizeAcres,
     soilType: account.role === "farmer" ? "Deep Vertisol Cotton Soil" : undefined,
-    connectionsCount: (parseInt(account.stats[0]?.value || "10", 10) * 35) + 120,
+    connectionsCount: isPredefined ? (parseInt(account.stats[0]?.value || "10", 10) * 35) + 120 : 0,
     certifications: account.verified ? ["KYC Verified", "Digital Mandi ID"] : [],
-    reviews: [
+    reviews: isPredefined ? [
       {
         author: "Malwa Kisan Samriddhi FPO",
         role: "FPO Partner",
@@ -695,7 +708,7 @@ export function convertAccountToDemoProfile(account: TestUserAccount): DemoProfi
         rating: 5,
         date: "Aug 2026",
       },
-    ],
+    ] : [],
   };
 }
 

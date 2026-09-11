@@ -54,12 +54,12 @@ export default function AppFooter() {
                   </a>
                 </li>
                 <li>
-                  <Link href="/intelligence" className="hover:text-primary transition-colors">
+                  <Link href="/farmer" className="hover:text-primary transition-colors">
                     Mandi Benchmark Rates
                   </Link>
                 </li>
                 <li>
-                  <Link href="/community" className="hover:text-primary transition-colors">
+                  <Link href="/network" className="hover:text-primary transition-colors">
                     Agricultural Community
                   </Link>
                 </li>
@@ -81,7 +81,7 @@ export default function AppFooter() {
                   </a>
                 </li>
                 <li>
-                  <Link href="/consumer/shop" className="hover:text-primary transition-colors">
+                  <Link href="/consumer" className="hover:text-primary transition-colors">
                     Direct Consumer Store
                   </Link>
                 </li>

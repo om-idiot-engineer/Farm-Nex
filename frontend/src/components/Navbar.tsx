@@ -2,19 +2,19 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth/UserContext";
-import { getRoleNavigation, getRolePrimaryAction } from "@/lib/navigation";
-import { Menu, X, Leaf, Bell, Search, Sprout, Store, ArrowRight, CheckCircle2, Check, Sparkles, Shield, User, Pencil, LogOut } from "lucide-react";
+import { getRoleNavigation, getRolePrimaryAction, getRoleHome } from "@/lib/navigation";
+import { Menu, X, Leaf, Bell, Search, Sprout, Store, ArrowRight, CheckCircle2, Check, Sparkles, Shield, User, Pencil, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlobalSearch from "@/components/GlobalSearch";
 import EditProfileModal from "@/components/EditProfileModal";
 import { getProfile } from "@/lib/services/domain";
 import type { DemoProfile } from "@/lib/data/demo";
-import { DEMO_MODE } from "@/lib/api";
 
 export default function Navbar() {
-  const { user, switchDemoRole, logout } = useUser();
+  const { user, logout } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -137,37 +137,22 @@ export default function Navbar() {
               <Leaf className="w-5 h-5" />
             </div>
             <span className="font-extrabold text-[19px] tracking-tight hidden sm:block">FarmNex</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white -mt-3 hidden sm:block">V3</span>
-            {DEMO_MODE && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white -mt-3 hidden sm:block">DEMO MODE</span>
-            )}
           </Link>
 
-          {/* Desktop Role Toggle Switch */}
-          <div className="hidden md:flex items-center p-1 rounded-full bg-zinc-100 border border-zinc-200 ml-4">
-            <button
-              onClick={() => {
-                switchDemoRole("farmer");
-                router.push("/farmer");
-              }}
-              className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
-                isFarmer ? "bg-white shadow border border-zinc-200 text-emerald-700" : "text-zinc-500 hover:text-zinc-800"
-              }`}
+          {/* User Account Role Badge & Dashboard Quick Link */}
+          {user && (
+            <Link
+              href={getRoleHome(user.role)}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/80 text-zinc-700 transition-all ml-3 group"
+              title="Go to your dashboard"
             >
-              <Sprout className="w-4 h-4" /> Farmer
-            </button>
-            <button
-              onClick={() => {
-                switchDemoRole("buyer");
-                router.push("/buyer");
-              }}
-              className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all flex items-center gap-1.5 ${
-                !isFarmer ? "bg-white shadow border border-zinc-200 text-blue-700" : "text-zinc-500 hover:text-zinc-800"
-              }`}
-            >
-              <Store className="w-4 h-4" /> Buyer
-            </button>
-          </div>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[12px] font-bold capitalize">
+                {user.role === "fpo" ? "FPO Organization" : user.role === "consumer" ? "Direct Consumer" : `${user.role} Account`}
+              </span>
+              <span className="text-[11px] text-zinc-400 font-medium group-hover:text-zinc-600 transition">Dashboard &rarr;</span>
+            </Link>
+          )}
         </div>
 
         {/* MIDDLE: Search */}
@@ -291,11 +276,10 @@ export default function Navbar() {
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   title={`Account: ${user.name}`}
-                  className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500 border-2 border-white shadow flex items-center justify-center text-white font-bold text-[12px] hover:scale-105 transition-transform"
+                  className="relative w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500 border-2 border-white shadow flex items-center justify-center text-white font-bold text-[12px] hover:scale-105 transition-transform"
                 >
                   {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                    <Image src={user.avatar} alt={user.name} className="h-full w-full object-cover" width={36} height={36} unoptimized />
                   ) : (
                     user.name ? user.name.substring(0, 2).toUpperCase() : "U"
                   )}
@@ -304,10 +288,9 @@ export default function Navbar() {
                 {userDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white border border-zinc-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in-50 zoom-in-95 p-1.5 space-y-1">
                     <div className="px-3 py-2 border-b border-zinc-100 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
                         {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                          <Image src={user.avatar} alt={user.name} className="h-full w-full object-cover" width={32} height={32} unoptimized />
                         ) : (
                           user.name ? user.name.substring(0, 2).toUpperCase() : "U"
                         )}
@@ -384,36 +367,30 @@ export default function Navbar() {
           </div>
 
           <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 mb-2">
-              Role Mode
-            </p>
-            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 rounded-xl mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  switchDemoRole("farmer");
-                  setMobileOpen(false);
-                  router.push("/farmer");
-                }}
-                className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  isFarmer ? "bg-white shadow text-emerald-700" : "text-zinc-500 hover:text-zinc-900"
-                }`}
+            {/* Active Account Identity Card */}
+            <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-xl mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
+                    <Image src={user.avatar} alt={user.name} className="h-full w-full object-cover" width={32} height={32} unoptimized />
+                  ) : (
+                    user.name ? user.name.substring(0, 2).toUpperCase() : "U"
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-zinc-900 truncate">{user.name}</p>
+                  <p className="text-[11px] font-semibold text-emerald-600 capitalize">
+                    {user.role} Account
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={getRoleHome(user.role)}
+                onClick={() => setMobileOpen(false)}
+                className="text-[11px] font-bold text-zinc-700 bg-white border border-zinc-200 px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-zinc-100"
               >
-                <Sprout className="w-3.5 h-3.5" /> Farmer
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  switchDemoRole("buyer");
-                  setMobileOpen(false);
-                  router.push("/buyer");
-                }}
-                className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  !isFarmer ? "bg-white shadow text-blue-700" : "text-zinc-500 hover:text-zinc-900"
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" /> Buyer
-              </button>
+                Dashboard
+              </Link>
             </div>
 
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 mb-2">

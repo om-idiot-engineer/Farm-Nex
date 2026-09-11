@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   MapPin,
   MessageSquare,
@@ -174,10 +175,9 @@ export default function ProfilePage() {
           {/* Top row: Avatar + Action Buttons */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-5">
             {/* Avatar with clean border and shadow */}
-            <div className={`h-28 w-28 sm:h-36 sm:w-36 rounded-3xl overflow-hidden flex items-center justify-center text-3xl sm:text-4xl font-extrabold shadow-xl border-[5px] border-white text-white shrink-0 bg-gradient-to-br ${gradientClass} ring-1 ring-black/5`}>
+            <div className={`relative h-28 w-28 sm:h-36 sm:w-36 rounded-3xl overflow-hidden flex items-center justify-center text-3xl sm:text-4xl font-extrabold shadow-xl border-[5px] border-white text-white shrink-0 bg-gradient-to-br ${gradientClass} ring-1 ring-black/5`}>
               {profile.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
+                <Image src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" width={144} height={144} unoptimized />
               ) : (
                 <span>{initials}</span>
               )}
@@ -548,10 +548,9 @@ export default function ProfilePage() {
                       className="p-3.5 rounded-2xl border border-zinc-200 bg-white hover:border-emerald-500/50 hover:shadow-sm transition-all flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-sm shrink-0 border border-zinc-200">
+                        <div className="relative w-11 h-11 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-sm shrink-0 border border-zinc-200">
                           {conn.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={conn.avatarUrl} alt={conn.name} className="h-full w-full object-cover" />
+                            <Image src={conn.avatarUrl} alt={conn.name} className="h-full w-full object-cover" width={44} height={44} unoptimized />
                           ) : (
                             <span>{conn.avatar || conn.name.slice(0, 2).toUpperCase()}</span>
                           )}

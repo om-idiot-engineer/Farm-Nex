@@ -9,7 +9,7 @@ router = APIRouter(prefix="/search", tags=["Search"])
 async def search_users(
     q: str = Query("", description="Search query"),
     role: str = Query(None, description="Optional role filter"),
-    current_user: dict = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
     """Search real users by name, phone, or location. Returns a list of user dicts with basic info."""
     if not q and not role:

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, ShoppingBag, MapPin, CheckCircle2, ShieldCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
@@ -37,7 +38,7 @@ export default function ConsumerDashboard() {
           <p className="text-[13px] text-zinc-500 mt-1">Verified farm-to-table groceries sourced directly from local farmers.</p>
         </div>
         <Button asChild className="h-10 px-4 rounded-full font-semibold text-[13px]">
-          <Link href="/consumer/orders">
+          <Link href="/deals">
             <ShoppingBag className="w-4 h-4 mr-2" /> My Orders
           </Link>
         </Button>
@@ -51,7 +52,7 @@ export default function ConsumerDashboard() {
               <div key={i} className="bg-white rounded-[20px] border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
                 <div className="h-32 bg-emerald-50 border-b border-zinc-100 flex items-center justify-center relative overflow-hidden">
                   {product.image ? (
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    <Image src={product.image} alt={product.name} className="w-full h-full object-cover" width={400} height={300} unoptimized />
                   ) : (
                     <span className="text-4xl">🌾</span>
                   )}

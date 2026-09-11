@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "Farm-Nex | Direct Farmer-to-Buyer Sales",
   description: "Direct farm-to-buyer sales with net realization ranking, transparent logistics, and real mandi intelligence.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export const viewport: Viewport = {
@@ -25,28 +28,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var path = window.location.pathname;
-                  var isBuyerPath = path.startsWith('/buyer') || path.startsWith('/consumer');
-                  if (isBuyerPath) {
-                    document.body.classList.add('theme-buyer');
-                  }
-
-                  var role = localStorage.getItem('user_role');
-                  if (role === 'buyer' || role === 'consumer') {
-                     document.body.classList.add('theme-buyer');
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="min-h-screen flex flex-col font-sans">
         <PWAProvider>
           <LanguageProvider>

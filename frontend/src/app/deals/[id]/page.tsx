@@ -173,48 +173,47 @@ export default function DealRoomPage() {
               </span>
             )}
           </div>
-
-      <div className="flex flex-wrap gap-2 pt-4">
-        {agreement.status === "in_transit" && user?.role === "buyer" && (
-          <Button onClick={async () => {
-            await confirmOrderDelivery(id);
-            window.location.reload();
-          }}>Confirm Delivery</Button>
-        )}
-        {agreement.status === "delivered" && user?.role === "farmer" && (
-          <Button onClick={async () => {
-            await confirmOrderPayment(id);
-            window.location.reload();
-          }}>Confirm Payment Received</Button>
-        )}
-        {agreement.status === "completed" && (
-          <div className="flex gap-2 items-center bg-muted/50 p-3 rounded-lg border border-border">
-            <span className="text-sm font-bold">Leave Rating:</span>
-            <select value={rating} onChange={e => setRating(Number(e.target.value))} className="border p-1 rounded text-sm bg-card">
-              <option value="5">5 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="2">2 Stars</option>
-              <option value="1">1 Star</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Write a review..."
-              value={review}
-              onChange={e => setReview(e.target.value)}
-              className="border p-1 rounded text-sm px-2 bg-card min-w-[200px]"
-            />
-            <Button size="sm" onClick={async () => {
-              await rateOrderTransaction(id, rating, review);
-              alert("Rating submitted successfully!");
-            }}>Submit Rating</Button>
-          </div>
-        )}
-      </div>
-
           <p className="mt-1 text-sm text-muted-foreground">
             B2B Commercial Agricultural Trade Agreement · Locked via Digital Contract
           </p>
+
+          <div className="flex flex-wrap gap-2 pt-3">
+            {agreement.status === "in_transit" && user?.role === "buyer" && (
+              <Button onClick={async () => {
+                await confirmOrderDelivery(id);
+                window.location.reload();
+              }}>Confirm Delivery</Button>
+            )}
+            {agreement.status === "delivered" && user?.role === "farmer" && (
+              <Button onClick={async () => {
+                await confirmOrderPayment(id);
+                window.location.reload();
+              }}>Confirm Payment Received</Button>
+            )}
+            {agreement.status === "completed" && (
+              <div className="flex flex-wrap gap-2 items-center bg-muted/50 p-3 rounded-lg border border-border">
+                <span className="text-sm font-bold">Leave Rating:</span>
+                <select value={rating} onChange={e => setRating(Number(e.target.value))} className="border p-1 rounded text-sm bg-card">
+                  <option value="5">5 Stars</option>
+                  <option value="4">4 Stars</option>
+                  <option value="3">3 Stars</option>
+                  <option value="2">2 Stars</option>
+                  <option value="1">1 Star</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Write a review..."
+                  value={review}
+                  onChange={e => setReview(e.target.value)}
+                  className="border p-1 rounded text-sm px-2 bg-card min-w-[200px]"
+                />
+                <Button size="sm" onClick={async () => {
+                  await rateOrderTransaction(id, rating, review);
+                  alert("Rating submitted successfully!");
+                }}>Submit Rating</Button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

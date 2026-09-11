@@ -152,12 +152,13 @@ export interface Conversation {
 
 export interface AppNotification {
   id: string;
-  type: "interest" | "response" | "logistics" | "payment" | "market" | "network";
+  type: "interest" | "response" | "logistics" | "payment" | "market" | "network" | "trade";
   title: string;
   description: string;
   createdAt: string;
   href: string;
   unread: boolean;
+  userId?: string; // optional for real-user notifications
 }
 
 export interface DemoProfile {

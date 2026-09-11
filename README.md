@@ -1,333 +1,450 @@
 # Farm-Nex
 
-**Logistics-aware agricultural marketplace and professional agri-network connecting smallholder farmers and FPOs directly with verified bulk buyers to maximize net farm-gate realization.**
+**Direct agricultural marketplace and professional agri-network connecting farmers, FPOs, and bulk buyers with logistics-aware net realization matching, transparent mandi intelligence, and end-to-end deal execution.**
 
 ---
 
-## Overview
+## 1. Overview
 
-Agricultural commerce across India suffers from severe price opacity, multi-tiered brokerage, and deceptive headline prices. While a processor 200 km away might quote ₹5,050 per quintal for soybean, high road freight costs often make that offer less profitable than a ₹4,900 per quintal bid from a local mill 38 km away. Farmers frequently lack the analytical tools to factor freight deductions into spot negotiations, leading to avoidable revenue loss or distress sales to village-level intermediaries.
+Agricultural trade in India is fragmented by multi-tiered intermediary brokerage, opaque mandi pricing, and deceptive gross bid quotes. When an industrial processor 180 km away offers ₹5,050/quintal while a local flour mill 35 km away bids ₹4,900/quintal, high road transport and loading expenses often render the distant bid significantly less profitable. Without accurate freight deductions factored in at spot negotiation time, smallholder farmers and Farmer Producer Organizations (FPOs) face unavoidable margin leakage or distress selling.
 
-**Farm-Nex** solves this problem by introducing a **logistics-aware matching engine** where all buyer demands are ranked not by gross bid price, but by **Net Realization**—the exact cash amount remaining per quintal after deducting multi-axle freight costs calculated via haversine distance and tiered freight rates.
+**Farm-Nex** solves this challenge through a **Logistics-Aware Matching Engine** that ranks buyer procurement demands by **Net Realization**—the actual take-home revenue per quintal after calculating spherical Haversine transport distance and tiered multi-axle freight costs.
 
-Farm-Nex also addresses the issue of "AI washing" in agriculture. Instead of using unverified generative AI or opaque black-box deep learning models that hallucinate predictions, Farm-Nex delivers **deterministic, transparent market intelligence**. Using historical mandi records from the Government of India's Agmarknet network across Madhya Pradesh, the platform calculates 30-day statistical price baselines (Moving Average blended with Single Exponential Smoothing, $\alpha = 0.3$) and provides rule-based economic explainers that trace price volatility directly to physical arrival volume shocks and statutory Minimum Support Price (MSP) benchmarks.
+Furthermore, Farm-Nex delivers **deterministic, transparent market intelligence** grounded in verified Government of India Agmarknet mandi auction records across Madhya Pradesh. Rather than relying on opaque or hallucinating generative AI models, Farm-Nex computes a dual-baseline 30-day statistical price forecast (Moving Average blended with Single Exponential Smoothing, $\alpha = 0.3$) and provides a rule-based economic explainer analyzing 14-day physical arrival volume shocks and statutory Minimum Support Price (MSP) benchmarks.
 
-Built with Next.js 14, Tailwind CSS, FastAPI, and Supabase PostgreSQL (with a zero-dependency in-memory fallback), Farm-Nex provides dedicated workspaces for Farmers, Bulk Processors, Farmer Producer Organizations (FPOs), Consumers, and System Administrators.
-
----
-
-## The Problem
-
-Smallholder farmers and agricultural enterprises in India face four structural barriers:
-
-1. **Information Asymmetry & Phantom Pricing**: Farmers see mandi headline prices but cannot easily determine whether distant buyer bids will remain profitable after accounting for transport, loading, and distance decay.
-2. **Intermediary Margin Erosion**: Traditional agricultural supply chains pass produce through 3 to 5 middlemen legs (village aggregators, commission agents, regional mandi traders, transport brokers), shedding ₹85 to ₹120 per quintal in commissions and multiple handling charges.
-3. **Unreliable Black-Box Predictions**: Modern agri-tech platforms often deploy unverified generative AI or synthetic "price predictors" that lack verifiable training baselines. When opaque algorithms fail, farmers absorb catastrophic financial losses.
-4. **Disjointed Trade Workflows**: From discovery to weighing, hauling, and invoicing, transactions are negotiated over informal phone calls with zero binding audit trails, exposing both farmers and buyers to payment defaults and unfulfilled delivery commitments.
+Built with **Next.js 14 (App Router)**, **FastAPI**, **Supabase PostgreSQL** (with an in-memory datastore fallback for instant zero-dependency local evaluation), and **PWA offline support**, Farm-Nex provides dedicated workspaces for Farmers, Bulk Buyers / Processors, FPOs, Consumers, and Platform Administrators.
 
 ---
 
-## The Solution
+## 2. Problem & Solution
 
-Farm-Nex combines direct digital procurement with deterministic analytics and trade lifecycle management:
+### The Structural Problem in Agri-Commerce
+1. **Gross Price Deception & Distance Decay**: Mandi headline rates hide hauling, handling, and distance deductions. Farmers cannot easily determine which buyer bid yields the highest take-home payout.
+2. **Intermediary Margin Erosion**: Produce traverses 3 to 5 intermediary tiers (village aggregators, commission agents / *arhtiyas*, regional brokers), shedding ₹85 to ₹120 per quintal in commissions and repeated handling charges.
+3. **Black-Box "AI Washing"**: Agricultural applications often claim generative AI price predictions that hallucinate forecasts without verifiable historical training baselines, leaving farmers exposed to market volatility.
+4. **Informal & Vulnerable Trade Execution**: Trades negotiated over unrecorded phone calls lack contractual binding, dispute records, or verified weighbridge reconciliation, leading to default risks and delayed payments.
 
-- **Net Realization Ranking**: Every buyer match computes distance, applies a tiered logistics tariff, subtracts freight per quintal from the buyer's bid, and surfaces the true net earnings.
-- **Statutory & Transparent Intelligence**: Mandi market trends and price forecasts are calculated strictly using verifiable statistical methods (rolling averages and exponential smoothing) paired with rule-based economic heuristics based on real Agmarknet mandi data.
-- **Binding 8-Stage Trade Lifecycle**: Accepted matches transition through an explicit state machine with milestone audit logs, verifiable weighbridge details, and delivery confirmations.
-- **Multi-Stakeholder Workspaces**: Tailored interfaces for individual farmers, collective FPOs pooling regional harvests, bulk industrial mills, direct-sourcing consumers, and regulatory platform admins.
-
----
-
-## Key Features
-
-### 🚜 Farmer Workspace & Produce Listings
-- **Produce Listing Form**: List crop batches with commodity type (Soybean, Wheat, Cotton), quantity in quintals, quality grade (Grade A, B, C, FAQ), moisture percentage, harvest date, location coordinates, and minimum expected farm-gate price.
-- **My Produce Dashboard**: View active, matched, in-transit, and delivered crop listings with instant deletion/withdrawal capability.
-- **Smart Sell / Best Match Discovery**: Enter produce volume and location to evaluate matching buyers ranked dynamically by net realization per quintal.
-
-### 🏭 Bulk Buyer Procurement
-- **Procurement Demand Posts**: Industrial mills and food processors publish bulk buying tenders with required volume, acceptable quality grade, moisture ceiling, offered gross price per quintal, delivery location, and payment terms.
-- **Demand Lifecycle Management**: Track active requirements, monitor inbound farmer responses, and withdraw fulfilled tenders.
-- **Direct Farmer Discovery**: Browse verified regional supply lots with filtering by commodity and delivery status.
-
-### ⚖️ Logistics-Aware Smart Matching Engine
-- **Haversine Distance Calculation**: Accurately measures spherical distance in kilometers between farm-gate origin and mill processing facility.
-- **Tiered Freight Estimation**:
-  - Base tariff: ₹0.35 per quintal-kilometer for trips up to 100 km.
-  - Long-haul efficiency discount: 10% reduction on marginal distance beyond 100 km (₹0.315 per quintal-km).
-  - Minimum freight charge: ₹25.00 per quintal to cover fixed loading/drayage costs.
-- **Multi-Factor Match Scoring**:
-  $$\text{Match Score} = 0.45(S_{\text{net}}) + 0.20(S_{\text{price}}) + 0.15(S_{\text{dist}}) + 0.08(S_{\text{qty}}) + 0.05(S_{\text{qual}}) + 0.05(S_{\text{rel}}) + 0.02(S_{\text{avail}})$$
-- **Transparent Match Explanations**: Surfaces human-readable rationales (e.g., *"Net realization exceeds your minimum expectation"*, *"Only 38 km away"*, *"Needs your full quantity"*).
-
-### 📈 Transparent Market Intelligence
-- **Agmarknet Price Trends**: Interactive historical mandi modal prices (1-month, 3-month, 6-month, and 1-year windows) for major Madhya Pradesh trading hubs (Indore, Dewas, Ujjain, Sehore, Khandwa).
-- **Deterministic Demand Forecasting**:
-  - 30-day baseline moving average blended with Single Exponential Smoothing ($\alpha = 0.3$).
-  - Formula:
-    $$\text{Forecast} = 0.65 \times \text{ExpSmooth}_{14\text{d}} + 0.35 \times \text{MovingAvg}_{30\text{d}}$$
-  - Displays calculation methodology, confidence tier, and projected price direction (`upward`, `stable`, `downward`) without black-box generative AI.
-- **"Why Price Moved" Economic Explainer**:
-  - Compares the most recent 14 trading days against the preceding 14-day baseline for physical mandi arrival volumes and prices.
-  - Evaluates supply shocks ($>15\%$ arrival surge or $<-15\%$ contraction).
-  - Evaluates commodity-specific drivers (e.g., Government MSP floor parity at ₹4,892/Q for Soybean, roller flour mill pipeline demand for Wheat, spinning cluster off-take for Cotton).
-
-### 🔄 Trade Agreement & 8-Stage Order Lifecycle
-- **Digital Trade Agreements**: Generates binding digital trade summaries upon match acceptance with locked price per quintal, agreed quantity, freight deduction breakdown, and facilitation fees.
-- **Strict State Machine**: Enforces logical sequential status transitions:
-  $$\text{Matched} \rightarrow \text{Trade Confirmed} \rightarrow \text{Pickup Scheduled} \rightarrow \text{Pickup Completed} \rightarrow \text{In Transit} \rightarrow \text{Delivered} \rightarrow \text{Payment Confirmed} \rightarrow \text{Completed}$$
-- **Role-Based Access Control**: Prevents unauthorized participants from advancing trade states; synchronizes underlying produce listings with delivery progression.
-
-### 👥 Agricultural Community & Professional Network
-- **Discussion Board**: Filterable agronomic and trade threads categorized by tags (`question`, `market`, `machinery`, `expert_verified`).
-- **Threaded Replies**: Interactive peer discussions between farmers, agronomists, and procurement officers.
-- **Admin Expert Verification**: Platform administrators can verify and mark technically sound agronomic advice with an **Expert Verified** trust badge.
-
-### 🛡️ Platform Surveillance & Administrative Operations
-- **System KPIs**: Real-time aggregation of active listings, buyer demand, contracted trade agreements, total trade volume in quintals, and estimated cumulative logistics savings generated by disintermediation.
-- **Spatial Node Mapping**: Geospatial coordinate API (`/admin/map-nodes`) providing supply (farmer listings) and demand (buyer processing plants) coordinates across Madhya Pradesh.
-- **Dispute Resolution & Trust Governance**: Administrative workflow for inspecting flagged transactions and managing user verification status.
+### The Farm-Nex Solution
+- **Net Realization Ranking**: Every buyer opportunity computes highway haulage distance via the Haversine formula, calculates tiered freight, subtracts freight per quintal from the gross offer, and ranks bids strictly by take-home revenue.
+- **Verifiable Mandi Analytics**: Historical mandi prices, 30-day trend forecasts, and price-movement explainers are computed using transparent mathematical models over official Agmarknet data.
+- **Strict 8-Stage Trade Lifecycle**: Accepted matches transition through an enforced state machine with weighbridge receipts, delivery confirmations, bidirectional ratings, and administrative dispute management:
+  $$\text{Matched} \rightarrow \text{Confirmed} \rightarrow \text{Pickup Scheduled} \rightarrow \text{Pickup Completed} \rightarrow \text{In Transit} \rightarrow \text{Delivered} \rightarrow \text{Payment Confirmed} \rightarrow \text{Completed}$$
+- **Direct Multi-Role Network**: Integrates an agricultural community network with threaded replies, expert verification badges, direct messaging with counter-offer cards, and role-based workspaces.
 
 ---
 
-## What Makes This Different
+## 3. Key Features by User Role
 
-| Metric / Dimension | Traditional APMC Mandi | Generic Agri-Tech Startups | Farm-Nex |
-|---|---|---|---|
-| **Price Metric Displayed** | Gross mandi auction price | Gross buyer bid price | **Net Realization** (Gross bid minus calculated logistics freight) |
-| **Logistics Accounting** | Farmer arranges and bears all unbudgeted freight costs | Buyer/Farmer left to handle logistics offline | **Integrated Haversine tiered freight modeling** directly inside matching engine |
-| **Market Intelligence** | Verbal hearsay from commission agents (*arhtiyas*) | Opaque / Hallucinating black-box generative AI | **Deterministic statistical models** (30d MA + Exponential Smoothing $\alpha=0.3$) from verified Agmarknet data |
-| **Price Shift Rationale** | None | Generalized synthetic chat responses | **Rule-based heuristic explainer** comparing 14-day arrival volume elasticity with MSP benchmarks |
-| **Trade Audit Trail** | Paper slips (*kaccha parchi*), high counterparty risk | Unstructured phone calls and chats | **8-stage digital trade agreement state machine** with role permissions |
-| **Intermediary Costs** | High multi-tier commission (₹85–₹120/Q) | Variable opaque brokerage cuts | **Transparent facilitation model** (~₹35/Q direct logistics) |
+### 🌾 Farmer & FPO Capabilities
+- **Crop Lot Listing**: Register harvest lots with commodity crop ID, quantity in quintals, quality grade (`Grade A`, `Grade B`, `Grade C`, `FAQ`), moisture percentage, harvest/availability dates, farm coordinates, expected price, pickup preference, and lot photos.
+- **Smart Sell & Buyer Matching**: Discover active bulk buyer demands dynamically ranked by **Net Realization per Quintal** with breakdown of gross price, estimated freight, and human-readable match rationales.
+- **Produce Management**: Track active, matched, in-transit, and delivered crop listings with instant withdrawal/deletion options (`/farmer/produce`).
+- **FPO Collective Aggregation**: Monitor pooled member harvests, supply lots, collection centers, and logistics consolidation batches (`/fpo`).
+- **Delivery & Payment Confirmation**: Confirm trade deliveries and acknowledge received bank payments directly on trade agreements.
 
----
+### 🏭 Bulk Buyer & Processor Capabilities
+- **Procurement Demand Broadcasting**: Post industrial requirements specifying target commodity, volume needed, acceptable quality grade, moisture ceiling, gross offered price, delivery yard location, and payment terms (`/buyer/requirements`).
+- **Supply Discovery**: Browse verified regional crop listings with commodity, location, and seller verification filters (`/marketplace`).
+- **Trade Execution & Delivery Confirmation**: Confirm trade agreements upon farmer acceptance, schedule farm-gate vehicle dispatch, and confirm weighbridge receipt at the factory gate (`/deals/[id]`).
 
-## User Journey
+### 👥 Social Network & Direct Negotiation
+- **Community Discussion Board**: Create agronomic and trade discussions categorized by tags (`question`, `market`, `machinery`, `expert_verified`).
+- **Threaded Replies & Reactions**: Participate in peer discussions, like posts, and post comments (`/network`).
+- **Direct Messaging with Trade Offers**: Structured chat supporting standard text messages, formal purchase offers, counter-offers, and deal acceptance cards (`/messages`).
+- **User Directory & Verification**: Search across registered producers, FPOs, and buyers by name, role, phone, or location, and view detailed user profiles with reliability scores (`/profile/[id]`).
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Farmer as 🌾 Farmer (Ramesh)
-    participant Platform as 💻 Farm-Nex Platform
-    actor Buyer as 🏭 Bulk Buyer (Agrocorp)
-
-    Note over Farmer,Buyer: Phase 1: Onboarding & Discovery
-    Farmer->>Platform: Signs in via Mobile OTP (9876543210 / 123456)
-    Platform-->>Farmer: Loads Farmer Dashboard & Market Advisory
-    Farmer->>Platform: Views Mandi Price Trends & 30-Day Forecast
-    
-    Note over Farmer,Buyer: Phase 2: Listing & Matching
-    Farmer->>Platform: Lists 100Q Grade-A Soybean (Expected: ₹4,800/Q)
-    Buyer->>Platform: Posts Procurement Demand for 150Q (Offer: ₹4,900/Q @ Dewas)
-    Platform->>Platform: Runs Haversine Calculation (38 km) & Tiered Freight (₹25/Q)
-    Platform->>Platform: Computes Net Realization (₹4,900 - ₹25 = ₹4,875/Q)
-    Platform-->>Farmer: Presents Ranked Match (Net Realization Score: 100/100)
-    
-    Note over Farmer,Buyer: Phase 3: Agreement & Execution
-    Farmer->>Platform: Accepts Match Opportunity
-    Platform->>Platform: Generates Digital Trade Agreement
-    Buyer->>Platform: Confirms Trade Agreement
-    Platform->>Platform: State: Trade Confirmed
-    Buyer->>Platform: Schedules Farm-Gate Vehicle Dispatch
-    Platform->>Platform: State: Pickup Scheduled -> Pickup Completed
-    Platform->>Platform: State: In Transit -> Delivered
-    Buyer->>Platform: Confirms Quality & Weighbridge Receipt
-    Platform->>Platform: State: Payment Confirmed -> Completed
-```
+### 🛡️ Administrative & Platform Operations
+- **Surveillance KPIs**: Real-time aggregation of active listings, buyer demands, trade agreements, connected farmers/buyers, trade volume in quintals, and cumulative logistics savings in INR (`/admin`, `/admin/analytics`).
+- **Geospatial Supply & Demand Map**: Spatial coordinate rendering mapping supply (farmer harvest lots) and demand (buyer processing plants) across regional trade corridors (`/admin`).
+- **Dispute Resolution**: Review, investigate, and resolve commercial disputes raised over quality discrepancies or payment delays (`/admin/disputes`).
+- **Trust & Verification Queue**: Inspect submitted business licenses, GST credentials, and farmer documents to approve or reject verification status (`/admin/trust`).
+- **Expert Verification Badge**: Mark technically sound community advice with the platform's "Expert Verified" badge.
 
 ---
 
-## System Architecture
-
-Farm-Nex is architected as a decoupled, resilient application with clear separation between frontend client interfaces, domain orchestrators, RESTful backend services, and persistence engines.
-
-```mermaid
-graph TB
-    subgraph Client Layer [Frontend - Next.js 14 App Router]
-        UI[Tailwind CSS + Radix UI + Lucide]
-        Context[UserContext + LanguageContext]
-        Domain[Domain Orchestration Service\nsrc/lib/services/domain.ts]
-        Charts[Recharts Visualization Engine]
-    end
-
-    subgraph API Communication
-        Fetch[Typed API Client\nsrc/lib/api.ts with Bearer JWT]
-    end
-
-    subgraph Backend Layer [FastAPI Application]
-        Main[FastAPI Gateway /api/v1]
-        RateLimit[SlowAPI Rate Limiter]
-        AuthRouter[Auth Module\nPhone OTP + Bcrypt / JWT]
-        MarketRouter[Marketplace Module\nListings + Demands + Agreements]
-        MatchRouter[Matching Engine\nHaversine + Net Realization Scoring]
-        IntelRouter[Market Intelligence\nAgmarknet Data + Stat Forecast + Heuristic Explainer]
-        CommRouter[Community Module\nPosts + Replies + Expert Verification]
-        AdminRouter[Admin Surveillance\nKPIs + Geo Node Mapping]
-    end
-
-    subgraph Data & Storage Layer
-        Supabase[(Supabase Cloud PostgreSQL\nTables + Enums + RLS Policies)]
-        MemStore[(In-Memory Fallback Datastore\nZero-Downtime Local Development)]
-        AgmarknetData[(Agmarknet CSV Dataset\ndata/market_prices_mp.csv)]
-    end
-
-    UI --> Context
-    UI --> Charts
-    Context --> Domain
-    Domain --> Fetch
-    Fetch -->|HTTP REST + Bearer Token| Main
-    Main --> RateLimit
-    RateLimit --> AuthRouter
-    RateLimit --> MarketRouter
-    RateLimit --> MatchRouter
-    RateLimit --> IntelRouter
-    RateLimit --> CommRouter
-    RateLimit --> AdminRouter
-
-    AuthRouter --> Supabase
-    MarketRouter --> Supabase
-    MatchRouter --> Supabase
-    CommRouter --> Supabase
-    AdminRouter --> Supabase
-
-    AuthRouter -.->|Fallback if No DB Creds| MemStore
-    MarketRouter -.->|Fallback if No DB Creds| MemStore
-    MatchRouter -.->|Fallback if No DB Creds| MemStore
-    IntelRouter --> AgmarknetData
-    IntelRouter -.-> MemStore
-```
-
----
-
-## Tech Stack
+## 4. Current Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript (strict type checking enabled)
-- **UI & Styling**: Tailwind CSS, PostCSS, Radix UI Slot primitives, Class Variance Authority (`cva`), `clsx`, `tailwind-merge`
-- **Data Visualization**: Recharts (Responsive SVG historical price trends)
-- **Icons**: Lucide React
-- **Internationalization**: Custom React `LanguageContext` supporting English and Hindi (`hi`)
+- **Framework**: Next.js 14.2 (React 18, App Router)
+- **Language**: TypeScript 5.4 (Strict mode enabled)
+- **Styling**: Tailwind CSS 3.4, PostCSS, Class Variance Authority (`cva`), `clsx`, `tailwind-merge`
+- **UI Primitives & Icons**: Radix UI (`@radix-ui/react-slot`), Lucide React
+- **Data Visualization**: Recharts 2.12 (Historical modal price trends and arrival volume series)
+- **Date Handling**: `date-fns` 4.4
+- **Internationalization (i18n)**: Custom `LanguageContext` supporting English (`en`) and Hindi (`hi`)
+- **PWA**: Web App Manifest (`/manifest.json`), service worker registration (`PWAProvider.tsx`), standalone display support
+- **State & Data Layer**: Client `UserContext`, typed API client (`api.ts`), hybrid domain orchestrator (`domain.ts`) with in-browser test user directory
 
 ### Backend
 - **Framework**: FastAPI 0.110+ (Python 3.10+)
-- **Server**: Uvicorn (ASGI standard)
-- **Validation & Schemas**: Pydantic v2 & Pydantic-Settings
-- **Security & Authentication**: PyJWT (HS256 JSON Web Tokens), Passlib with Bcrypt password hashing
-- **Rate Limiting**: SlowAPI (10 requests/min on auth, 60 requests/min default)
-- **CORS**: Permissive hackathon development CORS with production allowlist configuration
+- **Server**: Uvicorn (Standard ASGI with Gunicorn production support)
+- **Validation & Serialization**: Pydantic v2 & Pydantic-Settings
+- **Security & Authentication**: PyJWT (HS256 access & refresh tokens), Passlib with Bcrypt password hashing
+- **Rate Limiting**: SlowAPI (10 req/min for authentication, 60 req/min default)
+- **Middleware**: GZip response compression (responses > 500 bytes), CORS middleware
+- **Data Analysis**: Pandas 2.2+, NumPy 1.26+
+- **HTTP Client**: HTTPX 0.27+
+- **Testing**: PyTest 8.0+, PyTest-Asyncio (29 automated unit & integration tests)
 
-### Data Processing & Analytics
-- **Data Series**: Pandas 2.2+, NumPy 1.26+
-- **Distance Calculation**: Python standard `math` implementing the spherical Haversine formula
-- **Testing**: PyTest 8.0+, PyTest-Asyncio, HTTPX
-
-### Database & Storage
-- **Primary Database**: Supabase PostgreSQL with custom ENUMs, relational foreign keys, cascade constraints, and Row-Level Security (RLS) policies
-- **Zero-Downtime Fallback**: Integrated in-memory Python datastore (`InMemoryStore`) pre-seeded with realistic Madhya Pradesh producers, verified buyers, and demand posts for immediate local evaluation without external credentials
-- **Dataset**: Official historical daily mandi modal prices and arrivals from Agmarknet (Sept 2025 – Aug 2026) for Soybean, Wheat, and Cotton across MP districts
+### Database & Persistence
+- **Database**: Supabase PostgreSQL with custom ENUMs, relational foreign keys, cascade rules, and Row-Level Security (RLS) policies
+- **Zero-Downtime In-Memory Fallback**: Built-in memory datastore (`app.core.database.InMemoryStore`) enabling complete offline evaluation without external credentials
+- **Dataset**: Daily Agmarknet mandi auction records across Madhya Pradesh (`data/market_prices_mp.csv`)
 
 ---
 
-## Project Structure
+## 5. System Architecture
+
+```mermaid
+graph TB
+    subgraph Client [Frontend - Next.js 14 App Router]
+        UI[Tailwind CSS + Radix UI + Lucide]
+        Context[UserContext + LanguageContext]
+        PWA[PWAProvider + Service Worker]
+        Domain[Domain Orchestrator\nsrc/lib/services/domain.ts]
+        APIClient[Typed Fetch Client\nsrc/lib/api.ts with Bearer Token]
+    end
+
+    subgraph Gateway [FastAPI Gateway /api/v1]
+        RateLimiter[SlowAPI Limiter]
+        GZip[GZip Middleware]
+        CORS[CORS Middleware]
+    end
+
+    subgraph Routers [API Modules]
+        AuthR[auth.py\nOTP, Login, Register, Profiles]
+        MarketR[marketplace.py\nListings, Demands, Orders]
+        MatchR[matching.py\nHaversine & Net Realization Engine]
+        IntelR[intelligence.py & heatmap.py\nPrice Trends, Forecast, Heuristics]
+        CommR[community.py & messaging.py\nPosts, Comments, Chats, Offers]
+        AdminR[admin.py & verification.py & reliability.py\nKPIs, Map Nodes, Verification Queue]
+    end
+
+    subgraph DataLayer [Storage & Data]
+        SupabaseDB[(Supabase PostgreSQL\nMigrations 001-003 + RLS)]
+        MemDB[(InMemoryStore Datastore\nZero-Downtime Fallback)]
+        CSVData[(Agmarknet Mandi Dataset\ndata/market_prices_mp.csv)]
+    end
+
+    UI --> Context
+    UI --> PWA
+    Context --> Domain
+    Domain --> APIClient
+    APIClient -->|HTTP REST + Bearer JWT| Gateway
+    Gateway --> RateLimiter --> GZip --> CORS
+    CORS --> AuthR & MarketR & MatchR & IntelR & CommR & AdminR
+
+    AuthR & MarketR & MatchR & CommR & AdminR --> SupabaseDB
+    AuthR & MarketR & MatchR & CommR & AdminR -.->|Fallback if no DB| MemDB
+    IntelR --> CSVData
+    IntelR -.-> MemDB
+```
+
+### Key Architectural Flows
+1. **Authentication Flow**:
+   - Farmers authenticate via phone OTP (`/api/v1/auth/farmer/send-otp` and `/api/v1/auth/farmer/verify-otp`).
+   - Bulk buyers and administrators authenticate via email and Bcrypt-hashed password (`/api/v1/auth/buyer/login`).
+   - The server issues HS256-signed JWT access and refresh tokens. Authenticated requests pass the token in the `Authorization: Bearer <token>` header.
+2. **Logistics & Matching Flow**:
+   - Farm coordinates $(lat_1, lon_1)$ and buyer facility coordinates $(lat_2, lon_2)$ are evaluated using the spherical Haversine formula:
+     $$d = 2R \cdot \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_1)\cos(\text{lat}_2)\sin^2\left(\frac{\Delta \text{lon}}{2}\right)}\right)$$
+   - Road freight is calculated at ₹0.35/quintal-km for the first 100 km, with a 10% long-haul efficiency discount beyond 100 km (₹0.315/quintal-km), subject to a minimum charge of ₹25.00/quintal.
+   - **Net Realization per Quintal** $= \text{Offered Price} - \text{Freight per Quintal}$.
+   - Match score synthesizes net realization (45%), price (20%), distance (15%), quantity fit (8%), quality grade (5%), reliability (5%), and availability (2%).
+3. **Market Intelligence & Price Forecast Flow**:
+   - Pulls historical mandi modal prices and arrivals for Madhya Pradesh trading hubs.
+   - Computes a deterministic 30-day price projection:
+     $$\text{Forecast} = 0.65 \times \text{ExpSmooth}_{14\text{d}}(\alpha = 0.3) + 0.35 \times \text{MovingAvg}_{30\text{d}}$$
+   - The economic explainer evaluates 14-day arrival volume elasticity ($>15\%$ surge vs $<-15\%$ contraction) against commodity statutory floors (e.g., Government MSP at ₹4,892/Q for Soybean).
+
+---
+
+## 6. Project Structure
 
 ```text
 FARM-NEX/
-├── backend/                         # FastAPI Python backend application
+├── backend/                              # FastAPI Python backend application
 │   ├── app/
-│   │   ├── api/                     # REST API modular route handlers
-│   │   │   ├── admin.py             # Platform surveillance & map node endpoints
-│   │   │   ├── auth.py              # Farmer OTP, buyer login/register, JWT token handling
-│   │   │   ├── community.py         # Discussion board, replies, expert verification
-│   │   │   ├── intelligence.py      # Agmarknet price trends, forecasting, why-price-moved
-│   │   │   ├── marketplace.py       # Crop listings, demand posts, trade agreements
-│   │   │   └── matching.py          # Haversine distance, freight, net realization engine
-│   │   ├── core/                    # Core application infrastructure
-│   │   │   ├── config.py            # Environment settings and freight/matching parameters
-│   │   │   ├── database.py          # Supabase client initialization & in-memory fallback store
-│   │   │   ├── limiter.py           # SlowAPI rate limiter instance
-│   │   │   └── security.py          # Bcrypt password hashing, JWT encoder/decoder, RBAC
+│   │   ├── api/                          # REST API modular route controllers
+│   │   │   ├── admin.py                  # Macro platform surveillance & geographic map nodes
+│   │   │   ├── agreements_expanded.py    # Delivery/payment confirmations & transaction ratings
+│   │   │   ├── auth.py                   # Phone OTP, registration, login, profile updates, JWT refresh
+│   │   │   ├── community.py              # Forum posts, threaded replies, likes, expert verification
+│   │   │   ├── heatmap.py                # Regional supply/demand geospatial volume aggregation
+│   │   │   ├── intelligence.py           # Agmarknet price trends, forecasting, why-price-moved
+│   │   │   ├── marketplace.py            # Crop listings, demand posts, 8-stage trade agreements
+│   │   │   ├── matching.py               # Haversine distance, freight tariff, net realization engine
+│   │   │   ├── messaging.py              # Direct messaging, offer/counter-offer cards, conversations
+│   │   │   ├── reliability.py            # User transaction reliability, quality score, rating metrics
+│   │   │   ├── sms_provider.py           # SMS dispatch abstraction (Dev mode / Live gateway)
+│   │   │   ├── user_search.py            # Query real users by name, phone, role, or location
+│   │   │   └── verification.py           # KYC verification document queue and admin approvals
+│   │   ├── core/                         # Core infrastructure & configuration
+│   │   │   ├── config.py                 # App settings, matching weights, freight parameters
+│   │   │   ├── database.py               # Supabase client & in-memory zero-dependency fallback store
+│   │   │   ├── limiter.py                # SlowAPI rate limiter setup
+│   │   │   ├── security.py               # Password hashing, JWT token creation/decoding, RBAC
+│   │   │   └── seed_data.py              # Comprehensive seed data across MP districts
 │   │   ├── models/
-│   │   │   └── schemas.py           # Pydantic request/response validation schemas
-│   │   └── main.py                  # FastAPI application entry point, CORS, and routers
+│   │   │   └── schemas.py                # Pydantic request and response schemas
+│   │   └── main.py                       # FastAPI entrypoint, middleware, and lifespan tasks
 │   ├── db/
-│   │   └── schema.sql               # PostgreSQL schema definition and RLS policies
-│   ├── tests/                       # Automated backend test suite (19 test cases)
+│   │   └── schema.sql                    # Base PostgreSQL DDL schema definition
+│   ├── tests/                            # Automated test suite (29 test cases)
 │   │   ├── test_admin.py
+│   │   ├── test_agreements_expanded.py
 │   │   ├── test_auth.py
+│   │   ├── test_heatmap.py
 │   │   ├── test_intelligence.py
+│   │   ├── test_intelligence_p5.py
 │   │   ├── test_marketplace.py
 │   │   ├── test_matching.py
-│   │   └── test_phase5.py
-│   ├── .env.example                 # Template for backend environment variables
-│   └── requirements.txt             # Python backend dependencies
-├── data/                            # Market intelligence data assets
-│   ├── DATA_SOURCES.md              # Public data citations (Agmarknet, DMI, Govt of India)
-│   ├── generate_dataset.py          # Agmarknet data ingestion and interpolation script
-│   └── market_prices_mp.csv         # Mandi daily records (Soybean, Wheat, Cotton)
-├── docs/
-│   └── FEATURE_ENDPOINT_MATRIX.md   # Architectural matrix mapping frontend views to APIs
-├── frontend/                        # Next.js 14 TypeScript web client
+│   │   ├── test_messaging.py
+│   │   ├── test_phase5.py
+│   │   ├── test_reliability.py
+│   │   └── test_verification.py
+│   ├── .env.example                      # Template backend environment variables
+│   ├── pytest.ini                        # PyTest configuration
+│   └── requirements.txt                  # Python dependencies
+├── data/                                 # Market intelligence dataset & tools
+│   ├── DATA_SOURCES.md                   # Public data citations (DMI Agmarknet, Govt of India)
+│   ├── generate_dataset.py               # Dataset processing script
+│   └── market_prices_mp.csv              # Historical mandi modal prices and arrival records
+├── frontend/                             # Next.js 14 TypeScript web client
+│   ├── public/
+│   │   ├── manifest.json                 # Web App Manifest for PWA installation
+│   │   └── icon-192.png                  # App icon
 │   ├── src/
-│   │   ├── app/                     # Next.js App Router route hierarchy
-│   │   │   ├── admin/               # Platform administration & surveillance pages
-│   │   │   ├── buyer/               # Bulk procurement & buyer discovery workspace
-│   │   │   ├── community/           # Community discussion board
-│   │   │   ├── consumer/            # Direct-to-consumer farm produce catalog
-│   │   │   ├── farmer/              # Farmer workspace, smart-sell, produce listings
-│   │   │   ├── fpo/                 # FPO collective aggregation workspace
-│   │   │   ├── intelligence/        # Recharts market price trend & forecast dashboard
-│   │   │   ├── marketplace/         # Unified supply and demand discovery catalog
-│   │   │   ├── messages/            # Messaging and trade communications
-│   │   │   ├── network/             # Professional agri-network feed
-│   │   │   ├── orders/              # Trade agreement tracking & order lifecycle
-│   │   │   ├── layout.tsx           # Global shell, navigation bar, and providers
-│   │   │   └── page.tsx             # Main landing page with 5 one-click demo logins
-│   │   ├── components/              # Shared UI components (Radix primitives, TrustBadge)
-│   │   └── lib/                     # Client infrastructure
-│   │       ├── api.ts               # Typed fetch wrapper with Bearer token injection
-│   │       ├── auth/UserContext.tsx # User session, authentication & demo persona state
-│   │       ├── data/demo.ts         # Structured development records & fallback dataset
-│   │       ├── i18n/LanguageContext # Multilingual dictionary provider (English / Hindi)
-│   │       ├── navigation.ts        # Role-based redirection and breadcrumbs
-│   │       └── services/domain.ts   # Hybrid data orchestrator (FastAPI with demo fallback)
-│   ├── .env.example                 # Template for frontend environment variables
-│   ├── package.json                 # Frontend dependencies and scripts
-│   ├── tailwind.config.ts           # Custom agricultural theme and responsive design tokens
-│   └── tsconfig.json                # TypeScript compiler configuration
-├── supabase/
+│   │   ├── app/                          # Next.js App Router route hierarchy
+│   │   │   ├── admin/                    # Platform administration, analytics, disputes, trust queue
+│   │   │   ├── buyer/                    # Bulk buyer workspace & procurement requirements
+│   │   │   ├── consumer/                 # Direct-to-consumer catalog & local farm discovery
+│   │   │   ├── deals/                    # Trade agreement lifecycle, milestones, weighbridge slips
+│   │   │   ├── developer/                # Internal developer tools & rapid account switcher
+│   │   │   ├── farmer/                   # Farmer dashboard, crop listings, and Smart Sell
+│   │   │   ├── fpo/                      # FPO collective volume aggregation & collection centers
+│   │   │   ├── login/                    # Dedicated role-based authentication page
+│   │   │   ├── marketplace/              # Unified supply and demand discovery exchange
+│   │   │   ├── messages/                 # Direct messaging & negotiation chat interface
+│   │   │   ├── network/                  # Professional agri-network feed & connections directory
+│   │   │   ├── notifications/            # Operational alerts (deals, logistics, market shifts)
+│   │   │   ├── profile/                  # User public profile, badges, and reliability statistics
+│   │   │   ├── layout.tsx                # Global shell, navbar, theme & PWA providers
+│   │   │   └── page.tsx                  # Landing page with interactive demo authentication modal
+│   │   ├── components/                   # Reusable UI components & dialogs
+│   │   └── lib/                          # Client services, i18n, and authentication state
+│   │       ├── api.ts                    # Typed REST API client
+│   │       ├── auth/                     # UserContext, session storage, and route guards
+│   │       ├── data/                     # Demo records and authenticated test user directory
+│   │       ├── i18n/                     # Bilingual translation dictionary (English / Hindi)
+│   │       ├── navigation.ts             # Role-based redirection and navigation links
+│   │       └── services/domain.ts        # Hybrid data orchestrator (FastAPI with demo fallback)
+│   ├── .env.example                      # Template frontend environment variables
+│   ├── package.json                      # Frontend scripts and dependencies
+│   ├── tailwind.config.ts                # Custom typography and agricultural theme tokens
+│   └── tsconfig.json                     # TypeScript compiler configuration
+├── supabase/                             # Cloud PostgreSQL database migrations
 │   └── migrations/
-│       └── 001_initial_schema.sql   # Supabase DDL migrations and RLS definitions
+│       ├── 001_initial_schema.sql        # Initial tables, ENUMs, and RLS policies
+│       ├── 002_farmnex_expansion.sql     # Crops table, disputes, ratings, trade events
+│       └── 003_social_trust_messaging.sql # Verification requests, messages, connections, post likes
 └── README.md
 ```
 
 ---
 
-## Getting Started
+## 7. API Reference
 
-Follow these steps to run Farm-Nex locally on your machine.
+All backend endpoints are prefixed with `/api/v1` (configurable via `API_V1_STR`). Interactive OpenAPI Swagger documentation is available at `http://localhost:8000/docs`.
+
+### Authentication & Profiles (`/auth`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/auth/farmer/send-otp` | Request phone OTP for farmer authentication (sends `123456` in dev) | No |
+| `POST` | `/auth/farmer/verify-otp` | Verify OTP; returns JWT token if registered | No |
+| `POST` | `/auth/farmer/register` | Register a new farmer with location coordinates and crop details | No |
+| `POST` | `/auth/buyer/register` | Register a bulk buyer / business with company and GST details | No |
+| `POST` | `/auth/buyer/login` | Authenticate buyer or admin with email and password | No |
+| `GET` | `/auth/me` | Fetch authenticated user's profile | Bearer JWT |
+| `PUT` | `/auth/me` | Update personal, farm, or business profile details | Bearer JWT |
+| `POST` | `/auth/refresh` | Obtain a new access token using a valid refresh token | No |
+| `GET` | `/auth/test-users` | Retrieve pre-seeded agricultural ecosystem test accounts | No |
+| `POST` | `/auth/dev/switch-account` | Switch user context (restricted to admin/dev mode) | Bearer JWT (Admin) |
+
+### Marketplace: Listings & Demands (`/marketplace`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/marketplace/listings` | Create a new farmer crop lot listing | Bearer JWT (Farmer/Admin) |
+| `GET` | `/marketplace/listings` | Browse public crop listings with optional `crop_id` and `status` filter | No |
+| `GET` | `/marketplace/listings/my` | Retrieve listings belonging to authenticated farmer | Bearer JWT |
+| `DELETE` | `/marketplace/listings/{id}` | Delete or withdraw a crop listing (owner or admin) | Bearer JWT |
+| `POST` | `/marketplace/demands` | Publish a bulk procurement requirement | Bearer JWT (Buyer/Admin) |
+| `GET` | `/marketplace/demands` | Browse active buyer procurement demands | No |
+| `GET` | `/marketplace/demands/my` | Retrieve demand requirements posted by authenticated buyer | Bearer JWT |
+| `DELETE` | `/marketplace/demands/{id}` | Cancel or delete a procurement demand post | Bearer JWT |
+
+### Logistics & Matching Engine (`/matching`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/matching/best-buyers/{listing_id}` | Calculate Haversine distance, freight, and net realization for matching buyers | Bearer JWT |
+| `POST` | `/matching/accept` | Accept a match; generates binding digital trade agreement | Bearer JWT (Farmer/Admin) |
+
+### Trade Agreements & Deal Lifecycle (`/marketplace/agreements`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/marketplace/agreements` | List trade agreements for authenticated user | Bearer JWT |
+| `GET` | `/marketplace/agreements/{id}` | View single trade agreement detail and milestone audit trail | Bearer JWT |
+| `PATCH` | `/marketplace/agreements/{id}/status` | Advance trade agreement status through the 8-stage state machine | Bearer JWT |
+| `PATCH` | `/marketplace/agreements/{id}/delivery` | Confirm physical lot delivery (Buyer or Admin) | Bearer JWT |
+| `PATCH` | `/marketplace/agreements/{id}/payment` | Confirm payment receipt (Farmer or Admin) | Bearer JWT |
+| `POST` | `/marketplace/agreements/{id}/rate` | Submit star rating, quality score, and review for completed trade | Bearer JWT |
+
+### Market Intelligence & Mandi Analytics (`/intelligence`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/intelligence/price-trend` | Historical daily Agmarknet mandi modal prices (1m, 3m, 6m, 1y) | No |
+| `GET` | `/intelligence/demand-forecast` | 30-day statistical forecast (Moving Average + Exponential Smoothing $\alpha=0.3$) | No |
+| `GET` | `/intelligence/why-price-moved` | Rule-based economic explainer analyzing 14d arrival elasticity and MSP | No |
+| `GET` | `/intelligence/trending` | Top gainer and loser commodities by day-over-day and week-over-week change | No |
+| `GET` | `/intelligence/heatmap` | Aggregated geospatial supply, demand, and trade volume intensity | No |
+
+### Community & Social Network (`/community`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/community/posts` | Retrieve discussion posts filtered by tag (`question`, `market`, `machinery`, `expert_verified`) | Optional JWT |
+| `GET` | `/community/posts/{id}` | Retrieve single post with threaded replies and media | Optional JWT |
+| `POST` | `/community/posts` | Publish a new discussion post | Bearer JWT |
+| `POST` | `/community/posts/{id}/reply` | Submit a reply to a discussion post | Bearer JWT |
+| `POST` | `/community/posts/{id}/like` | Like a discussion post | Bearer JWT |
+| `DELETE` | `/community/posts/{id}/like` | Remove like from a discussion post | Bearer JWT |
+| `POST` | `/community/posts/{id}/verify` | Mark post advice with the "Expert Verified" trust badge | Bearer JWT (Admin) |
+
+### Direct Messaging (`/messages`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/messages` | List conversations for authenticated user with unread counts and context | Bearer JWT |
+| `GET` | `/messages/{id}` | Retrieve full message history of a conversation | Bearer JWT |
+| `POST` | `/messages` | Initialize conversation with a counterparty | Bearer JWT |
+| `POST` | `/messages/{id}` | Send message (text, offer, counter-offer, or deal acceptance card) | Bearer JWT |
+
+### Trust, Verification & Search (`/verification`, `/users`, `/search`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/verification/requests` | Submit document URL for identity or business verification | Bearer JWT |
+| `GET` | `/verification/admin/queue` | List pending verification submissions | Bearer JWT (Admin) |
+| `POST` | `/verification/admin/{id}/decide` | Approve or reject verification request | Bearer JWT (Admin) |
+| `GET` | `/users/{id}/reliability` | Calculate transaction count, completion rate, quality/payment score | Bearer JWT |
+| `GET` | `/search/users` | Search active users by name, phone, role, or location | Bearer JWT |
+
+### Platform Administration (`/admin`)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/admin/stats` | Platform KPIs: active listings, demands, matched trades, volume, savings in INR | No |
+| `GET` | `/admin/map-nodes` | Geospatial Supply (farmer listings) and Demand (buyer plants) coordinates | No |
+
+---
+
+## 8. Database Schema & Models
+
+The application schema is organized into PostgreSQL tables configured in `supabase/migrations/` and mirrored in the backend in-memory store:
+
+### Core Entities & Relationships
+
+```mermaid
+erDiagram
+    USERS ||--o| FARMER_PROFILES : "has profile"
+    USERS ||--o| BUYER_PROFILES : "has profile"
+    USERS ||--o{ CROP_LISTINGS : "creates"
+    USERS ||--o{ DEMAND_POSTS : "creates"
+    USERS ||--o{ COMMUNITY_POSTS : "authors"
+    USERS ||--o{ POST_COMMENTS : "writes"
+    USERS ||--o{ VERIFICATION_REQUESTS : "submits"
+    CROPS ||--o{ CROP_LISTINGS : "categorizes"
+    CROPS ||--o{ DEMAND_POSTS : "categorizes"
+    CROP_LISTINGS ||--o{ MATCHES : "matched in"
+    DEMAND_POSTS ||--o{ MATCHES : "matched in"
+    MATCHES ||--o| TRADE_AGREEMENTS : "contracted as"
+    TRADE_AGREEMENTS ||--o{ TRADE_AGREEMENT_EVENTS : "logs"
+    TRADE_AGREEMENTS ||--o{ DISPUTES : "flagged by"
+    TRADE_AGREEMENTS ||--o{ RATINGS : "rated via"
+    CONVERSATIONS ||--o{ MESSAGES : "contains"
+```
+
+1. **`users`**: Master user record (`id`, `auth_id`, `email`, `phone`, `name`, `role`, `language_pref`, `verified`, `phone_verified`, `identity_verified`, `business_verified`, `created_at`).
+2. **`farmer_profiles`**: Farmer-specific metadata (`user_id`, `location`, `lat`, `lng`, `fpo_name`, `crops`, `farm_size_acres`, `soil_type`, `headline`, `about`).
+3. **`buyer_profiles`**: Commercial buyer metadata (`user_id`, `business_name`, `gst_verified`, `gst_number`, `location`, `lat`, `lng`, `procurement_capacity`, `commodities`, `headline`, `about`).
+4. **`crops`**: Supported commodity master table (`id`, `name_en`, `name_hi`, `category`, `icon`, `common_units`, `is_active`).
+5. **`crop_listings`**: Harvest lots published by farmers (`id`, `farmer_id`, `crop_id`, `quantity`, `quality_grade`, `moisture_percent`, `harvest_date`, `location`, `lat`, `lng`, `expected_price`, `status`, `photo_url`).
+6. **`demand_posts`**: Procurement tenders published by buyers (`id`, `buyer_id`, `crop_id`, `quantity_needed`, `quality_grade`, `moisture_max`, `offered_price`, `payment_terms`, `location`, `lat`, `lng`).
+7. **`matches`**: Evaluated pairing between listing and demand (`id`, `listing_id`, `demand_id`, `matching_score`, `net_realization_estimate`, `logistics_cost_estimate`, `status`).
+8. **`trade_agreements`**: Binding digital sales contracts (`id`, `match_id`, `quantity`, `price`, `delivery_date`, `status`, `payment_status`, `delivery_confirmed_by_farmer_at`, `delivery_confirmed_by_buyer_at`, `quality_spec`).
+9. **`trade_agreement_events`**: Immutable chronological milestone log for order lifecycle audits (`id`, `trade_agreement_id`, `event_type`, `user_id`, `event_data`, `created_at`).
+10. **`disputes`**: Transaction dispute records (`id`, `trade_agreement_id`, `raiser_id`, `against_id`, `reason_category`, `explanation`, `photo_url`, `status`, `resolved_at`).
+11. **`ratings`**: Bidirectional post-trade reviews (`id`, `trade_agreement_id`, `rater_id`, `ratee_id`, `stars`, `quality_score`, `payment_or_reliability_score`, `comment`).
+12. **`market_prices`**: Historical Agmarknet mandi auction records (`id`, `commodity`, `region`, `date`, `price`, `volume_arrivals_tonnes`, `source`, `fetched_at`).
+13. **`community_posts`**, **`post_comments`**, **`post_likes`**, **`post_media`**: Agronomic forum threads, threaded replies, media attachments, and likes.
+14. **`conversations`** & **`messages`**: Direct user-to-user chat with negotiation cards (`offer`, `counter_offer`, `acceptance`).
+15. **`verification_requests`**: KYC verification submissions reviewed by administrators (`id`, `user_id`, `document_type`, `document_url`, `status`, `admin_notes`).
+
+---
+
+## 9. Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Default / Example Value | Description |
+|---|---|---|---|
+| `APP_NAME` | No | `Farm-Nex` | Application display title |
+| `ENVIRONMENT` | No | `development` | Runtime environment (`development` / `production`) |
+| `API_V1_STR` | No | `/api/v1` | URL prefix for REST API endpoints |
+| `SUPABASE_URL` | Optional | `https://your-project-id.supabase.co` | Supabase PostgreSQL project URL (falls back to memory store if omitted) |
+| `SUPABASE_KEY` | Optional | `your-anon-public-key` | Supabase anonymous client API key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional | `your-service-role-key` | Supabase service role key for administrative operations |
+| `JWT_SECRET_KEY` | Recommended | `farm-nex-sih2026-super-secure-jwt-secret-key-32chars` | 32+ character cryptographic secret for signing HS256 JWT tokens |
+| `JWT_ALGORITHM` | No | `HS256` | JWT cryptographic signing algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `10080` | Access token lifetime in minutes (10,080 min = 7 days) |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `30` | Refresh token lifetime in days |
+| `SMS_PROVIDER` | No | `dev` | SMS provider mode (`dev` logs OTP `123456`; or live provider) |
+| `SMS_API_KEY` | Optional | `""` | API key for external SMS provider |
+| `RATE_LIMIT_DEFAULT` | No | `60/minute` | Global rate limit applied by SlowAPI |
+| `RATE_LIMIT_AUTH` | No | `10/minute` | Strict rate limit on OTP and authentication routes |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Default / Example Value | Description |
+|---|---|---|---|
+| `NEXT_PUBLIC_APP_NAME` | No | `Farm-Nex` | Client-facing application brand name |
+| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000/api/v1` | URL of the running FastAPI backend |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional | `https://your-project-id.supabase.co` | Supabase project URL for direct client queries |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | `your-anon-public-key` | Supabase anonymous API key |
+| `NEXT_PUBLIC_DEMO_MODE` | No | `true` | When `true`, frontend gracefully falls back to local data if backend is offline |
+
+> [!NOTE]
+> For local evaluation and testing, you do not need real Supabase credentials. If `SUPABASE_URL` is omitted, the backend automatically uses its built-in in-memory datastore pre-seeded with realistic Madhya Pradesh farmers, buyers, and commodities.
+
+---
+
+## 10. Setup & Installation
 
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher
 - **npm**: `v9.0.0` or higher
-- **Python**: `3.10` or `3.12`
+- **Python**: `3.10`, `3.11`, or `3.12`
 - **Git**
 
 ---
 
-### Step 1: Clone the Repository
-
+### Step 1: Clone Repository
 ```bash
-git clone https://github.com/ompatel/FARM-NEX.git
-cd FARM-NEX
+git clone https://github.com/om-idiot-engineer/Farm-Nex.git
+cd Farm-Nex
 ```
 
 ---
 
 ### Step 2: Backend Setup (FastAPI)
 
-1. Open a new terminal and navigate to the `backend` directory:
+1. Open a terminal and navigate to the `backend` directory:
    ```bash
    cd backend
    ```
@@ -352,26 +469,25 @@ cd FARM-NEX
    pip install -r requirements.txt
    ```
 
-4. Configure environment variables:
+4. Create environment configuration:
    ```bash
    cp .env.example .env
    ```
-   *(The default `.env` is pre-configured to run with the zero-dependency in-memory datastore. No Supabase credentials are required for local evaluation.)*
+   *(The default `.env` is pre-configured to run with the zero-dependency in-memory datastore. No cloud credentials are required.)*
 
-5. Run backend automated tests to verify your environment:
+5. Run the automated test suite to verify backend integrity:
    ```bash
    PYTHONPATH=. pytest tests
    ```
-   *(Expected output: 19 passed test cases across auth, intelligence, marketplace, matching, and admin.)*
+   *(Expected output: 29 passed test cases across authentication, marketplace, matching, intelligence, messaging, reliability, and admin.)*
 
-6. Start the FastAPI server:
+6. Start the FastAPI backend server:
    ```bash
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
-   The backend API will start at `http://localhost:8000`.
-   - Interactive Swagger API Documentation: `http://localhost:8000/docs`
-   - ReDoc Alternative Documentation: `http://localhost:8000/redoc`
-   - Health Check Endpoint: `http://localhost:8000/health`
+   - **Backend API**: `http://localhost:8000`
+   - **Interactive Swagger Docs**: `http://localhost:8000/docs`
+   - **Health Check**: `http://localhost:8000/health`
 
 ---
 
@@ -382,7 +498,7 @@ cd FARM-NEX
    cd frontend
    ```
 
-2. Install frontend dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
@@ -391,186 +507,102 @@ cd FARM-NEX
    ```bash
    cp .env.example .env.local
    ```
-   Verify that `NEXT_PUBLIC_API_URL` points to `http://localhost:8000/api/v1`.
+   *(Confirm `NEXT_PUBLIC_API_URL` points to `http://localhost:8000/api/v1`)*
 
 4. Start the Next.js development server:
    ```bash
    npm run dev
    ```
-   The frontend application will start at `http://localhost:3000`.
+   The client application will start at `http://localhost:3000`.
+
+5. *(Optional)* Build for production to validate type safety:
+   ```bash
+   npm run build
+   ```
 
 ---
 
-## Environment Variables
+## 11. Demo & Evaluation Guide
 
-### Backend (`backend/.env`)
+Farm-Nex provides pre-seeded accounts across all five supported stakeholder roles for seamless evaluation by hackathon judges and evaluators.
 
-| Variable Name | Required | Default / Example Value | Description |
-|---|---|---|---|
-| `APP_NAME` | No | `Farm-Nex` | Application display name |
-| `ENVIRONMENT` | No | `development` | Runtime environment (`development` / `production`) |
-| `API_V1_STR` | No | `/api/v1` | Base API URL prefix |
-| `SUPABASE_URL` | Optional | `https://your-project.supabase.co` | Supabase project URL (falls back to memory store if omitted) |
-| `SUPABASE_KEY` | Optional | `your-anon-public-key` | Supabase anonymous API key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional | `your-service-role-key` | Supabase service role key for admin tasks |
-| `JWT_SECRET_KEY` | Recommended | `farm-nex-sih2026-super-secure-jwt-secret-key-32chars` | 32+ character secret for signing HS256 JWT tokens |
-| `JWT_ALGORITHM` | No | `HS256` | JWT cryptographic algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `10080` | JWT token validity window (10080 min = 7 days) |
-| `RATE_LIMIT_DEFAULT` | No | `60/minute` | Global rate limit applied by SlowAPI |
-| `RATE_LIMIT_AUTH` | No | `10/minute` | Strict rate limit on OTP and login endpoints |
+### Rapid Account Access & Personas
+You can sign in using either the interactive modal on the landing page (`/login`), the direct Profile ID credentials, or the developer tools switcher (`/developer`).
 
-### Frontend (`frontend/.env.local`)
+| Persona | Role | Profile ID | Password / OTP | Location & Primary Activity |
+|---|---|---|---|---|
+| **🌾 Ramesh Patel** | Farmer | `ramesh.patel` | `FarmNex@2026` / OTP `123456` | Indore, MP · 18 Acres · Soybean & Sharbati Wheat grower |
+| **🌾 Devendra Mandloi** | Farmer | `devendra.mandloi` | `FarmNex@2026` / OTP `123456` | Khargone, MP · 24 Acres · DCH-32 Long-Staple Cotton |
+| **🏢 Malwa Kisan FPO** | FPO Collective | `malwa.fpo` | `FarmNex@2026` / OTP `123456` | Ujjain, MP · 420 Member Farmers · 15,000 Qtl aggregation |
+| **🏭 Agrocorp Processing** | Bulk Buyer | `buyer1@agrocorp.in` | `demo1234` / `farmnex123` | Dewas Industrial Area · 12,000 Qtl/mo Solvent Extraction |
+| **🏭 Nimar Cotton Pressing**| Bulk Buyer | `buyer2@nimarcotton.in` | `demo1234` / `farmnex123` | Khandwa, MP · 8,000 Qtl/mo Ginning & Spinning Mill |
+| **🥗 Meera Sharma** | Consumer | `meera.sharma` | `FarmNex@2026` | Bhopal, MP · Chemical-free direct farm-gate sourcing |
+| **🛡️ System Administrator** | Admin | `admin@farmnex.in` | `farmnex123` / `demo1234` | Platform surveillance, dispute resolution & KYC queue |
 
-| Variable Name | Required | Default / Example Value | Description |
-|---|---|---|---|
-| `NEXT_PUBLIC_APP_NAME` | No | `Farm-Nex` | Client application display title |
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000/api/v1` | URL of the running FastAPI backend |
-| `NEXT_PUBLIC_SUPABASE_URL` | Optional | `https://your-project.supabase.co` | Supabase client endpoint |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | `your-anon-public-key` | Supabase client anonymous API key |
-| `NEXT_PUBLIC_DEMO_MODE` | No | `true` | When `true`, frontend falls back to demo data if backend is unreachable |
-
-> [!NOTE]
-> Never commit actual API keys, database connection strings, or JWT secrets to source control.
-
----
-
-## Demo & Evaluation Guide
-
-Farm-Nex is designed for zero-friction evaluation by hackathon judges and evaluators without requiring complex third-party account setups.
-
-### Instant One-Click Demo Personas
-On the landing page (`http://localhost:3000`), a quick evaluation strip provides instant one-click login for 5 pre-configured personas:
-
-1. **🌾 Ramesh Patel (Farmer)**:
-   - Location: Indore, Madhya Pradesh
-   - Pre-seeded with 100Q Grade-A Soybean harvest.
-   - Accesses `/farmer` and `/farmer/buyers` to evaluate matched buyers ranked by Net Realization.
-2. **🏢 Malwa FPO (Collective Organization)**:
-   - Aggregates smallholder member lots across Malwa district.
-   - Accesses `/fpo` to monitor collection centers, pooled supply batches, and bulk tenders.
-3. **🏭 Agrocorp Central Processing (Bulk Buyer)**:
-   - Industrial processing mill located in Dewas Industrial Area (38 km from Indore).
-   - Accesses `/buyer` to broadcast bulk procurement demands and track contracted logistics dispatches.
-4. **🥗 Meera (Consumer)**:
-   - Direct-to-farm buyer sourcing chemical-free produce.
-   - Accesses `/consumer` to browse verified lots and track orders.
-5. **🛡️ Operations (Platform Administrator)**:
-   - Accesses `/admin` to inspect real-time platform KPIs, trade volume, cumulative freight savings, geospatial node maps, and verify community agronomic advice.
-
-### Manual Credentials
-- **Farmer Login**: Mobile number `9876543210` with verification OTP `123456`.
-- **Buyer Login**: Email `buyer1@agrocorp.in` with password `demo1234`.
+### End-to-End Evaluation Walkthrough
+1. **Explore Landing Page**: Open `http://localhost:3000` to view platform pillars, live catalog preview, and social feed drops.
+2. **Farmer Experience**:
+   - Sign in as `ramesh.patel` (or click "Log in" with role Farmer).
+   - Go to `/farmer/produce/new` to list a crop lot (e.g., 100Q Soybean at ₹4,800/Q).
+   - Navigate to `/farmer/buyers` to evaluate matching buyers ranked by **Net Realization** with freight breakdown.
+   - Accept a buyer match offer to generate a digital trade agreement.
+3. **Buyer Experience**:
+   - Sign in as `buyer1@agrocorp.in`.
+   - Go to `/buyer/requirements` to post a procurement tender or review accepted supply contracts.
+   - Navigate to `/deals` to view the active trade and click through the milestone state machine (`/deals/[id]`).
+4. **Order Milestone Transitions**:
+   - Transition order status: `trade_confirmed` $\rightarrow$ `pickup_scheduled` $\rightarrow$ `pickup_completed` $\rightarrow$ `in_transit` $\rightarrow$ `delivered`.
+   - Confirm delivery and acknowledge payment receipt. Submit a post-trade rating.
+5. **Community & Messaging**:
+   - Go to `/network` to publish a discussion thread, add a reply, or like a post.
+   - Go to `/messages` to inspect direct chat negotiation with counterparty offer cards.
+6. **Market Intelligence**:
+   - Go to `/admin/analytics` to view the Recharts historical mandi price series, 30-day forecast, and the rule-based economic explainer.
+7. **Admin Portal**:
+   - Sign in as `admin@farmnex.in` to inspect platform-wide KPIs, geographic supply/demand nodes, dispute cases, and pending verification requests.
 
 ---
 
-## Product Preview
-
-Below is an overview of the core interfaces available in the local application:
-
-| Workspace / View | Route | Primary Action |
-|---|---|---|
-| **Landing & Onboarding** | `/` | Switch between role perspectives; evaluate one-click personas; view core architectural pillars. |
-| **Farmer Dashboard** | `/farmer` | Overview of active harvest lots, pending buyer match requests, and mandi price alerts. |
-| **Smart Sell & Net Realization** | `/farmer/buyers` | Dynamic ranking of buyers subtracting road freight costs per quintal; plain-language match explanations. |
-| **Produce Listing Creator** | `/farmer/produce/new` | Multi-step crop batch registration with moisture content, grade, and farm coordinates. |
-| **Buyer Procurement Portal** | `/buyer/procurement` | Industrial tender publishing with quality requirements and delivery schedules. |
-| **Market Intelligence** | `/intelligence` | Interactive Recharts historical Agmarknet price charts, 30-day forecast, and economic price move explainer. |
-| **Trade Agreements & Deals** | `/orders` | 8-stage state machine tracking trade progression from agreement to payment settlement. |
-| **Agricultural Network** | `/network` | Community discussion board with threaded replies and expert-verified agronomic advice tags. |
-| **Admin Surveillance & Map** | `/admin` | Macro platform KPIs, cumulative logistics savings in INR, and geospatial MP supply/demand nodes. |
-
----
-
-## SIH Context
-
-### Smart India Hackathon (SIH) 2026
+## 12. Smart India Hackathon (SIH) 2026 Alignment
 
 - **Problem Statement ID**: `26033`
-- **Domain / Theme**: Agriculture, Food Technology & Rural Development / Smart Agricultural Marketplace & Supply Chain Optimization
-- **Government Challenge Alignment**: Addressing farm-gate price realization disparities, eliminating predatory middleman commissions, and improving logistical efficiency for farmers and Farmer Producer Organizations (FPOs).
-
-### How Farm-Nex Directly Solves the SIH Challenge
-1. **Targeted Value Capture (Net Realization)**: Rather than merely providing an online classifieds board, Farm-Nex solves the fundamental mathematical challenge: *Where should a farmer sell to maximize take-home income after paying for transport?*
-2. **Data Honesty & Algorithmic Explainability**: Avoids black-box AI hallucinations that can mislead farmers. Every prediction and economic explainer is grounded in verified Agmarknet historical auction records with transparent mathematical formulas.
-3. **Structured Trade Execution**: Provides an 8-stage verifiable state machine from agreement to payment confirmation, mitigating delivery defaults and payment disputes in agricultural trade.
-4. **FPO Support**: Enables FPOs to aggregate smallholder volume into bulk commercial lots that qualify for industrial processor procurement tenders.
-
----
-
-## Roadmap
-
-### ✅ Implemented
-- [x] Role-Based Access Control (Farmer OTP simulation, Buyer Email/Password, Admin).
-- [x] JWT token authentication with bcrypt password hashing and SlowAPI rate limiting.
-- [x] Crop listing management (commodity, grade, moisture, harvest date, location, expected price).
-- [x] Bulk buyer procurement demand posting and management.
-- [x] Logistics-aware matching engine with spherical Haversine distance calculation.
-- [x] Tiered freight cost calculation with long-haul efficiency discounts.
-- [x] Net realization scoring and transparent human-readable match explanations.
-- [x] Interactive Agmarknet historical price trend visualization using Recharts (1m, 3m, 6m, 1y).
-- [x] Deterministic 30-day demand forecast model combining Moving Average and Exponential Smoothing ($\alpha = 0.3$).
-- [x] Rule-based economic explainer analyzing 14-day arrival volume elasticity vs. MSP benchmarks.
-- [x] Digital trade agreement creation upon match acceptance.
-- [x] 8-stage trade lifecycle state machine with validation checks.
-- [x] Community discussion forum with threaded replies and admin expert verification.
-- [x] Admin surveillance dashboard with platform KPIs and MP geospatial supply/demand nodes.
-- [x] Bilingual interface support (English and Hindi).
-- [x] 19 automated PyTest unit and integration tests.
-- [x] Dual-mode data persistence (Supabase PostgreSQL + zero-dependency in-memory fallback).
-
-### 🚧 In Progress
-- [ ] Production SMS gateway integration (Fast2SMS / MSG91) for live phone OTP delivery.
-- [ ] Integration with Ministry of Road Transport & Highways (MoRTH) Vahan API for live vehicle registration checks.
-- [ ] Integration of official GSTN / DigiLocker verification APIs for automated buyer enterprise KYC.
-- [ ] Mandi geofencing to detect physical vehicle entry at destination weighbridges.
-
-### 📋 Planned
-- [ ] UPI 2.0 / e-RUPI integration for automated milestone-based escrow payment settlement.
-- [ ] Integration with Indian Meteorological Department (IMD) agromet advisories for harvest timing and weather warnings.
-- [ ] Offline-first Progressive Web App (PWA) support with background synchronization for low-connectivity rural belts.
-- [ ] Multi-axle truck consolidation tool to pool smallholder lots into single 16-tonne transport trips.
+- **Domain**: Agriculture, Food Technology & Rural Development
+- **Theme**: Smart Agricultural Marketplace & Supply Chain Optimization
+- **Core Value Delivered**:
+  1. **Algorithmic Take-Home Maximization**: Solves the fundamental transport math problem by ranking offers by true Net Realization after road freight deductions.
+  2. **Data Honesty**: Eliminates speculative black-box AI claims. Forecasts and price-movement explainers are calculated deterministically from verified Agmarknet auction data.
+  3. **Structured Digital Trade Rails**: Replaces fragile phone deals with an 8-stage audit trail, weighbridge reconciliation, and escrow-ready agreement milestones.
+  4. **FPO Empowerment**: Aggregates smallholder harvest batches into bulk industrial lots to unlock commercial mill contracts.
 
 ---
 
-## Security & Reliability
+## 13. Verification & Testing
 
-- **Authentication**: Stateless JSON Web Tokens (PyJWT) using the HS256 signature algorithm with a 7-day expiration window.
-- **Password Security**: One-way cryptographic hashing using Bcrypt (`passlib[bcrypt]`).
-- **Endpoint Protection**: SlowAPI middleware prevents brute-force credential stuffing (10 requests/minute on auth routes) and DDoS attacks (60 requests/minute on general endpoints).
-- **Data Validation**: Strict Pydantic v2 schemas sanitize all inbound request payloads and enforce typed response contracts.
-- **Database Access Control**: PostgreSQL Row-Level Security (RLS) policies restrict users from editing or deleting produce listings, demands, and agreements that they do not own.
-- **Resilience**: In-memory datastore fallback ensures zero downtime and uninterrupted evaluation even if cloud database connectivity is unavailable.
+The backend includes a comprehensive automated test suite covering all operational modules:
 
----
+```bash
+cd backend
+PYTHONPATH=. pytest tests -v
+```
 
-## Contributing
-
-Contributions to Farm-Nex are welcome. To contribute:
-
-1. Fork the repository.
-2. Create a feature branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. Ensure backend tests pass:
-   ```bash
-   cd backend && PYTHONPATH=. pytest tests
-   ```
-4. Verify frontend TypeScript compilation:
-   ```bash
-   cd frontend && npx tsc --noEmit
-   ```
-5. Commit your changes with clear, descriptive commit messages.
-6. Push to your branch and open a Pull Request.
+**Test Coverage Summary (29 Passed Test Cases)**:
+- `test_auth.py`: Farmer OTP dispatch/verification, buyer registration/login, JWT token validation, profile updates.
+- `test_marketplace.py`: Crop listing CRUD, demand post CRUD, validation rules, RLS permissions.
+- `test_matching.py`: Haversine spherical distance calculation, freight calculation, match scoring, match acceptance.
+- `test_intelligence.py` & `test_intelligence_p5.py`: Mandi price trends, 30-day baseline forecasting, why-price-moved heuristic explainer, trending crops.
+- `test_agreements_expanded.py`: Delivery confirmation, payment confirmation, transaction ratings.
+- `test_reliability.py`: Reliability score calculations, quality consistency, payment reliability.
+- `test_heatmap.py`: Regional supply, demand, and completed trade volume bucketing.
+- `test_verification.py`: Document verification submission and admin approve/reject queue.
+- `test_messaging.py`: Conversation initialization and direct message exchange.
+- `test_admin.py`: Platform surveillance metrics and supply/demand map node rendering.
 
 ---
 
-## License
+## 14. License & Data Citations
 
-This project is currently developed for academic and competition evaluation under the Smart India Hackathon (SIH) 2026. A formal open-source license (such as MIT or Apache 2.0) will be designated upon public hackathon release.
+### License
+This repository is developed for evaluation under the Smart India Hackathon (SIH) 2026. Code is released under the **MIT License** (see [LICENSE](LICENSE)).
 
----
-
-## Data Disclaimer
-
-Market data used in Farm-Nex is sourced from public market bulletins published by the **Directorate of Marketing & Inspection (DMI), Ministry of Agriculture & Farmers Welfare, Government of India** via [Agmarknet](https://agmarknet.gov.in). Statistical baselines and economic explainers are provided for analytical reference and market transparency; they do not constitute financial guarantees or certified agricultural commodity trading advice.
+### Data Citation
+Mandi auction records, modal prices, and arrival volumes are sourced from public market bulletins published by the **Directorate of Marketing & Inspection (DMI), Ministry of Agriculture & Farmers Welfare, Government of India** via [Agmarknet](https://agmarknet.gov.in). Statistical calculations and economic explainers are provided for analytical and decision-support purposes.

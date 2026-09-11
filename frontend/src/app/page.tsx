@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { useUser } from "@/lib/auth/UserContext";
@@ -360,10 +361,13 @@ export default function LandingPage() {
       <section id="platform" className="relative w-full overflow-hidden bg-zinc-950 min-h-[92vh] flex items-center">
         {/* Background photo & rich visual gradients */}
         <div className="absolute inset-0">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2000"
             alt="Green agricultural farmlands during golden hour"
             className="absolute inset-0 w-full h-full object-cover opacity-65"
+            width={1920}
+            height={1080}
+            unoptimized
             onError={handleImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-zinc-950/85 to-zinc-950 hidden" />
@@ -436,11 +440,14 @@ export default function LandingPage() {
                     "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=100",
                     "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?q=80&w=100",
                   ].map((src, idx) => (
-                    <img
+                    <Image
                       key={idx}
                       src={src}
                       alt="Verified Member"
                       className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-sm"
+                      width={32}
+                      height={32}
+                      unoptimized
                       onError={handleImageError}
                     />
                   ))}
@@ -474,10 +481,13 @@ export default function LandingPage() {
           className="scroll-mt-24 rounded-[28px] bg-white border border-zinc-200 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col lg:flex-row group"
         >
           <div className="relative lg:w-[52%] min-h-[360px] lg:min-h-[560px] overflow-hidden bg-zinc-100">
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1200&auto=format&fit=crop"
               alt="Indian farmer in farm field holding harvested crop"
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-700"
+              width={800}
+              height={600}
+              unoptimized
               onError={handleImageError}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -542,10 +552,13 @@ export default function LandingPage() {
           className="scroll-mt-24 rounded-[28px] bg-white border border-zinc-200 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col lg:flex-row-reverse group"
         >
           <div className="relative lg:w-[52%] min-h-[360px] lg:min-h-[560px] overflow-hidden bg-zinc-100">
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1200&auto=format&fit=crop"
               alt="Industrial Grain Quality Testing Lab"
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-700"
+              width={800}
+              height={600}
+              unoptimized
               onError={handleImageError}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -686,10 +699,13 @@ export default function LandingPage() {
             <div className="rounded-[20px] bg-white border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col justify-between">
               <div>
                 <div className="p-4 flex items-center gap-3 border-b border-zinc-100">
-                  <img
+                  <Image
                     src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200"
                     className="w-10 h-10 rounded-full object-cover border border-zinc-200"
                     alt="Farmer Ramesh"
+                    width={40}
+                    height={40}
+                    unoptimized
                     onError={handleImageError}
                   />
                   <div className="flex-1 min-w-0">
@@ -704,10 +720,13 @@ export default function LandingPage() {
                 </div>
 
                 <div className="relative w-full h-[220px] bg-zinc-100 overflow-hidden">
-                  <img
+                  <Image
                     src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?q=80&w=800&auto=format&fit=crop"
                     alt="Soybean crop lot"
                     className="w-full h-full object-cover"
+                    width={400}
+                    height={300}
+                    unoptimized
                     onError={handleImageError}
                   />
                 </div>

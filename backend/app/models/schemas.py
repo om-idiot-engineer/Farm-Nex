@@ -10,6 +10,9 @@ class UserRole(str, Enum):
     FARMER = "farmer"
     BUYER = "buyer"
     ADMIN = "admin"
+    FPO = "fpo"
+    EXPERT = "expert"
+    CONSUMER = "consumer"
 
 
 class CropListingStatus(str, Enum):
@@ -445,10 +448,6 @@ class AdminKPIData(BaseModel):
     total_buyers_connected: int
     total_estimated_logistics_savings_inr: float
     total_trade_volume_quintals: float
-from datetime import datetime, date
-from enum import Enum
-from typing import Optional, List, Dict, Any, Any
-from pydantic import BaseModel, Field, EmailStr, field_validator
 
 # ----------------- New Enums -----------------
 

@@ -145,7 +145,10 @@ export const api = {
 
       if (!response.ok) {
         if (response.status === 401) {
-          this.clearToken();
+          const tok = this.getToken();
+          if (tok && !tok.startsWith("demo_") && !tok.startsWith("secure_") && !tok.startsWith("test_")) {
+            this.clearToken();
+          }
         }
         let payload: unknown = null;
         try {

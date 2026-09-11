@@ -157,7 +157,7 @@ class InMemoryStore:
         self.crop_listings["c-lot-004"] = {
             "id": "c-lot-004",
             "farmer_id": "f0000000-0000-0000-0000-000000000007",
-            "crop_id": "Garlic",
+            "crop_id": "c0000000-0000-0000-0000-000000000004",
             "quantity": 140.0,
             "quality_grade": "Export Grade G2",
             "moisture_percent": 6.8,

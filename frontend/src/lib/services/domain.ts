@@ -1,4 +1,4 @@
-import { REAL_ACCOUNTS_20, getAllAccounts, convertAccountToUserProfile, convertAccountToDemoProfile } from "@/lib/data/userDirectory";
+import { REAL_ACCOUNTS_20, getAllAccounts, convertAccountToUserProfile, convertAccountToDemoProfile, isTestAccount } from "@/lib/data/userDirectory";
 import {
   api,
   ApiError,
@@ -255,7 +255,7 @@ export async function getCurrentUser(): Promise<ServiceResult<UserProfile | null
     return { data: await api.getMe(), source: "api" };
   } catch (error) {
     if (stored) return demoFallback(stored);
-    return demoFallback(demoUsers.farmer);
+    return { data: null, source: "api" };
   }
 }
 
@@ -276,13 +276,22 @@ export function getDemoUser(roleOrId: string): ServiceResult<UserProfile> {
 }
 
 export async function getFarmerListings(): Promise<ServiceResult<CropListing[]>> {
+  if (!api.getToken()) {
+    const userId = currentUserId();
+    const listings = combineListings([]).filter((listing) => !userId || listing.farmer_id === userId);
+    return demoFallback(listings.length ? listings : demoListings);
+  }
   const result = await fetchApiOrDemo(() => api.getMyCropListings(), demoListings);
   const userId = currentUserId();
   const listings = combineListings(result.data).filter((listing) => !userId || listing.farmer_id === userId);
+  if (!isTestAccount(userId)) {
+    // Real user account: strictly return user's real listings (or [] if they haven't listed anything)
+    return { data: listings, source: result.source };
+  }
   if (result.source === "api" && listings.length === 0 && DEMO_MODE) {
     return demoFallback(demoListings.filter((listing) => listing.farmer_id === userId));
   }
-  return { data: listings.length > 0 ? listings : demoListings.filter((l) => l.farmer_id === demoUsers.farmer.id), source: result.source };
+  return { data: listings.length > 0 ? listings : demoListings.filter((l) => l.farmer_id === userId || l.farmer_id === demoUsers.farmer.id), source: result.source };
 }
 
 export function getMarketListings(): ServiceResult<CropListing[]> {
@@ -332,15 +341,36 @@ export async function getDemandDetail(id: string): Promise<ServiceResult<DemandP
 }
 
 export async function getBuyerDemands(): Promise<ServiceResult<DemandPost[]>> {
+  if (!api.getToken()) {
+    const userId = currentUserId();
+    const list = combineDemands([]).filter((demand) => !userId || demand.buyer_id === userId);
+    return demoFallback(list.length ? list : demoDemands);
+  }
   const result = await fetchApiOrDemo(() => api.getMyDemands(), demoDemands);
   const userId = currentUserId();
   const list = combineDemands(result.data).filter((demand) => !userId || demand.buyer_id === userId);
-  return { data: list.length ? list : demoDemands.filter((d) => d.buyer_id === demoUsers.buyer.id), source: result.source };
+  if (!isTestAccount(userId)) {
+    // Real buyer account: strictly return user's real demands (or [] if none posted)
+    return { data: list, source: result.source };
+  }
+  return { data: list.length ? list : demoDemands.filter((d) => d.buyer_id === userId || d.buyer_id === demoUsers.buyer.id), source: result.source };
 }
 
 export async function createListing(input: CreateListingInput, owner: UserProfile): Promise<ServiceResult<CropListing>> {
+  const notif: AppNotification = {
+    id: `notif-${Date.now()}`,
+    title: "Produce Lot Listed Successfully",
+    message: `Your listing of ${input.quantity} Qtl ${input.crop_id} at ₹${input.expected_price}/Q has been published to the marketplace.`,
+    unread: true,
+    date: "Just now",
+    type: "trade",
+    userId: owner.id,
+  } as any;
+
   try {
-    return { data: await api.createCropListing(input), source: "api" };
+    const data = await api.createCropListing(input);
+    writeLocal(LOCAL_KEYS.notifications, [notif, ...localNotifications()]);
+    return { data, source: "api" };
   } catch (error) {
     if (!DEMO_MODE) throw error;
     const listing: CropListing = {
@@ -364,6 +394,7 @@ export async function createListing(input: CreateListingInput, owner: UserProfil
       created_at: new Date().toISOString(),
     };
     writeLocal(LOCAL_KEYS.listings, [listing, ...localListings()]);
+    writeLocal(LOCAL_KEYS.notifications, [notif, ...localNotifications()]);
     return demoFallback(listing);
   }
 }
@@ -477,48 +508,64 @@ function matchesForListing(listing: CropListing): BuyerMatchOpportunity[] {
 
 export async function getBuyerMatches(listingId: string): Promise<ServiceResult<BuyerMatchOpportunity[]>> {
   const listing = findListing(listingId);
+  if (!api.getToken()) {
+    return demoFallback(matchesForListing(listing));
+  }
   return fetchApiOrDemo(() => api.getBuyerMatchOpportunities(listingId), matchesForListing(listing));
 }
 
 export async function acceptBuyerMatch(listingId: string, demandId: string, owner: UserProfile): Promise<ServiceResult<ExtendedTradeAgreement>> {
+  const listing = findListing(listingId);
+  const demand = findDemand(demandId);
+  const quantity = Math.min(listing.quantity, demand.quantity_needed || listing.quantity);
+  const buyerName = demand.business_name || demand.buyer_name || "Agrocorp Central Processing";
+
+  const notif: AppNotification = {
+    id: `notif-deal-${Date.now()}`,
+    title: "Deal Locked & Agreement Created",
+    message: `Trade agreement established with ${buyerName} for ${quantity} Qtl ${listing.crop_id} at ₹${demand.offered_price || listing.expected_price}/Q.`,
+    unread: true,
+    date: "Just now",
+    type: "trade",
+    userId: owner.id,
+  } as any;
+
   try {
     const raw = await api.acceptBuyerMatch(listingId, demandId);
     const extended: ExtendedTradeAgreement = {
       ...raw,
       orderNumber: `FN-DEAL-${Date.now().toString().slice(-5)}`,
-      pickupLocation: owner.farmer_profile?.location || "Sanwer, Indore, Madhya Pradesh",
-      deliveryDestination: "Dewas Industrial Area, MP",
+      pickupLocation: owner.farmer_profile?.location || listing.location || "Sanwer, Indore, Madhya Pradesh",
+      deliveryDestination: demand.location || "Dewas Industrial Area, MP",
       documents: [
         { id: `doc-${raw.id}-1`, name: `Contract #${raw.id.slice(0, 6)}.pdf`, type: "agreement", date: new Date().toLocaleDateString("en-IN"), fileSize: "185 KB", status: "verified" },
         { id: `doc-${raw.id}-2`, name: "Field Quality Assay Certificate.pdf", type: "quality", date: new Date().toLocaleDateString("en-IN"), fileSize: "198 KB", status: "verified" },
       ],
       dispute: { hasDispute: false },
     };
+    writeLocal(LOCAL_KEYS.notifications, [notif, ...localNotifications()]);
     return { data: extended, source: "api" };
   } catch (error) {
     if (!DEMO_MODE) throw error;
-    const listing = findListing(listingId);
-    const demand = findDemand(demandId);
-    const quantity = Math.min(listing.quantity, demand.quantity_needed);
-    const gross = quantity * demand.offered_price;
+    const gross = quantity * (demand.offered_price || listing.expected_price);
     const freight = quantity * 82;
     const agreement: ExtendedTradeAgreement = {
-      id: `demo-local-deal-${Date.now()}`,
+      id: `deal-${Date.now()}`,
       orderNumber: `FN-DEAL-${Date.now().toString().slice(-5)}`,
-      match_id: `demo-local-match-${Date.now()}`,
+      match_id: `match-${Date.now()}`,
       listing_id: listingId,
       demand_id: demandId,
       farmer_id: owner.id,
       farmer_name: owner.name,
-      buyer_id: demand.buyer_id,
-      buyer_name: demand.business_name || "Agrocorp Central Processing",
+      buyer_id: demand.buyer_id || "b0000000-0000-0000-0000-000000000001",
+      buyer_name: buyerName,
       crop_id: listing.crop_id,
       quantity,
-      price_per_quintal: demand.offered_price,
+      price_per_quintal: demand.offered_price || listing.expected_price,
       delivery_date: "2026-09-08",
-      status: "matched",
+      status: "trade_confirmed",
       pickupLocation: listing.location,
-      deliveryDestination: demand.location,
+      deliveryDestination: demand.location || "Dewas Industrial Area, MP",
       transporterName: "Malwa Freight Logistics",
       vehicleNumber: "MP-09-GH-8214",
       driverName: "Dharmendra Yadav",
@@ -537,15 +584,30 @@ export async function acceptBuyerMatch(listingId: string, demandId: string, owne
       created_at: new Date().toISOString(),
     };
     writeLocal(LOCAL_KEYS.agreements, [agreement, ...localAgreements()]);
+    writeLocal(LOCAL_KEYS.notifications, [notif, ...localNotifications()]);
     return demoFallback(agreement);
   }
 }
 
 export async function getAgreements(): Promise<ServiceResult<ExtendedTradeAgreement[]>> {
+  if (!api.getToken()) {
+    const userId = currentUserId();
+    const all = combineAgreements([]);
+    const userSpecific = all.filter((agreement) => !userId || agreement.farmer_id === userId || agreement.buyer_id === userId);
+    if (!isTestAccount(userId)) {
+      return demoFallback(userSpecific);
+    }
+    const data = userSpecific.length > 0 ? userSpecific : all;
+    return demoFallback(data.length ? data : demoAgreements);
+  }
   const result = await fetchApiOrDemo(() => api.getUserAgreements(), demoAgreements);
   const userId = currentUserId();
   const all = combineAgreements(result.data);
   const userSpecific = all.filter((agreement) => !userId || agreement.farmer_id === userId || agreement.buyer_id === userId);
+  if (!isTestAccount(userId)) {
+    // Real user account: strictly return agreements they are party to (or [] if no locked deals yet)
+    return { data: userSpecific, source: result.source };
+  }
   const data = userSpecific.length > 0 ? userSpecific : all;
   return { data: data.length ? data : demoAgreements, source: result.source };
 }
@@ -666,6 +728,32 @@ export async function getTrendingCrops(region: string = "Madhya Pradesh"): Promi
 }
 
 export async function getMatchingSuggestions(): Promise<ServiceResult<any[]>> {
+  if (!api.getToken()) {
+    return { data: [], source: "demo" };
+  }
+  const userId = currentUserId();
+  if (!isTestAccount(userId)) {
+    const myListingsRes = await getFarmerListings();
+    const myListings = myListingsRes.data || [];
+    if (myListings.length === 0) {
+      return { data: [], source: "demo" };
+    }
+    const myCrops = new Set(myListings.map((l) => l.crop_id.toLowerCase()));
+    const allDemandsRes = await getDemandPosts();
+    const allDemands = allDemandsRes.data || [];
+    const matches = allDemands
+      .filter((d) => myCrops.has(d.crop_id.toLowerCase()))
+      .map((d) => ({
+        target_name: d.buyer_name || "Verified Mandi Buyer",
+        target_location: d.location,
+        net_realization_per_q: d.offered_price || 5200,
+        matching_score: 95,
+        crop_id: d.crop_id,
+        quantity: d.quantity_needed,
+        demand_id: d.id,
+      }));
+    return { data: matches, source: "demo" };
+  }
   return fetchApiOrDemo(() => api.getMatchingSuggestions(), []);
 }
 
@@ -776,6 +864,9 @@ export async function togglePostReaction(postId: string): Promise<ServiceResult<
 
 export async function getMessages(): Promise<ServiceResult<Conversation[]>> {
   const localData = await localMessages();
+  if (!api.getToken()) {
+    return demoFallback(localData);
+  }
   return fetchApiOrDemo(
     () => api.request<Conversation[]>("/messages"),
     localData
@@ -784,6 +875,9 @@ export async function getMessages(): Promise<ServiceResult<Conversation[]>> {
 
 export async function getConversation(id: string): Promise<ServiceResult<Conversation>> {
   const localData = await localMessages();
+  if (!api.getToken()) {
+    return demoFallback(localData.find((c) => c.id === id) || demoConversations[0]);
+  }
   return fetchApiOrDemo(
     () => api.request<Conversation>(`/messages/${id}`),
     localData.find((c) => c.id === id) || demoConversations[0]
@@ -846,11 +940,27 @@ export async function createConversation(participantId: string): Promise<Service
 }
 
 export async function getNotifications(): Promise<ServiceResult<AppNotification[]>> {
-  return demoFallback(localNotifications());
+  const userId = currentUserId();
+  const all = localNotifications();
+  if (isTestAccount(userId)) {
+    return demoFallback(all);
+  }
+  const userNotifs = all.filter((n) => (n as any).userId === userId);
+  return demoFallback(userNotifs);
 }
 
 export async function markNotificationsRead(): Promise<ServiceResult<boolean>> {
-  writeLocal(LOCAL_KEYS.notifications, localNotifications().map((notification) => ({ ...notification, unread: false })));
+  const userId = currentUserId();
+  if (isTestAccount(userId)) {
+    writeLocal(LOCAL_KEYS.notifications, localNotifications().map((notification) => ({ ...notification, unread: false })));
+  } else {
+    writeLocal(
+      LOCAL_KEYS.notifications,
+      localNotifications().map((notification) =>
+        (notification as any).userId === userId ? { ...notification, unread: false } : notification
+      )
+    );
+  }
   return demoFallback(true);
 }
 
@@ -961,7 +1071,13 @@ export function getFpoLogistics(): ServiceResult<FpoLogisticsBatch[]> {
 
 // Buyer Procurement RFQ Methods
 export function getProcurementRequirements(): ServiceResult<ProcurementRequirement[]> {
-  return demoFallback(localRfqs());
+  const userId = currentUserId();
+  const all = localRfqs();
+  if (!isTestAccount(userId)) {
+    const userRfqs = all.filter((r) => (r as any).buyer_id === userId);
+    return demoFallback(userRfqs);
+  }
+  return demoFallback(all);
 }
 
 export function getProcurementRequirement(id: string): ServiceResult<ProcurementRequirement> {
@@ -970,6 +1086,7 @@ export function getProcurementRequirement(id: string): ServiceResult<Procurement
 }
 
 export function createProcurementRfq(rfq: Partial<ProcurementRequirement>): ServiceResult<ProcurementRequirement> {
+  const userId = currentUserId();
   const newRfq: ProcurementRequirement = {
     id: `rfq-${Date.now().toString().slice(-4)}`,
     title: rfq.title || `${rfq.quantity || rfq.quantityQuintals || 100}Q ${rfq.crop || rfq.crop_id || "Produce"}`,
@@ -991,6 +1108,7 @@ export function createProcurementRfq(rfq: Partial<ProcurementRequirement>): Serv
     status: (rfq.status as any) || "Broadcast",
     responseCount: 0,
     notes: rfq.notes,
+    buyer_id: userId,
     matchedSuppliers: [
       {
         id: `match-${Date.now()}-1`,
@@ -1007,7 +1125,7 @@ export function createProcurementRfq(rfq: Partial<ProcurementRequirement>): Serv
         lotId: demoListings[0].id,
       },
     ],
-  };
+  } as any;
   const list = [newRfq, ...localRfqs()];
   writeLocal(LOCAL_KEYS.rfqs, list);
   return demoFallback(newRfq);
@@ -1227,6 +1345,8 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
   if (!profile) {
     const currentUser = api.getCurrentUser();
     if (currentUser && currentUser.id.toLowerCase() === normalizedId) {
+      const isTest = isTestAccount(currentUser.id);
+      const userDeals = localAgreements().filter(a => (a.farmer_id === currentUser.id || a.buyer_id === currentUser.id) && (a.status === 'completed' || a.status === 'delivered' || a.status === 'payment_confirmed'));
       profile = {
         id: currentUser.id,
         role: currentUser.role,
@@ -1237,7 +1357,7 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
         avatar: currentUser.avatar || currentUser.name.slice(0, 2).toUpperCase(),
         profileHandle: `@${currentUser.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}`,
         memberSince: new Date(currentUser.created_at || Date.now()).toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-        connectionsCount: 156,
+        connectionsCount: isTest ? 156 : 0,
         about: currentUser.about || `Member of FarmNex agriculture trade and networking platform. Connecting directly across state and district mandi routes.`,
         crops: currentUser.farmer_profile?.crops || currentUser.buyer_profile?.commodities || ["Soybean", "Wheat", "Gram"],
         farmSizeAcres: currentUser.farmer_profile?.farm_size_acres,
@@ -1249,14 +1369,23 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
         phone: currentUser.phone,
         email: currentUser.email,
         stats: [
+          { label: "Completed trades", value: String(userDeals.length) },
           { label: "Role", value: currentUser.role.toUpperCase() },
           { label: "Status", value: currentUser.verified ? "Verified" : "Pending" },
-          { label: "Network Score", value: "95" },
         ],
         activity: ["Joined FarmNex digital agriculture network"],
-        rating: 4.9,
-        completedDealsCount: 0,
+        rating: 5.0,
+        completedDealsCount: userDeals.length,
         certifications: currentUser.verified ? ["KYC Verified"] : [],
+        reviews: isTest ? [
+          {
+            author: "Malwa Kisan Samriddhi FPO",
+            role: "FPO Partner",
+            comment: "Excellent produce quality and timely communication. Consistently reliable partner on the network.",
+            rating: 5,
+            date: "Aug 2026",
+          },
+        ] : [],
       };
     }
   }

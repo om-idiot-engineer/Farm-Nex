@@ -138,7 +138,7 @@ export default function BuyerDashboard() {
         <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
           <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
             🔥 Hot Crops (Live Mandi Trending)
-            <Link href="/intelligence" className="text-[11px] font-semibold text-blue-600 hover:underline">Market Intelligence</Link>
+            <Link href="/marketplace" className="text-[11px] font-semibold text-blue-600 hover:underline">Market Intelligence</Link>
           </h3>
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
             {trending.map((crop, i) => (
