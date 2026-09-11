@@ -73,5 +73,9 @@ Thumbs.db
 *.swo
 *~
 
+# Local Documentation & Text Reports (DO NOT PUSH)
+*.txt
+*.log
+
 # TypeScript Cache
 *.tsbuildinfo
