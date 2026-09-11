@@ -36,6 +36,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => {
         if (active) setLoading(false);
+        // Load token from localStorage on initial mount (e.g., after a page refresh)
+        if (typeof window !== "undefined") {
+          const storedToken = window.localStorage.getItem("farmnex_token");
+          if (storedToken) {
+            api.setToken(storedToken);
+          }
+        }
       });
 
     return () => {

@@ -135,6 +135,7 @@ class EmailLoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserOut
 
@@ -365,14 +366,27 @@ class CommunityPostCreate(BaseModel):
     content: str = Field(..., min_length=5, max_length=2000)
 
 
+class PostReplyItem(BaseModel):
+    id: str
+    post_id: str
+    author_id: str
+    author_name: str
+    author_role: str
+    content: str
+    created_at: datetime
+
 class CommunityPostOut(BaseModel):
     id: str
     user_id: str
     author_name: str
-    author_role: UserRole
-    tag: CommunityTag
+    author_role: str
+    tag: str
     content: str
     expert_verified: bool = False
+    like_count: int = 0
+    has_liked: bool = False
+    replies: List[PostReplyItem] = []
+    media_urls: List[str] = []
     created_at: datetime
 
 
@@ -492,3 +506,19 @@ class UserReliabilityScore(BaseModel):
     payment_reliability_percent: Optional[float] = None
     average_rating: float
     verification_status: bool
+
+class VerificationRequestCreate(BaseModel):
+    document_type: str
+    document_url: str
+
+class VerificationRequestOut(VerificationRequestCreate):
+    id: str
+    user_id: str
+    status: str
+    admin_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class VerificationDecision(BaseModel):
+    status: str = Field(..., description="Must be 'approved' or 'rejected'")
+    admin_notes: Optional[str] = None

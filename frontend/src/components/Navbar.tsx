@@ -8,6 +8,7 @@ import { getRoleNavigation, getRolePrimaryAction } from "@/lib/navigation";
 import { Menu, X, Leaf, Bell, Search, Sprout, Store, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlobalSearch from "@/components/GlobalSearch";
+import { DEMO_MODE } from "@/lib/api";
 
 export default function Navbar() {
   const { user } = useUser();
@@ -42,6 +43,9 @@ export default function Navbar() {
             </div>
             <span className="font-extrabold text-[19px] tracking-tight hidden sm:block">FarmNex</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white -mt-3 hidden sm:block">V3</span>
+            {DEMO_MODE && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white -mt-3 hidden sm:block">DEMO MODE</span>
+            )}
           </Link>
 
           {/* Desktop Role Toggle Switch (mockup style) */}

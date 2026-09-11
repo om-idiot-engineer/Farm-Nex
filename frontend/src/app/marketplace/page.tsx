@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Filter, MapPin, CheckCircle2, SlidersHorizontal, ArrowRight, ShieldCheck, Clock
 } from "lucide-react";
@@ -15,7 +15,13 @@ import LoadingSkeleton from "@/components/LoadingSkeleton";
 type MarketplaceView = "supply" | "demand";
 
 function MarketplaceContent() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push('/login');
+    }
+  }, [userLoading, user, router]);
   const searchParams = useSearchParams();
   const initialView = (searchParams.get("view") as MarketplaceView) || "supply";
 
@@ -26,12 +32,12 @@ function MarketplaceContent() {
 
   const [listings, setListings] = useState<CropListing[]>([]);
   const [demands, setDemands] = useState<DemandPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        setLoading(true);
+        setDataLoading(true);
         const [listingsRes, demandsRes] = await Promise.all([
           getMarketplaceListings(),
           getDemandPosts()
@@ -41,7 +47,7 @@ function MarketplaceContent() {
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     }
     loadData();
@@ -63,8 +69,9 @@ function MarketplaceContent() {
     return "📦";
   };
 
-  const getGradient = (crop: string) => {
-    const l = crop.toLowerCase();
+  // Defensive gradient helper – handles missing/undefined crop values
+  const getGradient = (crop?: string) => {
+    const l = (crop ?? "").toLowerCase();
     if (l.includes("tomato")) return "from-red-400 to-orange-400";
     if (l.includes("wheat")) return "from-amber-300 to-yellow-500";
     if (l.includes("potato")) return "from-orange-300 to-amber-600";
@@ -175,7 +182,7 @@ function MarketplaceContent() {
 
         {/* Results Grid */}
         <div className="space-y-4">
-          {loading ? (
+          {dataLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="h-64 bg-zinc-100 rounded-[20px] animate-pulse"></div>

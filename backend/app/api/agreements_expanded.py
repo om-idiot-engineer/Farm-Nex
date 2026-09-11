@@ -14,11 +14,11 @@ async def confirm_delivery(
     agreement = db.trade_agreements.get(agreement_id)
     if not agreement:
         raise HTTPException(status_code=404, detail="Agreement not found")
-    
+
     # Allow buyer to confirm delivery
     if agreement["buyer_id"] != current_user.id and current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     agreement["status"] = "delivered"
     return agreement
 
@@ -30,18 +30,22 @@ async def confirm_payment(
     agreement = db.trade_agreements.get(agreement_id)
     if not agreement:
         raise HTTPException(status_code=404, detail="Agreement not found")
-    
+
     # Allow farmer to confirm payment
     if agreement["farmer_id"] != current_user.id and current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     agreement["status"] = "completed"
     return agreement
 
 from pydantic import BaseModel
+from typing import Optional
+
 class RatingCreate(BaseModel):
     stars: int
     review: str
+    quality_score: Optional[int] = None
+    payment_or_reliability_score: Optional[int] = None
 
 @router.post("/{agreement_id}/rate", response_model=Dict[str, Any])
 async def rate_transaction(
@@ -52,13 +56,13 @@ async def rate_transaction(
     agreement = db.trade_agreements.get(agreement_id)
     if not agreement:
         raise HTTPException(status_code=404, detail="Agreement not found")
-        
+
     if agreement["status"] != "completed":
         raise HTTPException(status_code=400, detail="Can only rate completed agreements")
-        
+
     import uuid
     rating_id = str(uuid.uuid4())
-    
+
     # Determine who is being rated
     if current_user.id == agreement["farmer_id"]:
         ratee_id = agreement["buyer_id"]
@@ -66,18 +70,20 @@ async def rate_transaction(
         ratee_id = agreement["farmer_id"]
     else:
         raise HTTPException(status_code=403, detail="Not a party to this agreement")
-        
+
     rating = {
         "id": rating_id,
         "agreement_id": agreement_id,
         "rater_id": current_user.id,
         "ratee_id": ratee_id,
         "stars": payload.stars,
+        "quality_score": payload.quality_score,
+        "payment_or_reliability_score": payload.payment_or_reliability_score,
         "review": payload.review
     }
-    
+
     if not hasattr(db, 'ratings'):
         db.ratings = {}
-        
+
     db.ratings[rating_id] = rating
     return rating

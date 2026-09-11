@@ -635,11 +635,32 @@ export async function getMarketExplanation(crop_id: string): Promise<ServiceResu
   return fetchApiOrDemo(() => api.getWhyPriceMoved(crop_id, "Madhya Pradesh"), fallback);
 }
 
+export async function getTrendingCrops(region: string = "Madhya Pradesh"): Promise<ServiceResult<any>> {
+  return fetchApiOrDemo(() => api.getTrendingCrops(region), {
+    region,
+    top_gainers: [{ crop_id: "c0000000-0000-0000-0000-000000000001", commodity: "Soybean", current_price: 4950, dod_change_pct: 1.5, wow_change_pct: 2.1, arrival_volume_change_pct: -5.0, trend: "up" }],
+    top_losers: [{ crop_id: "c0000000-0000-0000-0000-000000000002", commodity: "Wheat", current_price: 2350, dod_change_pct: -0.5, wow_change_pct: -1.0, arrival_volume_change_pct: 12.0, trend: "down" }]
+  });
+}
+
+export async function getMatchingSuggestions(): Promise<ServiceResult<any[]>> {
+  return fetchApiOrDemo(() => api.getMatchingSuggestions(), []);
+}
+
 export async function getNetworkPosts(topic?: string): Promise<ServiceResult<NetworkPost[]>> {
   const localData = await localPosts();
   const filtered = topic && topic !== "all" ? localData.filter((p) => p.topic === topic || p.tag === topic) : localData;
   return fetchApiOrDemo(
-    () => api.getCommunityPosts(topic) as Promise<NetworkPost[]>,
+    async () => {
+      const posts = await api.getCommunityPosts(topic);
+      return posts.map(p => ({
+        ...p,
+        topic: p.tag,
+        reactions: (p as any).like_count || 0,
+        hasLiked: (p as any).has_liked || false,
+        comments: p.replies?.length || 0,
+      })) as NetworkPost[];
+    },
     filtered as NetworkPost[]
   );
 }
@@ -647,7 +668,16 @@ export async function getNetworkPosts(topic?: string): Promise<ServiceResult<Net
 export async function getPostDetail(id: string): Promise<ServiceResult<NetworkPost>> {
   const localData = await localPosts();
   return fetchApiOrDemo(
-    () => api.request<NetworkPost>(`/community/posts/${id}`),
+    async () => {
+      const p = await api.request<any>(`/community/posts/${id}`);
+      return {
+        ...p,
+        topic: p.tag,
+        reactions: p.like_count || 0,
+        hasLiked: p.has_liked || false,
+        comments: p.replies?.length || 0,
+      } as NetworkPost;
+    },
     localData.find((p) => p.id === id) || demoPosts[0]
   );
 }
@@ -701,16 +731,23 @@ export async function replyToPost(postId: string, content: string, owner: UserPr
 
 export async function togglePostReaction(postId: string): Promise<ServiceResult<number>> {
   let newReactions = 0;
+  let isLiking = true;
   const list = localPosts().map((p) => {
     if (p.id === postId) {
-      newReactions = (p.reactions || 0) + 1;
-      return { ...p, reactions: newReactions };
+      const currentlyLiked = p.hasLiked || false;
+      isLiking = !currentlyLiked;
+      newReactions = currentlyLiked ? Math.max(0, (p.reactions || 0) - 1) : (p.reactions || 0) + 1;
+      return { ...p, reactions: newReactions, hasLiked: isLiking };
     }
     return p;
   });
   writeLocal(LOCAL_KEYS.posts, list);
+
   return fetchApiOrDemo(
-    () => api.request<{ reactions: number }>(`/community/posts/${postId}/react`, { method: "POST" }).then(r => r.reactions),
+    () => {
+      const req = isLiking ? api.likePost(postId) : api.unlikePost(postId);
+      return req.then(r => r.like_count);
+    },
     newReactions
   );
 }
@@ -1088,4 +1125,18 @@ export async function rateOrderTransaction(agreementId: string, stars: number, r
     console.error(err);
     throw err;
   }
+}
+
+export async function getVerificationQueue() {
+  return fetchApiOrDemo(
+    () => api.getVerificationQueue(),
+    []
+  );
+}
+
+export async function decideVerification(requestId: string, status: string, notes: string) {
+  return fetchApiOrDemo(
+    () => api.decideVerification(requestId, status, notes),
+    { status, admin_notes: notes }
+  );
 }

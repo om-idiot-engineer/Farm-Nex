@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.api import auth, marketplace, matching, intelligence, community, admin, reliability, heatmap, agreements_expanded
+from app.api import auth, marketplace, matching, intelligence, community, admin, reliability, heatmap, agreements_expanded, verification, messaging
 
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
@@ -47,7 +47,19 @@ app.include_router(matching.router, prefix=settings.API_V1_STR)
 app.include_router(intelligence.router, prefix=settings.API_V1_STR)
 app.include_router(community.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
+app.include_router(reliability.router, prefix=settings.API_V1_STR)
+app.include_router(agreements_expanded.router, prefix=settings.API_V1_STR)
+app.include_router(heatmap.router, prefix=settings.API_V1_STR)
+app.include_router(verification.router, prefix=settings.API_V1_STR)
+app.include_router(messaging.router, prefix=settings.API_V1_STR)
 
+
+import asyncio
+from app.api.intelligence import refresh_live_prices
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(refresh_live_prices())
 
 @app.get("/health", tags=["System"])
 async def health_check():

@@ -1,66 +1,51 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ShieldCheck,
-  ArrowLeft,
-  CheckCircle2,
-  AlertTriangle,
-  Scale,
-  Building2,
-  FileText,
-  Award,
-  Sparkles,
-  Search
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
 import { Button } from "@/components/ui/button";
 import DemoNotice from "@/components/DemoNotice";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
-import TrustBadge from "@/components/TrustBadge";
+import { getVerificationQueue, decideVerification } from "@/lib/services/domain";
+import { getDataSourceLabel } from "@/lib/services/domain";
 
-export default function AdminTrustAuditPage() {
+export default function AdminVerificationQueuePage() {
   const { user, loading, hasAccess } = useRequiredUser(["admin"]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [source, setSource] = useState("");
 
-  if (loading || !user || !hasAccess) {
-    return <LoadingSkeleton variant="detail" />;
-  }
-
-  const auditSignals = [
-    {
-      domain: "Government Aadhaar & Land Records",
-      score: "99.2%",
-      auditedCount: 248,
-      status: "Compliant",
-      notes: "Integrated with MP Bhulekh land registry API for title and plot acreage confirmation.",
-    },
-    {
-      domain: "Certified Weighbridge Calibration",
-      score: "98.4%",
-      auditedCount: 18,
-      status: "Compliant",
-      notes: "Annual legal metrology stamped certification verified on all partner collection centers.",
-    },
-    {
-      domain: "Moisture Sensor Telemetry",
-      score: "96.7%",
-      auditedCount: 34,
-      status: "Compliant",
-      notes: "Cross-calibrated with NABL lab reference samples across JS-335 and Sharbati varieties.",
-    },
-    {
-      domain: "GSTIN Active Status & Tax Filing",
-      score: "100%",
-      auditedCount: 42,
-      status: "Compliant",
-      notes: "Daily automated GST Portal e-invoice compliance check on all active institutional buyers.",
+  useEffect(() => {
+    async function load() {
+      if (!user) return;
+      try {
+        const res = await getVerificationQueue();
+        setRequests(res.data);
+        setSource(getDataSourceLabel(res.source));
+      } catch (err) {
+        console.error("Failed to load queue:", err);
+      } finally {
+        setLoadingData(false);
+      }
     }
-  ];
+    load();
+  }, [user]);
+
+  const handleDecision = async (id: string, status: string) => {
+    try {
+      await decideVerification(id, status, "Reviewed by admin");
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error("Failed decision:", err);
+      alert("Failed to process decision");
+    }
+  };
+
+  if (loading || !user || !hasAccess) return <LoadingSkeleton variant="detail" />;
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
       <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 md:flex-row md:items-end">
         <div>
           <div className="flex items-center gap-2">
@@ -69,51 +54,47 @@ export default function AdminTrustAuditPage() {
             </Link>
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            Trust & Quality Assurance Registry
+            Trust & Verification Queue
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Audit verification signals across land records, partner weighbridges, testing equipment, and commercial buyer GSTIN filings.
+            Review and approve pending verification requests.
           </p>
         </div>
-
-        <Button asChild size="sm" className="bg-primary text-primary-foreground">
-          <Link href="/admin/users">
-            Audit User KYC
-          </Link>
-        </Button>
       </div>
 
-      <DemoNotice>
-        Verification signals feed directly into the TrustBadge popover so counterparties can independently verify trade qualifications.
-      </DemoNotice>
+      <DemoNotice>{source} powering this queue.</DemoNotice>
 
-      {/* Trust Signal Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {auditSignals.map((signal) => (
-          <div key={signal.domain} className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3">
-            <div className="flex items-start justify-between">
+      {loadingData ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading queue...</div>
+      ) : requests.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card p-12 text-center shadow-sm">
+          <p className="text-muted-foreground">No pending verification requests.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {requests.map((req) => (
+            <div key={req.id} className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">Audit Signal</span>
-                <h3 className="text-base font-bold text-foreground mt-0.5">{signal.domain}</h3>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">Document Type</span>
+                <h3 className="text-base font-bold text-foreground mt-0.5">{req.document_type}</h3>
+                <p className="text-xs text-muted-foreground mt-1">User: {req.user_id}</p>
+                <Link href={req.document_url} target="_blank" className="text-blue-500 hover:underline text-sm mt-2 block">
+                  View Document
+                </Link>
               </div>
-              <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                {signal.score}
-              </span>
-            </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {signal.notes}
-            </p>
-
-            <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
-              <span>Audited Entities: <strong>{signal.auditedCount}</strong></span>
-              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
-                <CheckCircle2 className="h-3.5 w-3.5" /> {signal.status}
-              </span>
+              <div className="flex gap-2 pt-2 border-t border-border">
+                <Button size="sm" onClick={() => handleDecision(req.id, "approved")} className="bg-emerald-600 text-white hover:bg-emerald-700 w-full">
+                  <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                </Button>
+                <Button size="sm" onClick={() => handleDecision(req.id, "rejected")} variant="destructive" className="w-full">
+                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

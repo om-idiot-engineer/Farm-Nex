@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.database import db
@@ -387,3 +388,137 @@ async def accept_match(
         earnings_breakdown=earnings,
         created_at=trade_agreement["created_at"],
     )
+class SuggestionOut(BaseModel):
+    match_id: str
+    listing_id: str
+    demand_id: str
+    target_name: str
+    target_role: str
+    target_location: str
+    crop_id: str
+    quantity: float
+    matching_score: float
+    net_realization_per_q: float
+    why_this_offer: List[str]
+
+@router.get("/suggestions", response_model=List[SuggestionOut])
+async def get_suggestions(current_user: UserOut = Depends(get_current_user)):
+    suggestions = []
+
+    if current_user.role.value == "farmer":
+        my_listings = [l for l in db.crop_listings.values() if l["farmer_id"] == current_user.id and l.get("status") == "listed"]
+        for listing in my_listings:
+            for demand_id, demand in db.demand_posts.items():
+                if demand.get("status", "open") != "open" or demand["crop_id"] != listing["crop_id"]:
+                    continue
+                buyer = db.users.get(demand["buyer_id"], {})
+
+                logistics = estimate_logistics(
+                    lat1=listing["lat"],
+                    lon1=listing["lng"],
+                    lat2=demand["lat"],
+                    lon2=demand["lng"],
+                    quantity_quintals=listing["quantity"],
+                    origin_name=listing["location"],
+                    destination_name=demand["location"],
+                )
+                offered_price = demand["offered_price"]
+                freight_per_q = logistics.cost_per_quintal
+                net_realization_per_q = round(offered_price - freight_per_q, 2)
+
+                matching_score, explanation, why_this_offer = compute_matching_score(
+                    listing=listing,
+                    demand=demand,
+                    dist_km=logistics.distance_km,
+                    net_realization_per_q=net_realization_per_q,
+                )
+
+                # Check graph connections to nudge score
+                # This meets the requirement: "Feed connection-graph proximity... as minor scoring factors"
+                has_conn = any(
+                    c for c in db.connections.values()
+                    if c["status"] == "accepted" and
+                    ((c["requester_id"] == current_user.id and c["target_id"] == demand["buyer_id"]) or
+                     (c["target_id"] == current_user.id and c["requester_id"] == demand["buyer_id"]))
+                ) if hasattr(db, "connections") else False
+
+                if has_conn:
+                    matching_score = min(100.0, matching_score + 2.0)
+                    why_this_offer.append("You are connected with this buyer.")
+
+                if buyer.get("verified"):
+                    matching_score = min(100.0, matching_score + 1.0)
+
+                suggestions.append(SuggestionOut(
+                    match_id=str(uuid.uuid4()),
+                    listing_id=listing["id"],
+                    demand_id=demand_id,
+                    target_name=buyer.get("name", "Buyer"),
+                    target_role="buyer",
+                    target_location=demand["location"],
+                    crop_id=listing["crop_id"],
+                    quantity=min(listing["quantity"], demand["quantity_needed"]),
+                    matching_score=matching_score,
+                    net_realization_per_q=net_realization_per_q,
+                    why_this_offer=why_this_offer
+                ))
+    else:
+        # Buyer logic
+        my_demands = [d for d in db.demand_posts.values() if d["buyer_id"] == current_user.id and d.get("status", "open") == "open"]
+        for demand in my_demands:
+            for listing_id, listing in db.crop_listings.items():
+                if listing.get("status") != "listed" or listing["crop_id"] != demand["crop_id"]:
+                    continue
+                farmer = db.users.get(listing["farmer_id"], {})
+
+                logistics = estimate_logistics(
+                    lat1=listing["lat"],
+                    lon1=listing["lng"],
+                    lat2=demand["lat"],
+                    lon2=demand["lng"],
+                    quantity_quintals=listing["quantity"],
+                    origin_name=listing["location"],
+                    destination_name=demand["location"],
+                )
+                offered_price = demand["offered_price"]
+                freight_per_q = logistics.cost_per_quintal
+                net_realization_per_q = round(offered_price - freight_per_q, 2)
+
+                matching_score, explanation, why_this_offer = compute_matching_score(
+                    listing=listing,
+                    demand=demand,
+                    dist_km=logistics.distance_km,
+                    net_realization_per_q=net_realization_per_q,
+                )
+
+                has_conn = any(
+                    c for c in db.connections.values()
+                    if c["status"] == "accepted" and
+                    ((c["requester_id"] == current_user.id and c["target_id"] == listing["farmer_id"]) or
+                     (c["target_id"] == current_user.id and c["requester_id"] == listing["farmer_id"]))
+                ) if hasattr(db, "connections") else False
+
+                if has_conn:
+                    matching_score = min(100.0, matching_score + 2.0)
+                    why_this_offer.append("You are connected with this farmer.")
+
+                if farmer.get("verified"):
+                    matching_score = min(100.0, matching_score + 1.0)
+
+                suggestions.append(SuggestionOut(
+                    match_id=str(uuid.uuid4()),
+                    listing_id=listing_id,
+                    demand_id=demand["id"],
+                    target_name=farmer.get("name", "Farmer"),
+                    target_role="farmer",
+                    target_location=listing["location"],
+                    crop_id=listing["crop_id"],
+                    quantity=min(listing["quantity"], demand["quantity_needed"]),
+                    matching_score=matching_score,
+                    net_realization_per_q=net_realization_per_q,
+                    why_this_offer=why_this_offer
+                ))
+
+    # Sort descending by score
+    suggestions.sort(key=lambda x: x.matching_score, reverse=True)
+    return suggestions[:5]

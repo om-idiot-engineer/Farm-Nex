@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+
+    # Third Party
+    SMS_PROVIDER: str = os.getenv("SMS_PROVIDER", "dev")
+    SMS_API_KEY: str = os.getenv("SMS_API_KEY", "")
 
     # Rate Limiting
     RATE_LIMIT_DEFAULT: str = "60/minute"

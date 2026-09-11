@@ -19,27 +19,27 @@ async def get_user_reliability(
     # In a real app, query trade_agreements and ratings tables
     # Here we simulate the reliability score based on user role
     role = user.get("role", "farmer")
-    
+
     # Calculate from demo trade agreements
     user_agreements = [
         ta for ta in db.trade_agreements.values()
         if ta.get("farmer_id") == user_id or ta.get("buyer_id") == user_id
     ]
-    
+
     total_transactions = len(user_agreements)
     successful_transactions = sum(
         1 for ta in user_agreements if ta.get("status") == "completed"
     )
-    
+
     # Calculate from ratings (if we had them seeded)
     user_ratings = [
         r for r in db.ratings.values() if r.get("ratee_id") == user_id
     ] if hasattr(db, "ratings") else []
-    
-    average_rating = sum(r.get("stars", 0) for r in user_ratings) / len(user_ratings) if user_ratings else (4.5 if total_transactions > 0 else 0)
-    
+
+    average_rating = sum(r.get("stars", 0) for r in user_ratings) / len(user_ratings) if user_ratings else 0.0
+
     if role == "farmer":
-        quality_consistency = sum(r.get("quality_score", 0) for r in user_ratings if r.get("quality_score")) / len([r for r in user_ratings if r.get("quality_score")]) * 20 if user_ratings else (92.0 if total_transactions > 0 else None)
+        quality_consistency = sum(r.get("quality_score", 0) for r in user_ratings if r.get("quality_score")) / len([r for r in user_ratings if r.get("quality_score")]) * 20 if user_ratings and any(r.get("quality_score") for r in user_ratings) else None
         return UserReliabilityScore(
             role=role,
             total_transactions=total_transactions,
@@ -49,7 +49,7 @@ async def get_user_reliability(
             verification_status=user.get("verified", False)
         )
     else:
-        payment_reliability = sum(r.get("payment_or_reliability_score", 0) for r in user_ratings if r.get("payment_or_reliability_score")) / len([r for r in user_ratings if r.get("payment_or_reliability_score")]) * 20 if user_ratings else (98.0 if total_transactions > 0 else None)
+        payment_reliability = sum(r.get("payment_or_reliability_score", 0) for r in user_ratings if r.get("payment_or_reliability_score")) / len([r for r in user_ratings if r.get("payment_or_reliability_score")]) * 20 if user_ratings and any(r.get("payment_or_reliability_score") for r in user_ratings) else None
         return UserReliabilityScore(
             role=role,
             total_transactions=total_transactions,

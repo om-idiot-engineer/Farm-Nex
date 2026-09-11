@@ -6,6 +6,7 @@ from app.core.limiter import limiter
 from app.core.database import db
 from app.core.security import (
     create_access_token,
+    create_refresh_token,
     verify_password,
     get_password_hash,
     get_current_user,
@@ -25,17 +26,25 @@ from app.models.schemas import (
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+import random
+from app.api.sms_provider import sms_provider
+
 @router.post("/farmer/send-otp")
 @limiter.limit(settings.RATE_LIMIT_AUTH)
 async def send_farmer_otp(request: Request, body: SendOTPRequest):
     """
     Sends a phone OTP for farmer login.
-    In development/demo mode, code '123456' is generated and stored.
+    In development mode, '123456' is sent.
     """
     phone = body.phone.strip()
-    # In development/hackathon demo mode, we use a fixed demo OTP code
-    otp = "123456"
+
+    if settings.ENVIRONMENT == "development" or settings.SMS_PROVIDER == "dev":
+        otp = "123456"
+    else:
+        otp = str(random.randint(100000, 999999))
+
     db.otp_codes[phone] = otp
+    await sms_provider.send_otp(phone, otp)
 
     # Check if user already exists
     existing = any(u.get("phone") == phone for u in db.users.values())
@@ -43,9 +52,9 @@ async def send_farmer_otp(request: Request, body: SendOTPRequest):
     return {
         "success": True,
         "phone": phone,
-        "message": "OTP sent successfully. (Demo OTP is 123456)",
+        "message": "OTP sent successfully.",
         "is_registered": existing,
-        "demo_hint": "Use 123456 to verify",
+        "demo_hint": "Use 123456 in dev mode" if otp == "123456" else None,
     }
 
 
@@ -78,8 +87,20 @@ async def verify_farmer_otp(request: Request, body: VerifyOTPRequest):
     access_token = create_access_token(
         data={"sub": user_record["id"], "role": user_record["role"]}
     )
+    refresh_token = create_refresh_token(
+        data={"sub": user_record["id"], "role": user_record["role"]}
+    )
 
-    return TokenResponse(access_token=access_token, token_type="bearer", user=user_out)
+    # Clear OTP
+    if phone in db.otp_codes:
+        del db.otp_codes[phone]
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=user_out
+    )
 
 
 @router.post("/farmer/register", response_model=TokenResponse)
@@ -119,11 +140,25 @@ async def register_farmer(body: FarmerRegisterRequest):
     }
 
     user_out = get_user_out_from_id(user_id)
+
+    # Generate tokens
     access_token = create_access_token(
         data={"sub": user_id, "role": UserRole.FARMER.value}
     )
+    refresh_token = create_refresh_token(
+        data={"sub": user_id, "role": UserRole.FARMER.value}
+    )
 
-    return TokenResponse(access_token=access_token, token_type="bearer", user=user_out)
+    # Clear OTP
+    if phone in db.otp_codes:
+        del db.otp_codes[phone]
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": user_out,
+    }
 
 
 @router.post("/buyer/register", response_model=TokenResponse)
@@ -167,8 +202,16 @@ async def register_buyer(body: BuyerRegisterRequest):
     access_token = create_access_token(
         data={"sub": user_id, "role": UserRole.BUYER.value}
     )
+    refresh_token = create_refresh_token(
+        data={"sub": user_id, "role": UserRole.BUYER.value}
+    )
 
-    return TokenResponse(access_token=access_token, token_type="bearer", user=user_out)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=user_out
+    )
 
 
 @router.post("/buyer/login", response_model=TokenResponse)
@@ -206,13 +249,39 @@ async def login_buyer(request: Request, body: EmailLoginRequest):
     access_token = create_access_token(
         data={"sub": user_record["id"], "role": user_record["role"]}
     )
+    refresh_token = create_refresh_token(
+        data={"sub": user_record["id"], "role": user_record["role"]}
+    )
 
-    return TokenResponse(access_token=access_token, token_type="bearer", user=user_out)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=user_out
+    )
 
 
 @router.get("/me", response_model=UserOut)
 async def get_my_profile(current_user: UserOut = Depends(get_current_user)):
     """
-    Fetches the authenticated user profile and details.
+    Returns the current logged-in user profile.
     """
     return current_user
+
+from app.core.security import refresh_access_token
+from pydantic import BaseModel
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+@router.post("/refresh", response_model=RefreshTokenResponse)
+async def refresh_token(body: RefreshTokenRequest):
+    """
+    Refresh an expired access token using a valid refresh token.
+    """
+    new_token = refresh_access_token(body.refresh_token)
+    return {"access_token": new_token, "token_type": "bearer"}

@@ -4,14 +4,18 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Plus, ArrowRight, Sprout, TrendingUp, Store, Tractor, MapPin,
-  CheckCircle2, ChevronRight, Package, Thermometer, Calendar, Clock, BarChart3
+  CheckCircle2, ChevronRight, Package, Thermometer, Calendar, Clock, BarChart3,
+  Flame, Sparkles, PieChart as PieChartIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
 import { getFarmerListings, getAgreements, getBuyerMatches, getNotifications } from "@/lib/services/domain";
 import type { CropListing, BuyerMatchOpportunity, TradeAgreement } from "@/lib/api";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
 
 export default function FarmerDashboard() {
   const { user, loading: userLoading } = useUser();
@@ -19,26 +23,26 @@ export default function FarmerDashboard() {
 
   const [listings, setListings] = useState<CropListing[]>([]);
   const [agreements, setAgreements] = useState<TradeAgreement[]>([]);
-  const [matches, setMatches] = useState<BuyerMatchOpportunity[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [trending, setTrending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userLoading || !user) return;
     async function loadData() {
       try {
-        const [listingsRes, agreementsRes, notifRes] = await Promise.all([
+        const { getTrendingCrops, getMatchingSuggestions } = await import("@/lib/services/domain");
+        const [listingsRes, agreementsRes, suggRes, trendRes] = await Promise.all([
           getFarmerListings(),
           getAgreements(),
-          getNotifications()
+          getMatchingSuggestions(),
+          getTrendingCrops()
         ]);
         const lots = listingsRes.data || [];
         setListings(lots);
         setAgreements(agreementsRes.data || []);
-
-        if (lots.length > 0) {
-          const matchRes = await getBuyerMatches(lots[0].id);
-          setMatches(matchRes.data || []);
-        }
+        setSuggestions(suggRes.data || []);
+        setTrending(trendRes.data?.top_gainers || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -47,6 +51,61 @@ export default function FarmerDashboard() {
     }
     loadData();
   }, [user, userLoading]);
+
+  // Crop performance distribution calculated dynamically from farmer's listed produce
+  const cropPerformanceData = React.useMemo(() => {
+    if (!listings || listings.length === 0) {
+      return [];
+    }
+
+    const cropMap: Record<string, { quantity: number; amount: number }> = {};
+    const cropNames: Record<string, string> = {
+      "c0000000-0000-0000-0000-000000000001": "Soybean",
+      "c0000000-0000-0000-0000-000000000002": "Wheat",
+      "c0000000-0000-0000-0000-000000000003": "Cotton",
+      "c0000000-0000-0000-0000-000000000004": "Maize",
+      "c0000000-0000-0000-0000-000000000005": "Mustard",
+      "soybean": "Soybean",
+      "wheat": "Wheat",
+      "cotton": "Cotton",
+      "maize": "Maize",
+      "mustard": "Mustard",
+      "tomato": "Tomato",
+      "onion": "Onion",
+      "potato": "Potato",
+      "gram": "Gram",
+    };
+
+    let totalVal = 0;
+    listings.forEach((item) => {
+      const rawId = (item.crop_id || "Produce").trim();
+      const displayName =
+        cropNames[rawId] ||
+        cropNames[rawId.toLowerCase()] ||
+        rawId.charAt(0).toUpperCase() + rawId.slice(1);
+      const estAmount = (item.quantity || 0) * (item.expected_price || 0);
+
+      if (!cropMap[displayName]) {
+        cropMap[displayName] = { quantity: 0, amount: 0 };
+      }
+      cropMap[displayName].quantity += item.quantity || 0;
+      cropMap[displayName].amount += estAmount;
+      totalVal += estAmount;
+    });
+
+    const palette = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#14B8A6"];
+
+    return Object.entries(cropMap).map(([name, data], idx) => {
+      const percentage = totalVal > 0 ? Math.round((data.amount / totalVal) * 100) : 0;
+      return {
+        name,
+        value: percentage,
+        amount: data.amount,
+        quantity: data.quantity,
+        color: palette[idx % palette.length],
+      };
+    });
+  }, [listings]);
 
   if (userLoading || loading) return <LoadingSkeleton />;
 
@@ -71,6 +130,25 @@ export default function FarmerDashboard() {
     if (value === 0) return '₹0';
     return `₹${value / 1000}k`;
   };
+
+  // Price trends mandi data
+  const priceTrendsData = [
+    { date: "1 May", Tomato: 35, Wheat: 40, Onion: 32 },
+    { date: "5 May", Tomato: 38, Wheat: 42, Onion: 35 },
+    { date: "9 May", Tomato: 42, Wheat: 45, Onion: 38 },
+    { date: "13 May", Tomato: 40, Wheat: 44, Onion: 37 },
+    { date: "17 May", Tomato: 46, Wheat: 48, Onion: 42 },
+    { date: "21 May", Tomato: 49, Wheat: 50, Onion: 45 },
+    { date: "Today", Tomato: 52, Wheat: 51, Onion: 48 }
+  ];
+
+  // Order Funnel stages
+  const orderFunnel = [
+    { label: "Pending", count: 12, max: 50, color: "bg-emerald-500" },
+    { label: "Negotiating", count: 8, max: 50, color: "bg-amber-400" },
+    { label: "Shipped", count: 15, max: 50, color: "bg-blue-500" },
+    { label: "Delivered", count: 42, max: 50, color: "bg-emerald-600" }
+  ];
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-[1440px] mx-auto theme-farmer">
@@ -100,7 +178,7 @@ export default function FarmerDashboard() {
           { label: "Est. Revenue", value: `₹${totalEstRevenue.toLocaleString()}`, change: "+12.5%", up: true, icon: TrendingUp, grad: "from-emerald-500 to-green-600" },
           { label: "Active Listings", value: listings.length.toString(), change: "+1 new", up: true, icon: Store, grad: "from-amber-400 to-orange-500" },
           { label: "Total Volume", value: `${totalVolume} Qtl`, change: "Stable", up: true, icon: Package, grad: "from-violet-500 to-purple-600" },
-          { label: "Buyer Matches", value: matches.length.toString(), change: "New alerts", up: true, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500" }
+          { label: "Buyer Matches", value: suggestions.length.toString(), change: "New alerts", up: true, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500" }
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -121,6 +199,34 @@ export default function FarmerDashboard() {
           );
         })}
       </div>
+
+      {/* Trending Crops (Hot Crops) */}
+      {trending.length > 0 && (
+        <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
+          <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
+            🔥 Hot Crops (Live Mandi Trending)
+            <Link href="/intelligence" className="text-[11px] font-semibold text-emerald-600 hover:underline">Market Intelligence</Link>
+          </h3>
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {trending.map((crop, i) => (
+              <div key={i} className="min-w-[180px] flex-shrink-0 bg-zinc-50 border border-zinc-100 rounded-[16px] p-3 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-zinc-900">{crop.commodity}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${crop.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    {crop.trend === 'up' ? '▲' : '▼'} {Math.abs(crop.dod_change_pct)}%
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <div className="text-[16px] font-black">₹{crop.current_price}</div>
+                  <div className="text-[10px] text-zinc-500 mt-1 flex justify-between">
+                    <span>Vol: {crop.arrival_volume_change_pct > 0 ? '+' : ''}{crop.arrival_volume_change_pct}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Revenue Chart & Weather */}
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
@@ -188,33 +294,152 @@ export default function FarmerDashboard() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-[20px] p-5 text-white relative overflow-hidden shadow-sm">
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[15px] flex items-center gap-2">Bhopal Weather</h3>
-              <span className="text-[11px] bg-white/20 px-2 py-1 rounded-full">Live • IMD</span>
+        {/* Crop Performance Card */}
+        <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-[16px] flex items-center gap-2">
+              🌾 Crop Performance
+            </h3>
+            <span className="text-[11px] bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-1 rounded-full border border-emerald-100">+12% yield</span>
+          </div>
+
+          {/* Donut Chart */}
+          {cropPerformanceData.length === 0 ? (
+            <div className="h-[240px] flex flex-col items-center justify-center text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-3">
+                <Sprout className="w-6 h-6" />
+              </div>
+              <p className="text-[13px] font-semibold text-zinc-700">No crops listed yet</p>
+              <p className="text-[11px] text-zinc-400 mt-1 max-w-[200px]">
+                List your produce to see your crop performance and revenue breakdown.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 rounded-full text-xs font-semibold">
+                <Link href="/farmer/produce/new">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Crop
+                </Link>
+              </Button>
             </div>
-            <div className="mt-4 flex items-end gap-4">
-              <div className="text-[42px] font-extrabold leading-none">32°</div>
-              <div className="text-[13px] opacity-90 leading-tight">
-                Partly cloudy<br/>Humidity 64%
+          ) : (
+            <>
+              <div className="relative h-[180px] w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={cropPerformanceData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {cropPerformanceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: number, name: string) => [`${value}%`, name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Center label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <div className="text-[11px] text-zinc-400 font-medium">Total</div>
+                  <div className="text-[20px] font-extrabold text-zinc-900 leading-tight">
+                    {cropPerformanceData.length} {cropPerformanceData.length === 1 ? "Crop" : "Crops"}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-5">
-              <div className="bg-white/15 rounded-xl p-2.5 backdrop-blur-sm">
-                <div className="flex items-center gap-1 text-[11px] opacity-80"><Thermometer className="w-3 h-3" /> Rain</div>
-                <div className="font-bold text-[13px] mt-1">20% chance</div>
+
+              {/* Legend */}
+              <div className="space-y-2 mt-2">
+                {cropPerformanceData.map((crop, i) => (
+                  <div key={i} className="flex items-center justify-between text-[12px]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: crop.color }} />
+                      <span className="font-semibold text-zinc-700">{crop.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-zinc-500 font-medium">
+                      <span className="font-bold text-zinc-800">{crop.value}%</span>
+                      <span>• ₹{crop.amount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="bg-white/15 rounded-xl p-2.5 backdrop-blur-sm">
-                <div className="flex items-center gap-1 text-[11px] opacity-80"><Sprout className="w-3 h-3" /> Soil</div>
-                <div className="font-bold text-[13px] mt-1">28°C good</div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Price Trends & Orders Funnel */}
+      <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
+
+        {/* Price Trends Chart */}
+        <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-[16px] flex items-center gap-2">
+              📈 Price Trends <span className="text-zinc-400 font-medium text-[13px]">• Bhopal Mandi</span>
+            </h3>
+          </div>
+
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={priceTrendsData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#71717A' }}
+                  dy={8}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#A1A1AA' }}
+                  tickFormatter={(v) => `₹${v}`}
+                  domain={[20, 60]}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: number, name: string) => [`₹${value}`, name]}
+                />
+                <Line type="monotone" dataKey="Tomato" stroke="#EF4444" strokeWidth={2.5} dot={{ r: 3, fill: '#EF4444', stroke: '#fff', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Wheat" stroke="#EAB308" strokeWidth={2.5} dot={{ r: 3, fill: '#EAB308', stroke: '#fff', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Onion" stroke="#A855F7" strokeWidth={2.5} dot={{ r: 3, fill: '#A855F7', stroke: '#fff', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex items-center gap-4 mt-2 px-2 text-[12px] font-medium text-zinc-500">
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /> Tomato</div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-500" /> Wheat</div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-purple-500" /> Onion</div>
+          </div>
+        </div>
+
+        {/* Orders Funnel */}
+        <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-[16px]">Orders Funnel</h3>
+          </div>
+          <div className="space-y-4">
+            {orderFunnel.map((stage, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="font-semibold text-zinc-700">{stage.label}</span>
+                  <span className="font-extrabold text-zinc-900">{stage.count}</span>
+                </div>
+                <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${stage.color} transition-all`}
+                    style={{ width: `${Math.round((stage.count / stage.max) * 100)}%` }}
+                  />
+                </div>
               </div>
-              <div className="bg-white/15 rounded-xl p-2.5 backdrop-blur-sm">
-                <div className="flex items-center gap-1 text-[11px] opacity-80"><Tractor className="w-3 h-3" /> Action</div>
-                <div className="font-bold text-[13px] mt-1">Irrigate</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -222,26 +447,26 @@ export default function FarmerDashboard() {
       {/* Real Matches & Agreements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Buyer Matches */}
+        {/* Top Buyer Matches (Suggested Deals) */}
         <div className="bg-white rounded-[20px] border border-zinc-200 p-5 shadow-sm">
           <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
-            Top Buyer Matches
+            Suggested Deals (Top Matches)
             <Link href="/deals" className="text-[11px] font-semibold text-emerald-600 hover:underline">View All</Link>
           </h3>
           <div className="space-y-3">
-            {matches.length > 0 ? matches.slice(0, 3).map((match, i) => (
+            {suggestions.length > 0 ? suggestions.slice(0, 3).map((match, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-[16px] bg-zinc-50/50 border border-zinc-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-colors cursor-pointer group">
                 <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center font-extrabold text-[12px] shrink-0 text-blue-700 shadow-sm">
-                  {match.buyer_name?.substring(0,2).toUpperCase() || 'BY'}
+                  {match.target_name?.substring(0,2).toUpperCase() || 'BY'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold truncate text-zinc-900 group-hover:text-emerald-700 transition-colors">{match.buyer_name || match.business_name}</div>
+                  <div className="text-[13px] font-extrabold truncate text-zinc-900 group-hover:text-emerald-700 transition-colors">{match.target_name}</div>
                   <div className="text-[11px] text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
-                    <MapPin className="w-3 h-3"/> {match.distance_km}km away
+                    <MapPin className="w-3 h-3"/> {match.target_location}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[14px] font-black text-zinc-900">₹{match.offered_price_per_quintal}</div>
+                  <div className="text-[14px] font-black text-zinc-900">₹{match.net_realization_per_q || match.matching_score}</div>
                   <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Per Qtl</div>
                 </div>
               </div>

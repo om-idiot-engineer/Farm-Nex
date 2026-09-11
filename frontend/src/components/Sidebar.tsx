@@ -7,7 +7,6 @@ import { useUser } from "@/lib/auth/UserContext";
 import { getRoleNavigation, getRolePrimaryAction } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { type NavLinkItem } from "@/lib/navigation";
-import { CheckCircle2 } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -23,8 +22,6 @@ export default function Sidebar() {
     if (item.exact) return pathname === item.href;
     return pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
   };
-
-  const isFarmer = user.role === "farmer";
 
   return (
     <aside className="hidden lg:flex flex-col justify-between w-[240px] shrink-0 sticky top-[64px] h-[calc(100vh-64px)] p-4 border-r border-black/[0.06] bg-white transition-all duration-300">
@@ -61,21 +58,7 @@ export default function Sidebar() {
       </div>
 
       <div className="p-3 border-t border-black/[0.06] mt-4">
-        <div className={`rounded-2xl p-3 ${isFarmer ? 'bg-[#F0FDF4] border border-green-100' : 'bg-[#EFF6FF] border border-blue-100'}`}>
-          <div className="flex items-center gap-2 text-[12px] font-semibold mb-2">
-            <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${isFarmer ? 'from-emerald-600 to-green-600' : 'from-blue-600 to-indigo-600'} flex items-center justify-center text-white`}>
-              <CheckCircle2 size={12} />
-            </div>
-            Pro Analytics
-          </div>
-          <p className="text-[11px] text-zinc-600 leading-snug">
-            Upgrade to see mandi forecast &amp; price prediction AI.
-          </p>
-          <button className="mt-3 w-full h-8 rounded-full bg-zinc-900 text-white text-[12px] font-semibold">
-            Upgrade ₹199/mo
-          </button>
-        </div>
-        <div className="mt-4 px-2 text-[11px] text-zinc-400 leading-relaxed">
+        <div className="px-2 text-[11px] text-zinc-400 leading-relaxed">
           &copy; 2026 FarmNex<br/>
           PWA Ready • Bhopal, MP
         </div>

@@ -25,6 +25,28 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var path = window.location.pathname;
+                  var isBuyerPath = path.startsWith('/buyer') || path.startsWith('/consumer');
+                  if (isBuyerPath) {
+                    document.body.classList.add('theme-buyer');
+                  }
+
+                  var role = localStorage.getItem('user_role');
+                  if (role === 'buyer' || role === 'consumer') {
+                     document.body.classList.add('theme-buyer');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col font-sans">
         <PWAProvider>
           <LanguageProvider>

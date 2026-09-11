@@ -21,22 +21,29 @@ export default function BuyerDashboard() {
   const [rfqs, setRfqs] = useState<ProcurementRequirement[]>([]);
   const [supply, setSupply] = useState<CropListing[]>([]);
   const [agreements, setAgreements] = useState<ExtendedTradeAgreement[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [trending, setTrending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userLoading || !user) return;
     async function loadData() {
       try {
-        const [demandsRes, supplyRes, agreementsRes, rfqRes] = await Promise.all([
+        const { getTrendingCrops, getMatchingSuggestions } = await import("@/lib/services/domain");
+        const [demandsRes, supplyRes, agreementsRes, rfqRes, suggRes, trendRes] = await Promise.all([
           getBuyerDemands(),
           getMarketplaceListings(),
           getAgreements(),
-          getProcurementRequirements()
+          getProcurementRequirements(),
+          getMatchingSuggestions(),
+          getTrendingCrops()
         ]);
         setDemands(demandsRes.data || []);
         setSupply(supplyRes.data || []);
         setAgreements(agreementsRes.data || []);
         setRfqs(rfqRes.data || []);
+        setSuggestions(suggRes.data || []);
+        setTrending(trendRes.data?.top_gainers || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -103,30 +110,58 @@ export default function BuyerDashboard() {
         })}
       </div>
 
+      {/* Trending Crops (Hot Crops) */}
+      {trending.length > 0 && (
+        <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm">
+          <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
+            🔥 Hot Crops (Live Mandi Trending)
+            <Link href="/intelligence" className="text-[11px] font-semibold text-blue-600 hover:underline">Market Intelligence</Link>
+          </h3>
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {trending.map((crop, i) => (
+              <div key={i} className="min-w-[180px] flex-shrink-0 bg-zinc-50 border border-zinc-100 rounded-[16px] p-3 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-zinc-900">{crop.commodity}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${crop.trend === 'up' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                    {crop.trend === 'up' ? '▲' : '▼'} {Math.abs(crop.dod_change_pct)}%
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <div className="text-[16px] font-black">₹{crop.current_price}</div>
+                  <div className="text-[10px] text-zinc-500 mt-1 flex justify-between">
+                    <span>Vol: {crop.arrival_volume_change_pct > 0 ? '+' : ''}{crop.arrival_volume_change_pct}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Matching Supplies & In-Transit Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Recommended Supply */}
         <div className="bg-white rounded-[20px] border border-zinc-200 p-5 shadow-sm">
           <h3 className="font-bold text-[14px] mb-4 flex items-center justify-between">
-            Top Matched Farm Supply
+            Suggested Deals (Top Matches)
             <Link href="/marketplace?view=supply" className="text-[11px] font-semibold text-blue-600 hover:underline">View All</Link>
           </h3>
           <div className="space-y-3">
-            {supply.length > 0 ? supply.slice(0, 3).map((lot, i) => (
+            {suggestions.length > 0 ? suggestions.slice(0, 3).map((match, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-[16px] bg-zinc-50/50 border border-zinc-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer group">
                 <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-emerald-100 to-green-200 flex items-center justify-center font-extrabold text-[12px] shrink-0 text-emerald-700 shadow-sm">
-                  {lot.farmer_name?.substring(0,2).toUpperCase() || 'FM'}
+                  {match.target_name?.substring(0,2).toUpperCase() || 'FM'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold truncate text-zinc-900 group-hover:text-blue-700 transition-colors capitalize">{lot.crop_id} • {lot.quantity} Qtl</div>
+                  <div className="text-[13px] font-extrabold truncate text-zinc-900 group-hover:text-blue-700 transition-colors capitalize">{match.target_name}</div>
                   <div className="text-[11px] text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
-                    <MapPin className="w-3 h-3"/> {lot.location}
+                    <MapPin className="w-3 h-3"/> {match.target_location}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[14px] font-black text-zinc-900">₹{lot.expected_price}</div>
-                  <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Asking Price</div>
+                  <div className="text-[14px] font-black text-zinc-900">₹{match.net_realization_per_q || match.matching_score}</div>
+                  <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Per Qtl</div>
                 </div>
               </div>
             )) : (

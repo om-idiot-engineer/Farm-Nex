@@ -1,5 +1,5 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true" || process.env.NODE_ENV !== "production";
+export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 export class ApiError extends Error {
   status: number;
@@ -253,6 +253,14 @@ export const api = {
     });
   },
 
+  async getTrendingCrops(region: string = "Madhya Pradesh"): Promise<any> {
+    return this.request<any>(`/intelligence/trending?region=${encodeURIComponent(region)}`);
+  },
+
+  async getMatchingSuggestions(): Promise<any[]> {
+    return this.request<any[]>("/matching/suggestions");
+  },
+
   // Marketplace: Demand Posts
   async createDemandPost(data: {
     crop_id: string;
@@ -374,6 +382,32 @@ export const api = {
 
   async getAdminMapNodes(): Promise<AdminMapResponse> {
     return this.request<AdminMapResponse>("/admin/map-nodes");
+  },
+
+  async getVerificationQueue() {
+    return this.request<any>("/verification/admin/queue");
+  },
+
+  async decideVerification(requestId: string, status: string, notes: string) {
+    return this.request<any>(`/verification/admin/${requestId}/decide`, {
+      method: "POST",
+      body: JSON.stringify({ status, admin_notes: notes })
+    });
+  },
+
+  async likePost(postId: string) {
+    return this.request<any>(`/community/posts/${postId}/like`, { method: "POST" });
+  },
+
+  async unlikePost(postId: string) {
+    return this.request<any>(`/community/posts/${postId}/like`, { method: "DELETE" });
+  },
+
+  async replyToPost(postId: string, content: string) {
+    return this.request<any>(`/community/posts/${postId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
   }
 };
 
