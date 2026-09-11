@@ -265,12 +265,22 @@ export default function DealRoomPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
           <div>
             <span className="block text-[10px] uppercase font-bold text-muted-foreground">Producer / Seller</span>
-            <span className="font-bold text-sm text-foreground block mt-0.5 truncate">{agreement.farmer_name || "Ramesh Patel"}</span>
+            <Link
+              href={`/profile/${agreement.farmer_id || "demo-farmer-ramesh"}`}
+              className="font-bold text-sm text-foreground block mt-0.5 truncate hover:underline hover:text-primary"
+            >
+              {agreement.farmer_name || "Ramesh Patel"}
+            </Link>
             <span className="text-[11px] text-muted-foreground">Sanwer, Indore</span>
           </div>
           <div>
             <span className="block text-[10px] uppercase font-bold text-muted-foreground">Buyer Entity</span>
-            <span className="font-bold text-sm text-foreground block mt-0.5 truncate">{agreement.buyer_name || "ITC Agri Division"}</span>
+            <Link
+              href={`/profile/${agreement.buyer_id || "demo-buyer-agrocorp"}`}
+              className="font-bold text-sm text-foreground block mt-0.5 truncate hover:underline hover:text-primary"
+            >
+              {agreement.buyer_name || "ITC Agri Division"}
+            </Link>
             <span className="text-[11px] text-muted-foreground">GST Active</span>
           </div>
           <div>
@@ -336,7 +346,14 @@ export default function DealRoomPage() {
                 </span>
                 <TrustBadge type="buyer" size="sm" />
               </div>
-              <h3 className="text-base font-bold text-foreground">{agreement.buyer_name || "ITC Agri Business Division"}</h3>
+              <h3 className="text-base font-bold text-foreground">
+                <Link
+                  href={`/profile/${agreement.buyer_id || "demo-buyer-agrocorp"}`}
+                  className="hover:underline hover:text-primary"
+                >
+                  {agreement.buyer_name || "ITC Agri Business Division"}
+                </Link>
+              </h3>
               <p className="text-xs text-muted-foreground">
                 Delivery Destination: <strong className="text-foreground">{agreement.deliveryDestination || "Dewas Extraction Plant"}</strong>
               </p>
@@ -353,7 +370,14 @@ export default function DealRoomPage() {
                 </span>
                 <TrustBadge type="producer" size="sm" />
               </div>
-              <h3 className="text-base font-bold text-foreground">{agreement.farmer_name || "Ramesh Patel"}</h3>
+              <h3 className="text-base font-bold text-foreground">
+                <Link
+                  href={`/profile/${agreement.farmer_id || "demo-farmer-ramesh"}`}
+                  className="hover:underline hover:text-primary"
+                >
+                  {agreement.farmer_name || "Ramesh Patel"}
+                </Link>
+              </h3>
               <p className="text-xs text-muted-foreground">
                 Farm Gate Origin: <strong className="text-foreground">{agreement.pickupLocation || "Sanwer Aggregation Hub, Indore"}</strong>
               </p>

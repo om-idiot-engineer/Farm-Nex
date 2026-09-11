@@ -208,7 +208,12 @@ function MarketplaceContent() {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h3 className="font-extrabold text-[16px] text-zinc-900 capitalize tracking-tight">{listing.crop_id}</h3>
-                        <p className="text-[12px] text-zinc-500 font-medium mt-0.5">{listing.farmer_name || "Verified Farmer"}</p>
+                        <Link
+                          href={`/profile/${listing.farmer_id}`}
+                          className="text-[12px] text-zinc-500 font-medium mt-0.5 hover:underline hover:text-emerald-700 block"
+                        >
+                          {listing.farmer_name || "Verified Farmer"}
+                        </Link>
                       </div>
                       <div className="text-right">
                         <div className="font-black text-[16px] text-zinc-900">₹{listing.expected_price}</div>
@@ -261,7 +266,12 @@ function MarketplaceContent() {
                             {demand.quality_grade}
                           </span>
                         </div>
-                        <p className="text-[12px] text-zinc-500 font-medium mt-1 truncate">By {demand.buyer_name || demand.business_name}</p>
+                        <Link
+                          href={`/profile/${demand.buyer_id}`}
+                          className="text-[12px] text-zinc-500 font-medium mt-1 truncate hover:underline hover:text-blue-700 block"
+                        >
+                          By {demand.buyer_name || demand.business_name}
+                        </Link>
                       </div>
                     </div>
                   </div>

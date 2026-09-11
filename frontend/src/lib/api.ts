@@ -122,6 +122,9 @@ export const api = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          this.clearToken();
+        }
         let payload: unknown = null;
         try {
           payload = await response.json();

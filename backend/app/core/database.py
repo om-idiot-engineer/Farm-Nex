@@ -179,6 +179,20 @@ class InMemoryStore:
             "created_at": datetime.now(),
         }
 
+        # Seed 1 Admin User
+        admin_id = "a0000000-0000-0000-0000-000000000001"
+        self.users[admin_id] = {
+            "id": admin_id,
+            "auth_id": admin_id,
+            "name": "Platform Admin",
+            "phone": "9999999999",
+            "email": "admin@farmnex.in",
+            "role": "admin",
+            "language_pref": "en",
+            "verified": True,
+            "created_at": datetime.now(),
+        }
+
         # Seed 1 Community Post
         p_id = "c0000000-0000-0000-0000-000000000001"
         self.community_posts[p_id] = {

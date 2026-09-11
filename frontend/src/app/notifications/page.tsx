@@ -14,7 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { useRequiredUser } from "@/lib/auth/useRequiredUser";
-import { getNotifications, markNotificationsRead } from "@/lib/services/domain";
+import { getNotifications, markNotificationsRead, markNotificationAsRead } from "@/lib/services/domain";
 import type { AppNotification } from "@/lib/data/demo";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import EmptyState from "@/components/EmptyState";
@@ -131,6 +131,14 @@ export default function NotificationCenterPage() {
               <Link
                 key={n.id}
                 href={n.href}
+                onClick={() => {
+                  if (n.unread) {
+                    markNotificationAsRead(n.id);
+                    setNotifications((curr) =>
+                      curr.map((item) => (item.id === n.id ? { ...item, unread: false } : item))
+                    );
+                  }
+                }}
                 className={`flex items-start gap-4 p-4 rounded-lg border transition-all hover:shadow-md ${
                   n.unread
                     ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"

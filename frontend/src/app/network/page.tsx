@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { MoreVertical, UsersRound, Plus, Image as ImageIcon, Video, Calendar, FileText, Search, Star, Heart, MessageSquare, Share2, TrendingUp, CheckCircle2, Send, X, MapPin, Award, Play, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
@@ -181,15 +182,27 @@ function NetworkContent() {
           <div className="rounded-[20px] bg-white border border-zinc-200 overflow-hidden shadow-sm">
             <div className={`h-16 bg-gradient-to-r ${gradientClass}`}></div>
             <div className="p-4 -mt-10">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl">
+              <Link
+                href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
+                className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl hover:scale-105 transition-transform inline-flex"
+              >
                 {currentUser.substring(0, 2).toUpperCase()}
-              </div>
+              </Link>
               <div className="mt-3">
-                <div className="flex items-center gap-1.5 font-bold text-[15px]">
+                <Link
+                  href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
+                  className="flex items-center gap-1.5 font-bold text-[15px] hover:underline"
+                >
                   {currentUser}
                   <CheckCircle2 className="w-4 h-4 text-blue-500" />
-                </div>
+                </Link>
                 <div className="text-[12px] text-zinc-500 leading-tight mt-1">{currentRole} • Bhopal, MP</div>
+                <Link
+                  href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
+                  className="inline-block mt-2 text-[11px] font-bold text-emerald-700 hover:underline bg-emerald-50 px-2 py-0.5 rounded-full"
+                >
+                  View Profile ID & Showcase →
+                </Link>
               </div>
 
               <div className="mt-4 pt-4 border-t border-zinc-100 text-[12px] space-y-3">
@@ -272,12 +285,21 @@ function NetworkContent() {
               <div key={post.id} className="bg-white border-y lg:border lg:rounded-[20px] border-zinc-200 shadow-sm animate-in fade-in duration-300">
                 <div className="p-4 flex items-start justify-between">
                   <div className="flex gap-3">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-[14px] shrink-0 ${post.author_role === "expert" ? 'bg-gradient-to-br from-zinc-700 to-zinc-900' : 'bg-gradient-to-br from-orange-300 to-pink-400'}`}>
+                    <Link
+                      href={`/profile/${post.user_id}`}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-[14px] shrink-0 hover:opacity-90 transition-opacity ${post.author_role === "expert" ? 'bg-gradient-to-br from-zinc-700 to-zinc-900' : 'bg-gradient-to-br from-orange-300 to-pink-400'}`}
+                      title={`View ${post.author_name}'s Profile ID`}
+                    >
                       {post.author_name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'US'}
-                    </div>
+                    </Link>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-[14px] hover:underline cursor-pointer tracking-tight">{post.author_name}</span>
+                        <Link
+                          href={`/profile/${post.user_id}`}
+                          className="font-bold text-[14px] hover:underline cursor-pointer tracking-tight text-zinc-900"
+                        >
+                          {post.author_name}
+                        </Link>
                         {post.isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 ml-0.5" />}
                       </div>
                       <div className="text-[12px] text-zinc-500 leading-tight mt-0.5">{post.author_role} • {post.location || "Madhya Pradesh"}</div>
@@ -392,21 +414,32 @@ function NetworkContent() {
             <h4 className="font-bold text-[14px] mb-4">People You May Know</h4>
             <div className="space-y-4">
               {[
-                { name: "Dr. Priya Sharma", role: "Agri Expert • Indore", mutual: "12 mutual" },
-                { name: "Suresh Patel", role: "Wheat Specialist • Sehore", mutual: "8 mutual" },
-                { name: "Geeta Bai", role: "Organic Farming", mutual: "5 mutual" }
+                { id: "demo-expert-dr-kavita", name: "Dr. Kavita Rao", role: "Agri Expert • Indore", mutual: "12 mutual" },
+                { id: "demo-farmer-rajesh", name: "Rajesh Pawar", role: "Gram Cultivator • Sehore", mutual: "8 mutual" },
+                { id: "demo-fpo-malwa", name: "Malwa Kisan FPO", role: "248 Farmers • Rau", mutual: "18 mutual" },
+                { id: "demo-buyer-bhopal", name: "Vikram Singh", role: "Solvex Buyer • Mandideep", mutual: "5 mutual" }
               ].map((person, i) => (
                 <div key={i} className="flex gap-3 items-center">
-                  <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-zinc-500 text-[12px] shrink-0">
+                  <Link
+                    href={`/profile/${person.id}`}
+                    className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-zinc-700 text-[12px] shrink-0 hover:bg-zinc-200 transition-colors"
+                  >
                     {person.name.substring(0, 2).toUpperCase()}
-                  </div>
+                  </Link>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-[13px] leading-tight truncate">{person.name}</div>
+                    <Link
+                      href={`/profile/${person.id}`}
+                      className="font-semibold text-[13px] leading-tight truncate hover:underline text-zinc-900 block"
+                    >
+                      {person.name}
+                    </Link>
                     <div className="text-[11px] text-zinc-500 leading-tight mt-0.5 truncate">{person.role}</div>
                   </div>
-                  <button className="h-8 px-3.5 rounded-full border border-zinc-300 text-[12px] font-semibold hover:bg-zinc-900 hover:text-white transition-colors">
-                    Connect
-                  </button>
+                  <Button asChild size="sm" variant="outline" className="h-8 px-3 rounded-full text-[12px] font-semibold">
+                    <Link href={`/profile/${person.id}`}>
+                      View ID
+                    </Link>
+                  </Button>
                 </div>
               ))}
             </div>

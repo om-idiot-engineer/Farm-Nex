@@ -23,6 +23,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+
+    // Load token from localStorage on initial mount before requesting current user
+    if (typeof window !== "undefined") {
+      const storedToken = window.localStorage.getItem("farmnex_token");
+      if (storedToken) {
+        api.setToken(storedToken);
+      }
+    }
+
     getCurrentUser()
       .then((result) => {
         if (!active) return;
@@ -36,13 +45,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => {
         if (active) setLoading(false);
-        // Load token from localStorage on initial mount (e.g., after a page refresh)
-        if (typeof window !== "undefined") {
-          const storedToken = window.localStorage.getItem("farmnex_token");
-          if (storedToken) {
-            api.setToken(storedToken);
-          }
-        }
       });
 
     return () => {
@@ -59,11 +61,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setSource(nextSource);
       if (nextUser) {
         api.setCurrentUser(nextUser);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("user_role", nextUser.role || "user");
+        }
         if (!api.getToken()) {
           api.setToken(`demo_token_${nextUser.role || "user"}`);
         }
       } else {
         api.clearToken();
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem("user_role");
+        }
       }
     },
     switchDemoRole: (role) => {
@@ -72,11 +80,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setSource("demo");
       api.setCurrentUser(result.data);
       api.setToken(`demo_token_${role}`);
-      if (typeof window !== "undefined") window.localStorage.setItem("farmnex_demo_role", role);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("farmnex_demo_role", role);
+        window.localStorage.setItem("user_role", role);
+      }
     },
     logout: () => {
       api.clearToken();
-      if (typeof window !== "undefined") window.localStorage.removeItem("farmnex_demo_role");
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("farmnex_demo_role");
+        window.localStorage.removeItem("user_role");
+      }
       setUserState(null);
       setSource("api");
     },

@@ -170,6 +170,8 @@ export interface DemoProfile {
   crops: string[];
   stats: { label: string; value: string }[];
   activity: string[];
+  profileHandle?: string;
+  memberSince?: string;
   fpo?: string;
   business?: string;
   phone?: string;
@@ -181,6 +183,8 @@ export interface DemoProfile {
   completedDealsCount?: number;
   farmSizeAcres?: number;
   soilType?: string;
+  connectionsCount?: number;
+  certifications?: string[];
   reviews?: { author: string; role: string; comment: string; rating: number; date: string }[];
 }
 
@@ -370,6 +374,9 @@ export const demoProfiles: DemoProfile[] = [
     location: "Indore, Madhya Pradesh",
     verified: true,
     avatar: "RP",
+    profileHandle: "@ramesh.patel",
+    memberSince: "Jun 2024",
+    connectionsCount: 1247,
     about: "Growing high-oil soybean and certified sharbati wheat across 18 acres in Sanwer tehsil. Active member of Malwa Kisan Samriddhi FPO focused on standardized quality and honest net realization.",
     crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Gram"],
     fpo: "Malwa Kisan Samriddhi FPO",
@@ -384,6 +391,7 @@ export const demoProfiles: DemoProfile[] = [
     paymentReliability: "Direct bank settlement",
     rating: 4.9,
     completedDealsCount: 18,
+    certifications: ["NPOP Organic", "GPS Land Geotagged", "Zero Chemical Residue"],
     activity: [
       "Harvested 250Q Grade A soybean at 11.2% moisture",
       "Compared 3 buyer offers on FarmNex; best net ₹5,233/q",
@@ -402,6 +410,9 @@ export const demoProfiles: DemoProfile[] = [
     location: "Dewas Industrial Area, Madhya Pradesh",
     verified: true,
     avatar: "AC",
+    profileHandle: "@agrocorp.central",
+    memberSince: "Mar 2024",
+    connectionsCount: 3820,
     about: "Agrocorp operates a 1,200 MT/day processing mill in Dewas. We source Grade A soybean and mustard directly from farmers and FPOs with guaranteed transparent weighing, instant assay slips, and payment within 24 hours.",
     crops: ["c0000000-0000-0000-0000-000000000001", "Mustard"],
     business: "Agrocorp Central Processing Pvt Ltd",
@@ -410,6 +421,7 @@ export const demoProfiles: DemoProfile[] = [
     paymentReliability: "99.4% on-time settlement (< 24h)",
     rating: 4.85,
     completedDealsCount: 142,
+    certifications: ["FSSAI Certified", "GST Verified", "ISO 22000", "Digital Escrow Active"],
     stats: [
       { label: "Deals fulfilled", value: "142" },
       { label: "Settlement speed", value: "Under 24h" },
@@ -434,8 +446,12 @@ export const demoProfiles: DemoProfile[] = [
     location: "Indore & Sanwer, Madhya Pradesh",
     verified: true,
     avatar: "MK",
+    profileHandle: "@malwa.kisan.fpo",
+    memberSince: "Aug 2023",
+    connectionsCount: 890,
     about: "Registered under Companies Act with 248 verified smallholder members. We operate 2 collection centers in Rau and Sanwer, offering centralized cleaning, grading, digital moisture assays, and collective bargaining for bulk processor contracts.",
     crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Onion", "Gram"],
+    certifications: ["SFAC Registered", "NABARD Partner FPO", "Seed License Grade-A"],
     stats: [
       { label: "Active members", value: "248" },
       { label: "Pooled volume", value: "1,840Q" },
@@ -459,8 +475,12 @@ export const demoProfiles: DemoProfile[] = [
     location: "Indore, Madhya Pradesh",
     verified: false,
     avatar: "MJ",
+    profileHandle: "@meera.joshi",
+    memberSince: "Jan 2026",
+    connectionsCount: 84,
     about: "Passionate about chemical-free grains, traditional cold-pressed oils, and understanding the families who grow our food.",
     crops: ["Cold-pressed oils", "Unpolished pulses", "Millets"],
+    certifications: ["Direct Consumer Verified"],
     stats: [
       { label: "Orders placed", value: "12" },
       { label: "Producers supported", value: "6 FPOs" },
@@ -480,8 +500,12 @@ export const demoProfiles: DemoProfile[] = [
     location: "College of Agriculture, Indore, MP",
     verified: true,
     avatar: "KR",
+    profileHandle: "@dr.kavita.rao",
+    memberSince: "May 2024",
+    connectionsCount: 2410,
     about: "Ph.D. in Agronomy with 16 years advising central Indian farmers on oilseed quality, post-harvest drying, pest mitigation, and mandi assay compliance.",
     crops: ["c0000000-0000-0000-0000-000000000001", "c0000000-0000-0000-0000-000000000002", "Mustard"],
+    certifications: ["Ph.D. Agronomy", "ICAR Verified Specialist", "Mandi Assay Advisor"],
     stats: [
       { label: "Questions answered", value: "140+" },
       { label: "Farmers assisted", value: "1,200+" },
@@ -491,6 +515,66 @@ export const demoProfiles: DemoProfile[] = [
       "Published advisory on post-rain soybean drying protocols",
       "Verified moisture testing accuracy standards for Dewas mandi lots",
       "Answered query on rust management in early wheat varieties",
+    ],
+  },
+  {
+    id: "demo-farmer-rajesh",
+    role: "farmer",
+    name: "Rajesh Pawar",
+    headline: "Gram & Wheat Cultivator | Sehore Tehsil",
+    location: "Sehore, Madhya Pradesh",
+    verified: true,
+    avatar: "RP",
+    profileHandle: "@rajesh.pawar",
+    memberSince: "Aug 2025",
+    connectionsCount: 420,
+    about: "Cultivating indigenous Desi Gram (Chana) and Lokwan wheat with precision drip irrigation and zero synthetic spray over 12 acres in Sehore.",
+    crops: ["Gram", "c0000000-0000-0000-0000-000000000002"],
+    farmSizeAcres: 12,
+    soilType: "Medium Black Soil",
+    paymentReliability: "Direct UPI & Bank transfer",
+    rating: 4.8,
+    completedDealsCount: 7,
+    certifications: ["Aadhaar Verified", "Khasra Stamped"],
+    stats: [
+      { label: "Completed trades", value: "7" },
+      { label: "Delivery reliability", value: "96%" },
+      { label: "Buyer rating", value: "4.8 / 5" },
+      { label: "Active land", value: "12 Acres" },
+    ],
+    activity: [
+      "Listed 120Q Desi Gram lot for post-harvest pickup",
+      "Shared photo update on flowering stage of rabi crop",
+    ],
+  },
+  {
+    id: "demo-buyer-bhopal",
+    role: "buyer",
+    name: "Vikram Singh (Bhopal Solvex)",
+    headline: "Commercial Oil Extractor & Solvent Processing",
+    location: "Mandideep Industrial Estate, MP",
+    verified: true,
+    avatar: "VS",
+    profileHandle: "@bhopal.solvex",
+    memberSince: "Feb 2025",
+    connectionsCount: 1650,
+    about: "Specialized solvent extraction and seed meal processing plant. We procure directly from farmer clusters across Raisen, Bhopal, and Sehore belts.",
+    crops: ["c0000000-0000-0000-0000-000000000001", "Mustard"],
+    business: "Bhopal Solvex Processing Pvt Ltd",
+    gstNumber: "23BBBCD5678F1Z2",
+    procurementCapacity: "15,000 Quintals / Month",
+    paymentReliability: "48h digital escrow settlement",
+    rating: 4.75,
+    completedDealsCount: 29,
+    certifications: ["GST Verified", "Factory Clearance Grade A", "Digital Escrow Active"],
+    stats: [
+      { label: "Deals fulfilled", value: "29" },
+      { label: "Procured volume", value: "14,800Q" },
+      { label: "Rating", value: "4.75 / 5" },
+    ],
+    activity: [
+      "Accepted 150Q mustard delivery from Raisen collective",
+      "Published procurement requirement for 400Q clean soybean",
     ],
   },
 ];

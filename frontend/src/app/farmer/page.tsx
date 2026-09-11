@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Plus, ArrowRight, Sprout, TrendingUp, Store, Tractor, MapPin,
   CheckCircle2, ChevronRight, Package, Thermometer, Calendar, Clock, BarChart3,
-  Flame, Sparkles, PieChart as PieChartIcon
+  Flame, Sparkles, PieChart as PieChartIcon, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
@@ -27,22 +27,27 @@ export default function FarmerDashboard() {
   const [trending, setTrending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
   useEffect(() => {
     if (userLoading || !user) return;
     async function loadData() {
       try {
-        const { getTrendingCrops, getMatchingSuggestions } = await import("@/lib/services/domain");
-        const [listingsRes, agreementsRes, suggRes, trendRes] = await Promise.all([
+        const { getTrendingCrops, getMatchingSuggestions, getNotifications } = await import("@/lib/services/domain");
+        const [listingsRes, agreementsRes, suggRes, trendRes, notifRes] = await Promise.all([
           getFarmerListings(),
           getAgreements(),
           getMatchingSuggestions(),
-          getTrendingCrops()
+          getTrendingCrops(),
+          getNotifications(),
         ]);
         const lots = listingsRes.data || [];
         setListings(lots);
         setAgreements(agreementsRes.data || []);
         setSuggestions(suggRes.data || []);
         setTrending(trendRes.data?.top_gainers || []);
+        const notifs = notifRes.data || [];
+        setUnreadCount(notifs.filter((n: any) => n.unread).length);
       } catch (err) {
         console.error(err);
       } finally {
@@ -160,6 +165,18 @@ export default function FarmerDashboard() {
           <p className="text-[13px] text-zinc-500 mt-1">Here&apos;s what&apos;s happening with your farm today • Sehore • 32°C</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/notifications"
+            className="relative flex items-center gap-1.5 px-3 h-8 rounded-full bg-white border border-zinc-200 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5 text-zinc-600" />
+            <span>Alerts</span>
+            {unreadCount > 0 && (
+              <span className="flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
           <div className="hidden md:flex items-center gap-1.5 px-3 h-8 rounded-full bg-white border border-zinc-200 text-[12px] font-medium">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
             Live Mandi
@@ -178,11 +195,11 @@ export default function FarmerDashboard() {
           { label: "Est. Revenue", value: `₹${totalEstRevenue.toLocaleString()}`, change: "+12.5%", up: true, icon: TrendingUp, grad: "from-emerald-500 to-green-600" },
           { label: "Active Listings", value: listings.length.toString(), change: "+1 new", up: true, icon: Store, grad: "from-amber-400 to-orange-500" },
           { label: "Total Volume", value: `${totalVolume} Qtl`, change: "Stable", up: true, icon: Package, grad: "from-violet-500 to-purple-600" },
-          { label: "Buyer Matches", value: suggestions.length.toString(), change: "New alerts", up: true, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500" }
+          { label: "Buyer Matches", value: suggestions.length.toString(), change: "New alerts", up: true, icon: CheckCircle2, grad: "from-blue-500 to-cyan-500", href: "/notifications" }
         ].map((stat, idx) => {
           const Icon = stat.icon;
-          return (
-            <div key={idx} className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          const CardContent = (
+            <div className="bg-white rounded-[20px] border border-zinc-200 p-4 lg:p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all h-full flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.grad} flex items-center justify-center text-white shadow-md`}>
                   <Icon className="w-5 h-5" />
@@ -195,6 +212,16 @@ export default function FarmerDashboard() {
                 <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{stat.label}</div>
                 <div className="text-[22px] font-extrabold mt-1">{stat.value}</div>
               </div>
+            </div>
+          );
+
+          return stat.href ? (
+            <Link key={idx} href={stat.href} className="block group">
+              {CardContent}
+            </Link>
+          ) : (
+            <div key={idx}>
+              {CardContent}
             </div>
           );
         })}

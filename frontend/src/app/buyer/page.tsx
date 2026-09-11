@@ -6,7 +6,7 @@ import {
   Plus, ArrowRight, Store, MapPin,
   Search, Building2, ShieldCheck, Truck,
   CheckCircle2, Clock, Layers, FileText,
-  TrendingDown, Award, Sparkles, Bookmark, MessageSquare, TrendingUp, DollarSign
+  TrendingDown, Award, Sparkles, Bookmark, MessageSquare, TrendingUp, DollarSign, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
@@ -25,18 +25,21 @@ export default function BuyerDashboard() {
   const [trending, setTrending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
   useEffect(() => {
     if (userLoading || !user) return;
     async function loadData() {
       try {
-        const { getTrendingCrops, getMatchingSuggestions } = await import("@/lib/services/domain");
-        const [demandsRes, supplyRes, agreementsRes, rfqRes, suggRes, trendRes] = await Promise.all([
+        const { getTrendingCrops, getMatchingSuggestions, getNotifications } = await import("@/lib/services/domain");
+        const [demandsRes, supplyRes, agreementsRes, rfqRes, suggRes, trendRes, notifRes] = await Promise.all([
           getBuyerDemands(),
           getMarketplaceListings(),
           getAgreements(),
           getProcurementRequirements(),
           getMatchingSuggestions(),
-          getTrendingCrops()
+          getTrendingCrops(),
+          getNotifications(),
         ]);
         setDemands(demandsRes.data || []);
         setSupply(supplyRes.data || []);
@@ -44,6 +47,8 @@ export default function BuyerDashboard() {
         setRfqs(rfqRes.data || []);
         setSuggestions(suggRes.data || []);
         setTrending(trendRes.data?.top_gainers || []);
+        const notifs = notifRes.data || [];
+        setUnreadCount(notifs.filter((n: any) => n.unread).length);
       } catch (err) {
         console.error(err);
       } finally {
@@ -70,6 +75,18 @@ export default function BuyerDashboard() {
           <p className="text-[13px] text-zinc-500 mt-1">Here&apos;s your daily procurement overview • Wholesale Buyer</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/notifications"
+            className="relative flex items-center gap-1.5 px-3 h-8 rounded-full bg-white border border-zinc-200 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5 text-zinc-600" />
+            <span>Alerts</span>
+            {unreadCount > 0 && (
+              <span className="flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
           <div className="hidden md:flex items-center gap-1.5 px-3 h-8 rounded-full bg-white border border-zinc-200 text-[12px] font-medium">
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
             Market Live

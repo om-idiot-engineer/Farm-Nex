@@ -1,5 +1,6 @@
 import {
   api,
+  ApiError,
   DEMO_MODE,
   type AdminKPIData,
   type AdminMapResponse,
@@ -136,7 +137,10 @@ async function fetchApiOrDemo<T>(apiCall: () => Promise<T>, demoData: T): Promis
     const data = await apiCall();
     return { data, source: "api" };
   } catch (error) {
-    if (DEMO_MODE) return demoFallback(demoData);
+    // If demo mode is explicitly enabled, or if it's an auth error (401) or network unreachable (0), gracefully fallback to demoData
+    if (DEMO_MODE || (error instanceof ApiError && (error.status === 401 || error.status === 0))) {
+      return demoFallback(demoData);
+    }
     throw error;
   }
 }
@@ -823,6 +827,16 @@ export async function markNotificationsRead(): Promise<ServiceResult<boolean>> {
   return demoFallback(true);
 }
 
+export async function markNotificationAsRead(id: string): Promise<ServiceResult<boolean>> {
+  writeLocal(
+    LOCAL_KEYS.notifications,
+    localNotifications().map((notification) =>
+      notification.id === id ? { ...notification, unread: false } : notification
+    )
+  );
+  return demoFallback(true);
+}
+
 export async function searchFarmNex(query: string): Promise<ServiceResult<SearchResult[]>> {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return demoFallback([]);
@@ -1039,8 +1053,92 @@ export function resolveAdminDispute(disputeId: string): ServiceResult<boolean> {
 }
 
 export function getProfile(id: string): ServiceResult<DemoProfile> {
-  const profile = demoProfiles.find((p) => p.id === id) || demoProfiles[0];
-  return demoFallback(profile);
+  const normalizedId = decodeURIComponent(id).trim().toLowerCase();
+
+  // 1. Direct match by id or profileHandle
+  let profile = demoProfiles.find(
+    (p) =>
+      p.id.toLowerCase() === normalizedId ||
+      (p.profileHandle && p.profileHandle.toLowerCase().replace(/^@/, '') === normalizedId.replace(/^@/, ''))
+  );
+
+  // 2. Check demoAdminUsers or demoUsers if not found in demoProfiles
+  if (!profile) {
+    const adminUser = demoAdminUsers.find((u) => u.id.toLowerCase() === normalizedId);
+    if (adminUser) {
+      profile = {
+        id: adminUser.id,
+        role: adminUser.role,
+        name: adminUser.name,
+        headline: `${adminUser.role === "farmer" ? "Cultivator" : adminUser.role === "buyer" ? "Commercial Buyer" : "Agri Partner"} | ${adminUser.location}`,
+        location: adminUser.location,
+        verified: adminUser.verified,
+        avatar: adminUser.name.slice(0, 2).toUpperCase(),
+        profileHandle: `@${adminUser.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}`,
+        memberSince: adminUser.joinedDate,
+        connectionsCount: adminUser.tradeCount * 25 + 50,
+        about: `Active participant in FarmNex digital exchange with ${adminUser.tradeCount} completed commercial trades. Verified through ${adminUser.documentType}.`,
+        crops: ["Soybean", "Wheat"],
+        stats: [
+          { label: "Completed trades", value: String(adminUser.tradeCount) },
+          { label: "Reliability", value: "98%" },
+          { label: "KYC Status", value: "Verified" },
+        ],
+        activity: [`Completed trade under verified KYC document ${adminUser.documentId}`],
+        rating: 4.8,
+        completedDealsCount: adminUser.tradeCount,
+        certifications: adminUser.documentType ? [adminUser.documentType] : [],
+      };
+    }
+  }
+
+  // 3. Check current user in local session
+  if (!profile) {
+    const currentUser = api.getCurrentUser();
+    if (currentUser && currentUser.id.toLowerCase() === normalizedId) {
+      profile = {
+        id: currentUser.id,
+        role: currentUser.role,
+        name: currentUser.name,
+        headline: `${currentUser.role === "farmer" ? "Farm Producer" : currentUser.role === "buyer" ? "Institutional Buyer" : "Agri Network Member"}`,
+        location: currentUser.farmer_profile?.location || currentUser.buyer_profile?.location || "Madhya Pradesh, India",
+        verified: currentUser.verified,
+        avatar: currentUser.name.slice(0, 2).toUpperCase(),
+        profileHandle: `@${currentUser.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}`,
+        memberSince: new Date(currentUser.created_at || Date.now()).toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
+        connectionsCount: 156,
+        about: `Member of FarmNex agriculture trade and networking platform. Connecting directly across state and district mandi routes.`,
+        crops: ["Soybean", "Wheat", "Gram"],
+        stats: [
+          { label: "Role", value: currentUser.role.toUpperCase() },
+          { label: "Status", value: currentUser.verified ? "Verified" : "Pending" },
+          { label: "Network Score", value: "95" },
+        ],
+        activity: ["Joined FarmNex digital agriculture network"],
+        rating: 4.9,
+        completedDealsCount: 0,
+        certifications: currentUser.verified ? ["KYC Verified"] : [],
+      };
+    }
+  }
+
+  // 4. Default fallback to Ramesh Patel or synthesized profile
+  if (!profile) {
+    profile = demoProfiles[0];
+  }
+
+  // Dynamically augment with active lots or demands
+  const activeListings = localListings().filter((l) => l.farmer_id === profile!.id);
+  const activeDemands = localDemands().filter((d) => d.buyer_id === profile!.id);
+
+  const enrichedProfile: DemoProfile = {
+    ...profile,
+    // attach active listings and demands for rich display
+    ...(activeListings.length > 0 ? { active_listings: activeListings } as any : {}),
+    ...(activeDemands.length > 0 ? { active_demands: activeDemands } as any : {}),
+  };
+
+  return demoFallback(enrichedProfile);
 }
 
 export function getDataSourceLabel(source: DataSource) {

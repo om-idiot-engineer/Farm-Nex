@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { Package, ArrowRight, Truck, CheckCircle2, MessageCircle } from "lucide-react";
 import { useUser } from "@/lib/auth/UserContext";
 import { getAgreements } from "@/lib/services/domain";
@@ -260,21 +261,39 @@ function DealsPage() {
                         <h4 className="font-bold text-[12px] uppercase tracking-wider text-zinc-500 mb-4">Parties</h4>
                         <div className="space-y-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-300 to-pink-400 flex items-center justify-center text-white font-bold text-[12px] shrink-0">
+                            <Link
+                              href={`/profile/${order.farmer_id || "demo-farmer-ramesh"}`}
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-300 to-pink-400 flex items-center justify-center text-white font-bold text-[12px] shrink-0 hover:opacity-90"
+                              title="View Farmer Profile ID"
+                            >
                               {order.farmer_name.substring(0, 2).toUpperCase()}
-                            </div>
+                            </Link>
                             <div>
-                              <div className="font-bold text-[13px] text-zinc-900">{order.farmer_name}</div>
+                              <Link
+                                href={`/profile/${order.farmer_id || "demo-farmer-ramesh"}`}
+                                className="font-bold text-[13px] text-zinc-900 hover:underline block"
+                              >
+                                {order.farmer_name}
+                              </Link>
                               <div className="text-[11px] text-zinc-500 font-medium">Farmer • Sehore • ⭐4.8</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[12px] shrink-0">
+                            <Link
+                              href={`/profile/${order.buyer_id || "demo-buyer-agrocorp"}`}
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[12px] shrink-0 hover:opacity-90"
+                              title="View Buyer Profile ID"
+                            >
                               {order.buyer_name.substring(0, 2).toUpperCase()}
-                            </div>
+                            </Link>
                             <div>
-                              <div className="font-bold text-[13px] text-zinc-900">{order.buyer_name}</div>
-                              <div className="text-[11px] text-zinc-500 font-medium">Buyer • Bhopal</div>
+                              <Link
+                                href={`/profile/${order.buyer_id || "demo-buyer-agrocorp"}`}
+                                className="font-bold text-[13px] text-zinc-900 hover:underline block"
+                              >
+                                {order.buyer_name}
+                              </Link>
+                              <div className="text-[11px] text-zinc-500 font-medium">Buyer • Commercial Partner</div>
                             </div>
                           </div>
                         </div>
