@@ -32,14 +32,20 @@ export default function BuyerDashboard() {
     async function loadData() {
       try {
         const { getTrendingCrops, getMatchingSuggestions, getNotifications } = await import("@/lib/services/domain");
-        const [demandsRes, supplyRes, agreementsRes, rfqRes, suggRes, trendRes, notifRes] = await Promise.all([
-          getBuyerDemands(),
-          getMarketplaceListings(),
-          getAgreements(),
-          getProcurementRequirements(),
-          getMatchingSuggestions(),
-          getTrendingCrops(),
-          getNotifications(),
+
+        // Load demands only if user is buyer/admin; otherwise provide empty/demo
+        const demandsPromise = (user?.role === "buyer" || user?.role === "admin")
+          ? getBuyerDemands().catch(() => ({ data: [], source: "demo" as const }))
+          : Promise.resolve({ data: [], source: "demo" as const });
+
+        const rfqRes = getProcurementRequirements();
+        const [demandsRes, supplyRes, agreementsRes, suggRes, trendRes, notifRes] = await Promise.all([
+          demandsPromise,
+          getMarketplaceListings().catch(() => ({ data: [], source: "demo" as const })),
+          getAgreements().catch(() => ({ data: [], source: "demo" as const })),
+          getMatchingSuggestions().catch(() => ({ data: [], source: "demo" as const })),
+          getTrendingCrops().catch(() => ({ data: { top_gainers: [] }, source: "demo" as const })),
+          getNotifications().catch(() => ({ data: [], source: "demo" as const })),
         ]);
         setDemands(demandsRes.data || []);
         setSupply(supplyRes.data || []);
@@ -50,7 +56,7 @@ export default function BuyerDashboard() {
         const notifs = notifRes.data || [];
         setUnreadCount(notifs.filter((n: any) => n.unread).length);
       } catch (err) {
-        console.error(err);
+        console.error("Error loading buyer dashboard data:", err);
       } finally {
         setLoading(false);
       }

@@ -1,3 +1,4 @@
+import { REAL_ACCOUNTS_20, getAllAccounts, convertAccountToUserProfile, convertAccountToDemoProfile } from "@/lib/data/userDirectory";
 import {
   api,
   ApiError,
@@ -49,9 +50,10 @@ import {
   type AdminUserItem,
   type AdminDisputeCase,
   type DemoProfile,
+  type ConnectionRequest,
 } from "@/lib/data/demo";
 
-export type { NetworkPost, Conversation, ConversationMessage };
+export type { NetworkPost, Conversation, ConversationMessage, ConnectionRequest };
 
 export type DataSource = "api" | "demo";
 
@@ -112,6 +114,8 @@ const LOCAL_KEYS = {
   savedItems: "farmnex_demo_saved_items",
   adminUsers: "farmnex_demo_admin_users",
   adminDisputes: "farmnex_demo_admin_disputes",
+  profiles: "farmnex_demo_profiles",
+  connections: "farmnex_demo_connections",
 };
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -137,8 +141,8 @@ async function fetchApiOrDemo<T>(apiCall: () => Promise<T>, demoData: T): Promis
     const data = await apiCall();
     return { data, source: "api" };
   } catch (error) {
-    // If demo mode is explicitly enabled, or if it's an auth error (401) or network unreachable (0), gracefully fallback to demoData
-    if (DEMO_MODE || (error instanceof ApiError && (error.status === 401 || error.status === 0))) {
+    // If demo mode is explicitly enabled, or if it's an auth error (401/403) or network unreachable (0), gracefully fallback to demoData
+    if (DEMO_MODE || (error instanceof ApiError && (error.status === 401 || error.status === 403 || error.status === 0))) {
       return demoFallback(demoData);
     }
     throw error;
@@ -255,8 +259,20 @@ export async function getCurrentUser(): Promise<ServiceResult<UserProfile | null
   }
 }
 
-export function getDemoUser(role: AppRole): ServiceResult<UserProfile> {
-  return demoFallback(demoUsers[role] || demoUsers.farmer);
+export function getDemoUser(roleOrId: string): ServiceResult<UserProfile> {
+  const all = getAllAccounts();
+  const clean = roleOrId.trim().toLowerCase().replace(/^@/, "");
+  const account = all.find(
+    (a) =>
+      a.id.toLowerCase() === clean ||
+      (a.profileId && a.profileId.toLowerCase() === clean) ||
+      a.name.toLowerCase() === clean ||
+      a.role === roleOrId
+  );
+  if (account) {
+    return demoFallback(convertAccountToUserProfile(account));
+  }
+  return demoFallback(demoUsers[roleOrId as AppRole] || demoUsers.farmer);
 }
 
 export async function getFarmerListings(): Promise<ServiceResult<CropListing[]>> {
@@ -528,7 +544,9 @@ export async function acceptBuyerMatch(listingId: string, demandId: string, owne
 export async function getAgreements(): Promise<ServiceResult<ExtendedTradeAgreement[]>> {
   const result = await fetchApiOrDemo(() => api.getUserAgreements(), demoAgreements);
   const userId = currentUserId();
-  const data = combineAgreements(result.data).filter((agreement) => !userId || agreement.farmer_id === userId || agreement.buyer_id === userId);
+  const all = combineAgreements(result.data);
+  const userSpecific = all.filter((agreement) => !userId || agreement.farmer_id === userId || agreement.buyer_id === userId);
+  const data = userSpecific.length > 0 ? userSpecific : all;
   return { data: data.length ? data : demoAgreements, source: result.source };
 }
 
@@ -798,23 +816,32 @@ export async function sendMessage(
 
 export async function createConversation(participantId: string): Promise<ServiceResult<Conversation>> {
   const localData = await localMessages();
-  const participant = demoUsers[participantId as keyof typeof demoUsers] || demoUsers.buyer;
+  const matchedAcc = REAL_ACCOUNTS_20.find((a) => a.id === participantId) || demoProfiles.find((p) => p.id === participantId);
+  const participantName = matchedAcc ? matchedAcc.name : (demoUsers[participantId as keyof typeof demoUsers]?.name || "Verified Agri Partner");
+  const participantRole = matchedAcc ? matchedAcc.role : (demoUsers[participantId as keyof typeof demoUsers]?.role || "buyer");
+  const participantVerified = matchedAcc ? matchedAcc.verified : true;
+
+  const newConv: Conversation = {
+    id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    participantId,
+    participantName,
+    participantRole,
+    participantVerified,
+    lastMessage: "Conversation initiated",
+    updatedAt: new Date().toISOString(),
+    unread: 0,
+    messages: [],
+  };
+
+  const updated = [newConv, ...localData];
+  writeLocal(LOCAL_KEYS.messages, updated);
+
   return fetchApiOrDemo(
     () => api.request<Conversation>("/messages", {
       method: "POST",
       body: JSON.stringify({ participantId }),
     }),
-    {
-      id: `demo-conv-${Date.now()}`,
-      participantId: participant.id,
-      participantName: participant.name,
-      participantRole: participant.role,
-      participantVerified: participant.verified,
-      lastMessage: "",
-      updatedAt: new Date().toISOString(),
-      unread: 0,
-      messages: [],
-    } as Conversation
+    newConv
   );
 }
 
@@ -842,8 +869,16 @@ export async function searchFarmNex(query: string): Promise<ServiceResult<Search
   if (!normalized) return demoFallback([]);
   const listings = combineListings(demoListings).filter((l) => `${l.crop_id} ${l.location} ${l.farmer_name}`.toLowerCase().includes(normalized));
   const demands = combineDemands(demoDemands).filter((d) => `${d.crop_id} ${d.location} ${d.business_name}`.toLowerCase().includes(normalized));
-  const profiles = demoProfiles.filter((p) => `${p.name} ${p.headline} ${p.location} ${p.crops.join(" ")}`.toLowerCase().includes(normalized));
+  const profiles = demoProfiles.filter((p) =>
+    `${p.id} ${p.profileHandle || ""} ${p.name} ${p.headline} ${p.location} ${p.crops.join(" ")}`.toLowerCase().includes(normalized)
+  );
   const posts = localPosts().filter((p) => `${p.content} ${p.location} ${p.author_name}`.toLowerCase().includes(normalized));
+
+  // Also search the real user directory (REAL_ACCOUNTS_20)
+  const { REAL_ACCOUNTS_20 } = await import("@/lib/data/userDirectory");
+  const directoryUsers = REAL_ACCOUNTS_20.filter((acc) =>
+    `${acc.id} ${acc.name} ${acc.role} ${acc.location} ${acc.headline} ${acc.crops.join(" ")} ${acc.phone || ""} ${acc.email || ""} ${acc.businessName || ""} ${acc.fpoName || ""}`.toLowerCase().includes(normalized)
+  );
 
   const results: SearchResult[] = [
     ...listings.map((l) => ({
@@ -865,11 +900,22 @@ export async function searchFarmNex(query: string): Promise<ServiceResult<Search
     ...profiles.map((p) => ({
       id: p.id,
       kind: "profile" as const,
-      title: p.name,
-      subtitle: `${p.headline} · ${p.location}`,
+      title: `${p.name} (${p.profileHandle || `@${p.id.slice(0, 8)}`})`,
+      subtitle: `ID: ${p.id.slice(0, 12)}… · ${p.location} · ${p.headline}`,
       href: `/profile/${p.id}`,
       verified: p.verified,
     })),
+    // Merge directory users but deduplicate against demo profiles already added
+    ...directoryUsers
+      .filter((acc) => !profiles.some((p) => p.id === acc.id))
+      .map((acc) => ({
+        id: acc.id,
+        kind: "profile" as const,
+        title: `${acc.name} (@${acc.name.toLowerCase().replace(/[^a-z0-9]/g, ".")})`,
+        subtitle: `ID: ${acc.id.slice(0, 12)}… · ${acc.role.toUpperCase()} · ${acc.location}`,
+        href: `/profile/${acc.id}`,
+        verified: acc.verified,
+      })),
     ...posts.map((p) => ({
       id: p.id,
       kind: "post" as const,
@@ -1052,15 +1098,100 @@ export function resolveAdminDispute(disputeId: string): ServiceResult<boolean> {
   return demoFallback(true);
 }
 
+export function saveProfile(updated: DemoProfile): ServiceResult<DemoProfile> {
+  const existing = readLocal<DemoProfile[]>(LOCAL_KEYS.profiles, []);
+  const index = existing.findIndex((p) => p.id === updated.id);
+  let nextList: DemoProfile[];
+  if (index >= 0) {
+    nextList = [...existing];
+    nextList[index] = { ...nextList[index], ...updated };
+  } else {
+    nextList = [updated, ...existing];
+  }
+  writeLocal(LOCAL_KEYS.profiles, nextList);
+
+  // If this matches current user, update UserProfile in localStorage as well
+  const currentUser = api.getCurrentUser();
+  if (currentUser && currentUser.id === updated.id) {
+    const updatedUser: UserProfile = {
+      ...currentUser,
+      name: updated.name || currentUser.name,
+      headline: updated.headline || currentUser.headline,
+      about: updated.about || currentUser.about,
+      phone: updated.phone || currentUser.phone,
+      email: updated.email || currentUser.email,
+      avatar: updated.avatarUrl || updated.avatar || currentUser.avatar,
+    };
+    if (updated.role === "farmer" || updated.role === "fpo") {
+      updatedUser.farmer_profile = {
+        location: updated.location || currentUser.farmer_profile?.location || "Indore, MP",
+        lat: currentUser.farmer_profile?.lat || 22.7196,
+        lng: currentUser.farmer_profile?.lng || 75.8577,
+        fpo_name: updated.fpo || currentUser.farmer_profile?.fpo_name,
+        crops: updated.crops || currentUser.farmer_profile?.crops,
+        farm_size_acres: updated.farmSizeAcres || currentUser.farmer_profile?.farm_size_acres,
+        soil_type: updated.soilType || currentUser.farmer_profile?.soil_type,
+        headline: updated.headline,
+        about: updated.about,
+      };
+    } else if (updated.role === "buyer") {
+      updatedUser.buyer_profile = {
+        business_name: updated.business || currentUser.buyer_profile?.business_name || updated.name,
+        gst_verified: true,
+        location: updated.location || currentUser.buyer_profile?.location || "Dewas, MP",
+        lat: currentUser.buyer_profile?.lat || 22.9676,
+        lng: currentUser.buyer_profile?.lng || 76.0534,
+        procurement_capacity: updated.procurementCapacity || currentUser.buyer_profile?.procurement_capacity,
+        gst_number: updated.gstNumber || currentUser.buyer_profile?.gst_number,
+        commodities: updated.crops || currentUser.buyer_profile?.commodities,
+        headline: updated.headline,
+        about: updated.about,
+      };
+    }
+    api.setCurrentUser(updatedUser);
+  }
+
+  // Attempt async sync with backend
+  api.updateProfile({
+    name: updated.name,
+    phone: updated.phone,
+    email: updated.email,
+    headline: updated.headline,
+    about: updated.about,
+    location: updated.location,
+    crops: updated.crops,
+    farm_size_acres: updated.farmSizeAcres,
+    soil_type: updated.soilType,
+    fpo_name: updated.fpo,
+    business_name: updated.business,
+    procurement_capacity: updated.procurementCapacity,
+    gst_number: updated.gstNumber,
+  }).catch(() => {
+    // Offline/demo fallback safe
+  });
+
+  return demoFallback(updated);
+}
+
 export function getProfile(id: string): ServiceResult<DemoProfile> {
   const normalizedId = decodeURIComponent(id).trim().toLowerCase();
 
-  // 1. Direct match by id or profileHandle
-  let profile = demoProfiles.find(
+  // 0. Check locally saved profiles first
+  const localList = readLocal<DemoProfile[]>(LOCAL_KEYS.profiles, []);
+  let profile = localList.find(
     (p) =>
       p.id.toLowerCase() === normalizedId ||
       (p.profileHandle && p.profileHandle.toLowerCase().replace(/^@/, '') === normalizedId.replace(/^@/, ''))
   );
+
+  // 1. Direct match by id or profileHandle from demoProfiles
+  if (!profile) {
+    profile = demoProfiles.find(
+      (p) =>
+        p.id.toLowerCase() === normalizedId ||
+        (p.profileHandle && p.profileHandle.toLowerCase().replace(/^@/, '') === normalizedId.replace(/^@/, ''))
+    );
+  }
 
   // 2. Check demoAdminUsers or demoUsers if not found in demoProfiles
   if (!profile) {
@@ -1100,15 +1231,23 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
         id: currentUser.id,
         role: currentUser.role,
         name: currentUser.name,
-        headline: `${currentUser.role === "farmer" ? "Farm Producer" : currentUser.role === "buyer" ? "Institutional Buyer" : "Agri Network Member"}`,
+        headline: currentUser.headline || `${currentUser.role === "farmer" ? "Farm Producer" : currentUser.role === "buyer" ? "Institutional Buyer" : "Agri Network Member"}`,
         location: currentUser.farmer_profile?.location || currentUser.buyer_profile?.location || "Madhya Pradesh, India",
         verified: currentUser.verified,
-        avatar: currentUser.name.slice(0, 2).toUpperCase(),
+        avatar: currentUser.avatar || currentUser.name.slice(0, 2).toUpperCase(),
         profileHandle: `@${currentUser.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}`,
         memberSince: new Date(currentUser.created_at || Date.now()).toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
         connectionsCount: 156,
-        about: `Member of FarmNex agriculture trade and networking platform. Connecting directly across state and district mandi routes.`,
-        crops: ["Soybean", "Wheat", "Gram"],
+        about: currentUser.about || `Member of FarmNex agriculture trade and networking platform. Connecting directly across state and district mandi routes.`,
+        crops: currentUser.farmer_profile?.crops || currentUser.buyer_profile?.commodities || ["Soybean", "Wheat", "Gram"],
+        farmSizeAcres: currentUser.farmer_profile?.farm_size_acres,
+        soilType: currentUser.farmer_profile?.soil_type,
+        fpo: currentUser.farmer_profile?.fpo_name,
+        business: currentUser.buyer_profile?.business_name,
+        procurementCapacity: currentUser.buyer_profile?.procurement_capacity,
+        gstNumber: currentUser.buyer_profile?.gst_number,
+        phone: currentUser.phone,
+        email: currentUser.email,
         stats: [
           { label: "Role", value: currentUser.role.toUpperCase() },
           { label: "Status", value: currentUser.verified ? "Verified" : "Pending" },
@@ -1122,6 +1261,19 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
     }
   }
 
+  // 3.5 Check accounts in userDirectory (including newly registered users)
+  if (!profile) {
+    const acc = getAllAccounts().find(
+      (a) =>
+        a.id.toLowerCase() === normalizedId ||
+        (a.profileId && a.profileId.toLowerCase() === normalizedId.replace(/^@/, '')) ||
+        a.name.toLowerCase() === normalizedId
+    );
+    if (acc) {
+      profile = convertAccountToDemoProfile(acc);
+    }
+  }
+
   // 4. Default fallback to Ramesh Patel or synthesized profile
   if (!profile) {
     profile = demoProfiles[0];
@@ -1131,8 +1283,15 @@ export function getProfile(id: string): ServiceResult<DemoProfile> {
   const activeListings = localListings().filter((l) => l.farmer_id === profile!.id);
   const activeDemands = localDemands().filter((d) => d.buyer_id === profile!.id);
 
+  // Dynamically count real accepted connections
+  const userConns = localConnections().filter(
+    (c) => c.status === "accepted" && (c.requesterId.toLowerCase() === profile!.id.toLowerCase() || c.recipientId.toLowerCase() === profile!.id.toLowerCase())
+  );
+  const dynamicCount = (profile.connectionsCount || 0) + userConns.length;
+
   const enrichedProfile: DemoProfile = {
     ...profile,
+    connectionsCount: dynamicCount,
     // attach active listings and demands for rich display
     ...(activeListings.length > 0 ? { active_listings: activeListings } as any : {}),
     ...(activeDemands.length > 0 ? { active_demands: activeDemands } as any : {}),
@@ -1237,4 +1396,239 @@ export async function decideVerification(requestId: string, status: string, note
     () => api.decideVerification(requestId, status, notes),
     { status, admin_notes: notes }
   );
+}
+
+// -------------------------------------------------------------
+// Bilateral Social Networking & Connection Management
+// -------------------------------------------------------------
+
+export const demoInitialConnections: ConnectionRequest[] = [
+  {
+    id: "conn-seed-1",
+    requesterId: "f0000000-0000-0000-0000-000000000002",
+    recipientId: "f0000000-0000-0000-0000-000000000001",
+    requesterName: "Devendra Mandloi",
+    requesterRole: "farmer",
+    requesterLocation: "Khargone, Madhya Pradesh",
+    requesterAvatar: "DM",
+    recipientName: "Ramesh Patel",
+    recipientRole: "farmer",
+    recipientLocation: "Indore, Madhya Pradesh",
+    recipientAvatar: "RP",
+    status: "accepted",
+    createdAt: "2026-08-10T10:00:00.000Z",
+    updatedAt: "2026-08-10T11:00:00.000Z",
+  },
+  {
+    id: "conn-seed-2",
+    requesterId: "b0000000-0000-0000-0000-000000000001",
+    recipientId: "f0000000-0000-0000-0000-000000000001",
+    requesterName: "Anita Sharma (Agrocorp)",
+    requesterRole: "buyer",
+    requesterLocation: "Dewas Industrial Area, Madhya Pradesh",
+    requesterAvatar: "AC",
+    recipientName: "Ramesh Patel",
+    recipientRole: "farmer",
+    recipientLocation: "Indore, Madhya Pradesh",
+    recipientAvatar: "RP",
+    status: "accepted",
+    createdAt: "2026-08-14T09:30:00.000Z",
+    updatedAt: "2026-08-14T10:15:00.000Z",
+  },
+  {
+    id: "conn-seed-3",
+    requesterId: "f0000000-0000-0000-0000-000000000008",
+    recipientId: "f0000000-0000-0000-0000-000000000001",
+    requesterName: "Anil Dhangar",
+    requesterRole: "farmer",
+    requesterLocation: "Khandwa, Madhya Pradesh",
+    requesterAvatar: "AD",
+    recipientName: "Ramesh Patel",
+    recipientRole: "farmer",
+    recipientLocation: "Indore, Madhya Pradesh",
+    recipientAvatar: "RP",
+    status: "pending",
+    createdAt: "2026-09-10T08:00:00.000Z",
+    updatedAt: "2026-09-10T08:00:00.000Z",
+  },
+];
+
+export function localConnections(): ConnectionRequest[] {
+  return readLocal<ConnectionRequest[]>(LOCAL_KEYS.connections, demoInitialConnections);
+}
+
+export type ConnectionStatus = "self" | "connected" | "pending_sent" | "pending_received" | "none";
+
+export function getConnectionStatus(targetUserId: string, currentUserId?: string): ConnectionStatus {
+  if (!currentUserId || !targetUserId) return "none";
+  if (targetUserId.toLowerCase() === currentUserId.toLowerCase()) return "self";
+
+  const all = localConnections();
+  const direct = all.find(
+    (c) =>
+      (c.requesterId.toLowerCase() === currentUserId.toLowerCase() && c.recipientId.toLowerCase() === targetUserId.toLowerCase()) ||
+      (c.recipientId.toLowerCase() === currentUserId.toLowerCase() && c.requesterId.toLowerCase() === targetUserId.toLowerCase())
+  );
+
+  if (!direct) return "none";
+  if (direct.status === "accepted") return "connected";
+  if (direct.status === "pending") {
+    return direct.requesterId.toLowerCase() === currentUserId.toLowerCase() ? "pending_sent" : "pending_received";
+  }
+  return "none";
+}
+
+export function sendConnectionRequest(
+  targetProfile: DemoProfile,
+  currentUser: UserProfile
+): ServiceResult<{ success: boolean; request: ConnectionRequest }> {
+  if (!currentUser || !targetProfile) {
+    throw new Error("Missing user profile to send request");
+  }
+  if (currentUser.id.toLowerCase() === targetProfile.id.toLowerCase()) {
+    throw new Error("A user cannot connect to themselves.");
+  }
+
+  const all = localConnections();
+  // Check if connection already exists
+  const existingIdx = all.findIndex(
+    (c) =>
+      (c.requesterId.toLowerCase() === currentUser.id.toLowerCase() && c.recipientId.toLowerCase() === targetProfile.id.toLowerCase()) ||
+      (c.recipientId.toLowerCase() === currentUser.id.toLowerCase() && c.requesterId.toLowerCase() === targetProfile.id.toLowerCase())
+  );
+
+  if (existingIdx >= 0) {
+    const existing = all[existingIdx];
+    if (existing.status === "accepted") {
+      return demoFallback({ success: true, request: existing });
+    }
+    // Update to pending if it was declined or re-sent
+    const updated: ConnectionRequest = {
+      ...existing,
+      status: "pending",
+      requesterId: currentUser.id,
+      recipientId: targetProfile.id,
+      updatedAt: new Date().toISOString(),
+    };
+    all[existingIdx] = updated;
+    writeLocal(LOCAL_KEYS.connections, all);
+    return demoFallback({ success: true, request: updated });
+  }
+
+  const newReq: ConnectionRequest = {
+    id: `conn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    requesterId: currentUser.id,
+    recipientId: targetProfile.id,
+    requesterName: currentUser.name,
+    requesterRole: currentUser.role,
+    requesterLocation: currentUser.farmer_profile?.location || currentUser.buyer_profile?.location || "Madhya Pradesh",
+    requesterAvatar: currentUser.avatar || currentUser.name.slice(0, 2).toUpperCase(),
+    requesterAvatarUrl: currentUser.avatar && currentUser.avatar.startsWith("data:") ? currentUser.avatar : undefined,
+    recipientName: targetProfile.name,
+    recipientRole: targetProfile.role,
+    recipientLocation: targetProfile.location,
+    recipientAvatar: targetProfile.avatar || targetProfile.name.slice(0, 2).toUpperCase(),
+    recipientAvatarUrl: targetProfile.avatarUrl,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const nextList = [newReq, ...all];
+  writeLocal(LOCAL_KEYS.connections, nextList);
+
+  // Send app notification to recipient
+  const notifs = localNotifications();
+  const newNotif: AppNotification = {
+    id: `notif-${Date.now()}`,
+    type: "network",
+    title: `New connection request from ${currentUser.name}`,
+    description: `${currentUser.name} (${currentUser.role.toUpperCase()} in ${newReq.requesterLocation}) wants to connect on FarmNex network.`,
+    createdAt: new Date().toISOString(),
+    href: "/network/connections",
+    unread: true,
+  };
+  writeLocal(LOCAL_KEYS.notifications, [newNotif, ...notifs]);
+
+  return demoFallback({ success: true, request: newReq });
+}
+
+export function acceptConnectionRequest(requestId: string): ServiceResult<boolean> {
+  const all = localConnections();
+  const idx = all.findIndex((c) => c.id === requestId);
+  if (idx < 0) return demoFallback(false);
+
+  all[idx] = {
+    ...all[idx],
+    status: "accepted",
+    updatedAt: new Date().toISOString(),
+  };
+  writeLocal(LOCAL_KEYS.connections, all);
+
+  // Send accept notification to requester
+  const notifs = localNotifications();
+  const newNotif: AppNotification = {
+    id: `notif-${Date.now()}`,
+    type: "network",
+    title: `${all[idx].recipientName} accepted your connection request`,
+    description: `You and ${all[idx].recipientName} are now connected on FarmNex. You can now exchange direct offers and mandi updates.`,
+    createdAt: new Date().toISOString(),
+    href: `/profile/${all[idx].recipientId}`,
+    unread: true,
+  };
+  writeLocal(LOCAL_KEYS.notifications, [newNotif, ...notifs]);
+
+  return demoFallback(true);
+}
+
+export function declineConnectionRequest(requestId: string): ServiceResult<boolean> {
+  const all = localConnections();
+  const nextList = all.filter((c) => c.id !== requestId);
+  writeLocal(LOCAL_KEYS.connections, nextList);
+  return demoFallback(true);
+}
+
+export function removeConnection(userId1: string, userId2: string): ServiceResult<boolean> {
+  const all = localConnections();
+  const nextList = all.filter(
+    (c) =>
+      !(
+        (c.requesterId.toLowerCase() === userId1.toLowerCase() && c.recipientId.toLowerCase() === userId2.toLowerCase()) ||
+        (c.recipientId.toLowerCase() === userId1.toLowerCase() && c.requesterId.toLowerCase() === userId2.toLowerCase())
+      )
+  );
+  writeLocal(LOCAL_KEYS.connections, nextList);
+  return demoFallback(true);
+}
+
+export function getUserAcceptedConnections(userId: string): DemoProfile[] {
+  if (!userId) return [];
+  const all = localConnections();
+  const uid = userId.toLowerCase();
+  const connectedIds = all
+    .filter((c) => c.status === "accepted" && (c.requesterId.toLowerCase() === uid || c.recipientId.toLowerCase() === uid))
+    .map((c) => (c.requesterId.toLowerCase() === uid ? c.recipientId : c.requesterId));
+
+  const results: DemoProfile[] = [];
+  for (const cid of connectedIds) {
+    const prof = getProfile(cid).data;
+    if (prof && !results.some((r) => r.id.toLowerCase() === prof.id.toLowerCase())) {
+      results.push(prof);
+    }
+  }
+  return results;
+}
+
+export function getUserPendingRequests(userId: string): {
+  incoming: ConnectionRequest[];
+  outgoing: ConnectionRequest[];
+} {
+  if (!userId) return { incoming: [], outgoing: [] };
+  const all = localConnections();
+  const uid = userId.toLowerCase();
+
+  const incoming = all.filter((c) => c.status === "pending" && c.recipientId.toLowerCase() === uid);
+  const outgoing = all.filter((c) => c.status === "pending" && c.requesterId.toLowerCase() === uid);
+
+  return { incoming, outgoing };
 }

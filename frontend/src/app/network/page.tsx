@@ -6,6 +6,8 @@ import { MoreVertical, UsersRound, Plus, Image as ImageIcon, Video, Calendar, Fi
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth/UserContext";
 import { getNetworkPosts, createNetworkPost, replyToPost, togglePostReaction, type NetworkPost } from "@/lib/services/domain";
+import { REAL_ACCOUNTS_20 } from "@/lib/data/userDirectory";
+import AccountDirectoryModal from "@/components/AccountDirectoryModal";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 
 function NetworkContent() {
@@ -17,10 +19,15 @@ function NetworkContent() {
   const [activeTab, setActiveTab] = useState("All");
   const [showComposer, setShowComposer] = useState(false);
   const [postContent, setPostContent] = useState("");
+  const [postTag, setPostTag] = useState<"market" | "question" | "machinery">("market");
+  const [postSubmitting, setPostSubmitting] = useState(false);
+  const [postError, setPostError] = useState("");
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [posts, setPosts] = useState<NetworkPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [directoryModalOpen, setDirectoryModalOpen] = useState(false);
+  const [myConnectionsCount, setMyConnectionsCount] = useState(0);
 
   const themeClass = isFarmer ? "theme-farmer" : "theme-buyer";
   const gradientClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
@@ -38,6 +45,10 @@ function NetworkContent() {
     try {
       const res = await getNetworkPosts(activeTab === "All" ? undefined : activeTab);
       setPosts(res.data);
+      if (user) {
+        const { getUserAcceptedConnections } = await import("@/lib/services/domain");
+        setMyConnectionsCount(getUserAcceptedConnections(user.id).length);
+      }
     } catch (err) {
       console.error("Failed to load posts:", err);
     } finally {
@@ -51,13 +62,21 @@ function NetworkContent() {
   }, [user, userLoading, activeTab]);
 
   const handlePostSubmit = async () => {
-    if (!postContent.trim() || !user) return;
+    const trimmed = postContent.trim();
+    if (!trimmed || !user) return;
+    if (trimmed.length < 5) {
+      setPostError("Post content must be at least 5 characters long.");
+      return;
+    }
+
+    setPostSubmitting(true);
+    setPostError("");
 
     try {
       const res = await createNetworkPost({
-        tag: "market",
-        content: postContent,
-        topic: "market",
+        tag: postTag,
+        content: trimmed,
+        topic: postTag,
       }, user);
 
       if (res.data) {
@@ -65,9 +84,11 @@ function NetworkContent() {
         setPostContent("");
         setShowComposer(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create post:", err);
-      alert("Failed to create post. Please try again.");
+      setPostError(err.message || "Failed to create post. Please try again.");
+    } finally {
+      setPostSubmitting(false);
     }
   };
 
@@ -183,33 +204,40 @@ function NetworkContent() {
             <div className={`h-16 bg-gradient-to-r ${gradientClass}`}></div>
             <div className="p-4 -mt-10">
               <Link
-                href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
-                className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl hover:scale-105 transition-transform inline-flex"
+                href={`/profile/${user?.id || "f0000000-0000-0000-0000-000000000001"}`}
+                className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-orange-300 to-pink-400 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl hover:scale-105 transition-transform inline-flex"
               >
-                {currentUser.substring(0, 2).toUpperCase()}
+                {user?.avatar && user.avatar.startsWith("http") || user?.avatar?.startsWith("data:") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatar} alt={currentUser} className="h-full w-full object-cover" />
+                ) : (
+                  currentUser.substring(0, 2).toUpperCase()
+                )}
               </Link>
               <div className="mt-3">
                 <Link
-                  href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
+                  href={`/profile/${user?.id || "f0000000-0000-0000-0000-000000000001"}`}
                   className="flex items-center gap-1.5 font-bold text-[15px] hover:underline"
                 >
                   {currentUser}
                   <CheckCircle2 className="w-4 h-4 text-blue-500" />
                 </Link>
-                <div className="text-[12px] text-zinc-500 leading-tight mt-1">{currentRole} • Bhopal, MP</div>
+                <div className="text-[12px] text-zinc-500 leading-tight mt-1">
+                  {currentRole} • {user?.farmer_profile?.location?.split(",")[0] || user?.buyer_profile?.location?.split(",")[0] || "Madhya Pradesh"}
+                </div>
                 <Link
-                  href={`/profile/${user?.id || "demo-farmer-ramesh"}`}
+                  href={`/profile/${user?.id || "f0000000-0000-0000-0000-000000000001"}`}
                   className="inline-block mt-2 text-[11px] font-bold text-emerald-700 hover:underline bg-emerald-50 px-2 py-0.5 rounded-full"
                 >
-                  View Profile ID & Showcase →
+                  Unique Profile ID: {user?.id?.slice(0, 8)}… →
                 </Link>
               </div>
 
               <div className="mt-4 pt-4 border-t border-zinc-100 text-[12px] space-y-3">
-                <div className="flex justify-between hover:underline cursor-pointer">
-                  <span className="text-zinc-500 font-medium">Connections</span>
-                  <span className="font-bold text-blue-600">1,247</span>
-                </div>
+                <Link href="/network/connections" className="flex justify-between hover:underline cursor-pointer">
+                  <span className="text-zinc-500 font-medium">My Network Connections</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">{myConnectionsCount} Connected</span>
+                </Link>
                 <div className="flex justify-between hover:underline cursor-pointer">
                   <span className="text-zinc-500 font-medium">Profile views</span>
                   <span className="font-bold">342</span>
@@ -218,9 +246,9 @@ function NetworkContent() {
             </div>
 
             <div className="border-t border-zinc-100 text-[12px] font-medium divide-y divide-zinc-100">
-              <button className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors">
-                <UsersRound className="w-4 h-4 text-zinc-400" /> My Network
-              </button>
+              <Link href="/network/connections" className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors font-bold text-zinc-800">
+                <UsersRound className="w-4 h-4 text-emerald-600" /> Manage Connections &amp; Requests
+              </Link>
               <button className="w-full text-left px-4 py-3 hover:bg-zinc-50 flex items-center gap-2.5 transition-colors">
                 <Calendar className="w-4 h-4 text-zinc-400" /> Events • 3 near you
               </button>
@@ -411,20 +439,25 @@ function NetworkContent() {
         {/* Right Sidebar */}
         <div className="hidden lg:block space-y-5 h-fit sticky top-[88px]">
           <div className="rounded-[20px] bg-white border border-zinc-200 p-5 shadow-sm">
-            <h4 className="font-bold text-[14px] mb-4">People You May Know</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-bold text-[14px]">Ecosystem Network</h4>
+              <button
+                type="button"
+                onClick={() => setDirectoryModalOpen(true)}
+                className="text-[11px] font-bold text-emerald-700 hover:underline"
+              >
+                View All (22) →
+              </button>
+            </div>
+
             <div className="space-y-4">
-              {[
-                { id: "demo-expert-dr-kavita", name: "Dr. Kavita Rao", role: "Agri Expert • Indore", mutual: "12 mutual" },
-                { id: "demo-farmer-rajesh", name: "Rajesh Pawar", role: "Gram Cultivator • Sehore", mutual: "8 mutual" },
-                { id: "demo-fpo-malwa", name: "Malwa Kisan FPO", role: "248 Farmers • Rau", mutual: "18 mutual" },
-                { id: "demo-buyer-bhopal", name: "Vikram Singh", role: "Solvex Buyer • Mandideep", mutual: "5 mutual" }
-              ].map((person, i) => (
-                <div key={i} className="flex gap-3 items-center">
+              {REAL_ACCOUNTS_20.filter(a => a.id !== user?.id).slice(0, 5).map((person) => (
+                <div key={person.id} className="flex gap-3 items-center">
                   <Link
                     href={`/profile/${person.id}`}
-                    className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-zinc-700 text-[12px] shrink-0 hover:bg-zinc-200 transition-colors"
+                    className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-[12px] shrink-0 hover:scale-105 transition-transform"
                   >
-                    {person.name.substring(0, 2).toUpperCase()}
+                    {person.avatar}
                   </Link>
                   <div className="flex-1 min-w-0">
                     <Link
@@ -433,13 +466,22 @@ function NetworkContent() {
                     >
                       {person.name}
                     </Link>
-                    <div className="text-[11px] text-zinc-500 leading-tight mt-0.5 truncate">{person.role}</div>
+                    <div className="text-[11px] text-zinc-500 leading-tight mt-0.5 truncate">
+                      {person.crops.slice(0, 2).join(", ")} • {person.location.split(",")[0]}
+                    </div>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="h-8 px-3 rounded-full text-[12px] font-semibold">
-                    <Link href={`/profile/${person.id}`}>
-                      View ID
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0 rounded-full text-zinc-500 hover:text-zinc-900">
+                      <Link href={`/messages?recipientId=${person.id}`} title={`Message ${person.name}`}>
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="h-7 px-2.5 rounded-full text-[11px] font-semibold">
+                      <Link href={`/profile/${person.id}`}>
+                        ID
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -477,22 +519,55 @@ function NetworkContent() {
             </div>
 
             <div className="p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[14px] bg-gradient-to-br ${gradientClass}`}>
-                  {currentUser.substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="font-bold text-[15px]">{currentUser}</div>
-                  <div className="text-[12px] px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-semibold mt-1 inline-flex items-center gap-1">
-                    🌍 Anyone
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[14px] bg-gradient-to-br ${gradientClass}`}>
+                    {currentUser.substring(0, 2).toUpperCase()}
                   </div>
+                  <div>
+                    <div className="font-bold text-[15px]">{currentUser}</div>
+                    <div className="text-[12px] px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-semibold mt-1 inline-flex items-center gap-1">
+                      🌍 Anyone
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tag Selector */}
+                <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl text-xs font-semibold">
+                  {[
+                    { id: "market", label: "📈 Market" },
+                    { id: "question", label: "❓ Question" },
+                    { id: "machinery", label: "🚜 Machinery" },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setPostTag(t.id as any)}
+                      className={`px-2.5 py-1 rounded-lg transition-colors ${
+                        postTag === t.id
+                          ? "bg-white text-zinc-900 font-bold shadow-xs"
+                          : "text-zinc-500 hover:text-zinc-900"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
+              {postError && (
+                <div className="mb-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                  {postError}
+                </div>
+              )}
+
               <textarea
                 value={postContent}
-                onChange={e => setPostContent(e.target.value)}
-                placeholder="What do you want to talk about?"
+                onChange={e => {
+                  setPostContent(e.target.value);
+                  if (postError) setPostError("");
+                }}
+                placeholder="What do you want to talk about? (min 5 characters)"
                 className="w-full h-36 resize-none outline-none text-[16px] leading-relaxed placeholder:text-zinc-400"
                 autoFocus
               ></textarea>
@@ -514,16 +589,25 @@ function NetworkContent() {
                 </div>
                 <Button
                   onClick={handlePostSubmit}
-                  disabled={!postContent.trim()}
+                  disabled={!postContent.trim() || postContent.trim().length < 5 || postSubmitting}
                   className={`h-10 px-6 rounded-full font-bold text-[14px] text-white bg-gradient-to-br ${gradientClass} shadow-lg hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:hover:scale-100`}
                 >
-                  Post
+                  {postSubmitting ? "Posting..." : "Post"}
                 </Button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Full Network Directory Modal */}
+      <AccountDirectoryModal
+        isOpen={directoryModalOpen}
+        onClose={() => setDirectoryModalOpen(false)}
+        mode="message"
+        title="Kisan & Trade Network (22 Ecosystem Profiles)"
+        subtitle="Connect, collaborate, and initiate direct chats with growers, producer groups, and commercial buyers."
+      />
     </div>
   );
 }

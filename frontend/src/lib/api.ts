@@ -12,9 +12,18 @@ export class ApiError extends Error {
 }
 
 function getErrorMessage(status: number, payload: unknown): string {
-  if (payload && typeof payload === "object" && "detail" in payload) {
-    const detail = (payload as { detail?: unknown }).detail;
-    if (typeof detail === "string") return detail;
+  if (payload && typeof payload === "object") {
+    if ("detail" in payload) {
+      const detail = (payload as { detail?: unknown }).detail;
+      if (typeof detail === "string") return detail;
+      if (Array.isArray(detail)) {
+        // FastAPI / Pydantic validation errors: [{ loc: [...], msg: "...", type: "..." }]
+        const messages = detail
+          .map((item) => (typeof item === "object" && item && "msg" in item ? String(item.msg) : String(item)))
+          .filter(Boolean);
+        if (messages.length > 0) return messages.join(". ");
+      }
+    }
   }
 
   if (status === 401) return "Your session has expired. Please sign in again.";
@@ -34,11 +43,19 @@ export interface UserProfile {
   language_pref: string;
   verified: boolean;
   created_at: string;
+  headline?: string;
+  about?: string;
+  avatar?: string;
   farmer_profile?: {
     location: string;
     lat: number;
     lng: number;
     fpo_name?: string;
+    headline?: string;
+    about?: string;
+    crops?: string[];
+    farm_size_acres?: number;
+    soil_type?: string;
   };
   buyer_profile?: {
     business_name: string;
@@ -46,6 +63,11 @@ export interface UserProfile {
     location?: string;
     lat?: number;
     lng?: number;
+    headline?: string;
+    about?: string;
+    procurement_capacity?: string;
+    gst_number?: string;
+    commodities?: string[];
   };
   fpo_profile?: {
     organization_name: string;
@@ -173,6 +195,11 @@ export const api = {
     lat: number;
     lng: number;
     fpo_name?: string;
+    headline?: string;
+    about?: string;
+    crops?: string[];
+    farm_size_acres?: number;
+    soil_type?: string;
   }): Promise<AuthResponse> {
     const res = await this.request<AuthResponse>("/auth/farmer/register", {
       method: "POST",
@@ -203,6 +230,11 @@ export const api = {
     location: string;
     lat: number;
     lng: number;
+    headline?: string;
+    about?: string;
+    procurement_capacity?: string;
+    gst_number?: string;
+    commodities?: string[];
   }): Promise<AuthResponse> {
     const res = await this.request<AuthResponse>("/auth/buyer/register", {
       method: "POST",
@@ -211,6 +243,33 @@ export const api = {
     this.setToken(res.access_token);
     this.setCurrentUser(res.user);
     return res;
+  },
+
+  async updateProfile(data: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    language_pref?: string;
+    headline?: string;
+    about?: string;
+    location?: string;
+    lat?: number;
+    lng?: number;
+    fpo_name?: string;
+    crops?: string[];
+    farm_size_acres?: number;
+    soil_type?: string;
+    business_name?: string;
+    procurement_capacity?: string;
+    gst_number?: string;
+    commodities?: string[];
+  }): Promise<UserProfile> {
+    const user = await this.request<UserProfile>("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    this.setCurrentUser(user);
+    return user;
   },
 
   async getMe(): Promise<UserProfile> {

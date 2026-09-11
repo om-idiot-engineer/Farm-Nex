@@ -58,6 +58,11 @@ class FarmerProfileBase(BaseModel):
     lat: float = Field(..., ge=-90.0, le=90.0)
     lng: float = Field(..., ge=-180.0, le=180.0)
     fpo_name: Optional[str] = None
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    crops: Optional[List[str]] = None
+    farm_size_acres: Optional[float] = None
+    soil_type: Optional[str] = None
 
 
 class FarmerProfileOut(FarmerProfileBase):
@@ -71,6 +76,11 @@ class BuyerProfileBase(BaseModel):
     location: Optional[str] = None
     lat: Optional[float] = Field(None, ge=-90.0, le=90.0)
     lng: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    procurement_capacity: Optional[str] = None
+    gst_number: Optional[str] = None
+    commodities: Optional[List[str]] = None
 
 
 class BuyerProfileOut(BuyerProfileBase):
@@ -85,6 +95,8 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     language_pref: str = "hi"  # 'hi' or 'en'
     verified: bool = False
+    headline: Optional[str] = None
+    about: Optional[str] = None
 
 
 class UserOut(UserBase):
@@ -105,6 +117,11 @@ class FarmerRegisterRequest(BaseModel):
     lat: float = Field(..., ge=-90.0, le=90.0)
     lng: float = Field(..., ge=-180.0, le=180.0)
     fpo_name: Optional[str] = None
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    crops: Optional[List[str]] = None
+    farm_size_acres: Optional[float] = None
+    soil_type: Optional[str] = None
 
 
 class BuyerRegisterRequest(BaseModel):
@@ -117,6 +134,33 @@ class BuyerRegisterRequest(BaseModel):
     location: str = Field(..., min_length=2)
     lat: float = Field(..., ge=-90.0, le=90.0)
     lng: float = Field(..., ge=-180.0, le=180.0)
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    procurement_capacity: Optional[str] = None
+    gst_number: Optional[str] = None
+    commodities: Optional[List[str]] = None
+
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    language_pref: Optional[str] = None
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    location: Optional[str] = None
+    lat: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    lng: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    # Farmer specific
+    fpo_name: Optional[str] = None
+    crops: Optional[List[str]] = None
+    farm_size_acres: Optional[float] = None
+    soil_type: Optional[str] = None
+    # Buyer specific
+    business_name: Optional[str] = None
+    procurement_capacity: Optional[str] = None
+    gst_number: Optional[str] = None
+    commodities: Optional[List[str]] = None
 
 
 class SendOTPRequest(BaseModel):

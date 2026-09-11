@@ -1,14 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { Search, Phone, MoreVertical, Paperclip, Send, CheckCircle2, MessageSquare, Plus } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Search, Phone, MoreVertical, Paperclip, Send, CheckCircle2, MessageSquare, Plus, UsersRound } from "lucide-react";
 import { useUser } from "@/lib/auth/UserContext";
 import { getMessages, getConversation, sendMessage, createConversation, type Conversation, type ConversationMessage } from "@/lib/services/domain";
+import AccountDirectoryModal from "@/components/AccountDirectoryModal";
+import type { TestUserAccount } from "@/lib/data/userDirectory";
 import { Button } from "@/components/ui/button";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 
 function MessagesContent() {
   const { user, loading: userLoading } = useUser();
+  const searchParams = useSearchParams();
+  const recipientIdParam = searchParams.get("recipientId");
   const isFarmer = user?.role === "farmer";
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -16,6 +21,7 @@ function MessagesContent() {
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [accountDirectoryOpen, setAccountDirectoryOpen] = useState(false);
 
   const themeClass = isFarmer ? "theme-farmer" : "theme-buyer";
   const gradientClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
@@ -25,10 +31,29 @@ function MessagesContent() {
   const loadConversations = async () => {
     try {
       const res = await getMessages();
-      setConversations(res.data);
-      if (res.data.length > 0 && !activeChat) {
-        setActiveChat(res.data[0].id);
+      let convList = res.data || [];
+
+      // If user came via /messages?recipientId=...
+      if (recipientIdParam) {
+        const existing = convList.find(c => c.participantId === recipientIdParam);
+        if (existing) {
+          setActiveChat(existing.id);
+        } else {
+          try {
+            const newChatRes = await createConversation(recipientIdParam);
+            if (newChatRes.data) {
+              convList = [newChatRes.data, ...convList];
+              setActiveChat(newChatRes.data.id);
+            }
+          } catch (err) {
+            console.error("Failed to auto-create chat with recipient:", err);
+          }
+        }
+      } else if (convList.length > 0 && !activeChat) {
+        setActiveChat(convList[0].id);
       }
+
+      setConversations(convList);
     } catch (err) {
       console.error("Failed to load conversations:", err);
     } finally {
@@ -39,7 +64,7 @@ function MessagesContent() {
   useEffect(() => {
     if (!user || userLoading) return;
     loadConversations();
-  }, [user, userLoading]);
+  }, [user, userLoading, recipientIdParam]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,12 +89,15 @@ function MessagesContent() {
     }
   };
 
-  const handleNewChat = async () => {
+  const handleSelectAccountForChat = async (account: TestUserAccount) => {
     if (!user) return;
-    // In a real app, this would open a user search modal
-    // For now, create a demo conversation
     try {
-      const res = await createConversation(user.role === "farmer" ? "demo-buyer-agrocorp" : "demo-farmer-ramesh");
+      const existing = conversations.find(c => c.participantId === account.id);
+      if (existing) {
+        setActiveChat(existing.id);
+        return;
+      }
+      const res = await createConversation(account.id);
       if (res.data) {
         setConversations([res.data, ...conversations]);
         setActiveChat(res.data.id);
@@ -77,6 +105,10 @@ function MessagesContent() {
     } catch (err) {
       console.error("Failed to create conversation:", err);
     }
+  };
+
+  const handleNewChat = () => {
+    setAccountDirectoryOpen(true);
   };
 
   const activeConversation = conversations.find(c => c.id === activeChat);
@@ -318,6 +350,16 @@ function MessagesContent() {
         )}
 
       </div>
+
+      {/* Select User to Start New Negotiation / Chat */}
+      <AccountDirectoryModal
+        isOpen={accountDirectoryOpen}
+        onClose={() => setAccountDirectoryOpen(false)}
+        mode="select"
+        onSelectAccount={handleSelectAccountForChat}
+        title="Start Chat with Any Ecosystem Account (22 Profiles)"
+        subtitle="Select a farmer, collective FPO, food processor, or trade expert to initiate a direct negotiation channel."
+      />
     </div>
   );
 }

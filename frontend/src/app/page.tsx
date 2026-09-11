@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
-import { api, DEMO_MODE, type CropListing, type DemandPost, type UserProfile } from "@/lib/api";
 import { useUser } from "@/lib/auth/UserContext";
 import { getRoleHome } from "@/lib/navigation";
 import { demoListings, demoDemands } from "@/lib/data/demo";
+import {
+  registerNewUserAccount,
+  isProfileIdTaken,
+  getAllAccounts,
+} from "@/lib/data/userDirectory";
 import {
   Sprout,
   Store,
@@ -35,8 +38,15 @@ import {
   Clock,
   Layers,
   Check,
+  Eye,
+  EyeOff,
+  UserCheck,
+  Play,
+  Globe,
+  HelpCircle,
+  ShoppingBag,
+  ExternalLink,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import CropLotCard from "@/components/CropLotCard";
 import BuyerRequirementCard from "@/components/BuyerRequirementCard";
 import TrustBadge from "@/components/TrustBadge";
@@ -44,37 +54,58 @@ import TrustBadge from "@/components/TrustBadge";
 export default function LandingPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { user, setUser, switchDemoRole } = useUser();
+  const { user, loginWithCredentials, logout } = useUser();
 
-  // Modal Auth State
+  // Scroll state for fixed glass header
+  const [scrolled, setScrolled] = useState(false);
+
+  // Unified Authentication Modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authRole, setAuthRole] = useState<"farmer" | "buyer">("farmer");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authRole, setAuthRole] = useState<"farmer" | "buyer" | "fpo" | "consumer">("farmer");
 
-  // Farmer OTP fields
-  const [farmerPhone, setFarmerPhone] = useState("");
-  const [farmerOtp, setFarmerOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [farmerName, setFarmerName] = useState("");
-  const [farmerLocation, setFarmerLocation] = useState("Indore, Madhya Pradesh");
-  const [farmerFpo, setFarmerFpo] = useState("");
+  // Login form state
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Buyer login/register fields
-  const [buyerEmail, setBuyerEmail] = useState("");
-  const [buyerPassword, setBuyerPassword] = useState("");
-  const [buyerName, setBuyerName] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [buyerLocation, setBuyerLocation] = useState("Dewas, Madhya Pradesh");
+  // Registration form state
+  const [regName, setRegName] = useState("");
+  const [regProfileId, setRegProfileId] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regLocation, setRegLocation] = useState("Indore, Madhya Pradesh");
+  const [regCrops, setRegCrops] = useState<string[]>(["Soybean", "Wheat"]);
+  const [regFarmSize, setRegFarmSize] = useState("12");
+  const [regCapacity, setRegCapacity] = useState("5,000 Qtl/month");
+  const [regBusinessName, setRegBusinessName] = useState("");
+  const [regFpoName, setRegFpoName] = useState("");
+  const [regHeadline, setRegHeadline] = useState("");
+  const [regAbout, setRegAbout] = useState("");
 
-  // Marketplace preview tab state
-  const [previewTab, setPreviewTab] = useState<"produce" | "requirements">("produce");
-
-  // Feedback
+  // Feedback states
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Listen for Navbar / External auth open triggers
+  // Marketplace preview tab
+  const [previewTab, setPreviewTab] = useState<"produce" | "requirements">("produce");
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Listen for open-farmnex-auth events or URL params
   useEffect(() => {
     const handleAuthEvent = (e: any) => {
       if (e.detail?.role) setAuthRole(e.detail.role);
@@ -85,14 +116,17 @@ export default function LandingPage() {
 
     window.addEventListener("open-farmnex-auth", handleAuthEvent);
 
-    // Check URL parameters for direct links like /?auth=buyer
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const auth = params.get("auth");
       const mode = params.get("mode");
-      if (auth === "farmer" || auth === "buyer" || auth === "login") {
-        setAuthRole(auth === "buyer" ? "buyer" : "farmer");
-        setAuthMode(mode === "register" ? "register" : "login");
+      if (auth || mode) {
+        if (auth === "buyer" || auth === "farmer" || auth === "fpo" || auth === "consumer") {
+          setAuthRole(auth);
+        }
+        if (mode === "register" || mode === "login") {
+          setAuthMode(mode);
+        }
         setAuthModalOpen(true);
       }
     }
@@ -105,1273 +139,1286 @@ export default function LandingPage() {
     setSuccessMsg("");
   };
 
-  const openAuth = (role: "farmer" | "buyer", mode: "login" | "register" = "login") => {
+  const openAuth = (role: "farmer" | "buyer" | "fpo" | "consumer", mode: "login" | "register" = "login") => {
     setAuthRole(role);
     setAuthMode(mode);
     setAuthModalOpen(true);
     resetFeedback();
   };
 
-  const handleQuickDemoLogin = (role: "farmer" | "fpo" | "buyer" | "consumer" | "admin") => {
-    switchDemoRole(role);
-    setAuthModalOpen(false);
-    router.push(getRoleHome(role));
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  const handleSendFarmerOtp = async (e: React.FormEvent) => {
+  // Image fallback helper
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.currentTarget;
+    target.style.display = "none";
+    const sibling = target.nextElementSibling as HTMLElement;
+    if (sibling) sibling.style.display = "block";
+  };
+
+  // -------------------------------------------------------------
+  // Handle Login via Profile ID + Password
+  // -------------------------------------------------------------
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     resetFeedback();
-    if (!farmerPhone || farmerPhone.length < 10) {
-      setErrorMsg("Please enter a valid 10-digit mobile number.");
+
+    if (!loginIdentifier.trim()) {
+      setErrorMsg("Please enter your unique Profile ID, email, or registered phone.");
       return;
     }
-    setLoading(true);
-    try {
-      const res = await api.sendFarmerOTP(farmerPhone);
-      setOtpSent(true);
-      setSuccessMsg(res.message);
-      setFarmerOtp("123456"); // Pre-fill development OTP
-    } catch {
-      // In demo/offline mode, fallback seamlessly so user can proceed
-      setOtpSent(true);
-      setSuccessMsg("Demo verification code is 123456");
-      setFarmerOtp("123456");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleVerifyFarmerOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetFeedback();
+    if (!loginPassword) {
+      setErrorMsg("Please enter your account password.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await api.verifyFarmerOTP(farmerPhone, farmerOtp);
-      setUser(res.user);
-      setSuccessMsg(`Welcome, ${res.user?.name || "Farmer"}!`);
-      setAuthModalOpen(false);
-      router.push("/farmer");
-    } catch (err: any) {
-      if (farmerOtp === "123456" || DEMO_MODE) {
-        switchDemoRole("farmer");
-        setAuthModalOpen(false);
-        router.push("/farmer");
+      const result = loginWithCredentials(loginIdentifier.trim(), loginPassword);
+      if (!result.success || !result.user) {
+        setErrorMsg(result.error || "Invalid credentials. Please check your Profile ID & password.");
+        setLoading(false);
         return;
       }
-      if (err.status === 404 || (err.message && (err.message.includes("not yet registered") || err.message.includes("not registered")))) {
-        setAuthMode("register");
-        setErrorMsg("Phone verified! Enter your name and location to complete registration.");
-      } else {
-        setErrorMsg(err.message || "Invalid OTP code.");
+
+      setSuccessMsg(`Welcome back, ${result.user.name}!`);
+      setTimeout(() => {
+        setAuthModalOpen(false);
+        router.push(getRoleHome(result.user?.role));
+      }, 600);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Handle Registration with Unique Profile ID + Password
+  // -------------------------------------------------------------
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    resetFeedback();
+
+    if (!regName.trim()) {
+      setErrorMsg("Please enter your full name.");
+      return;
+    }
+
+    const cleanProfileId = regProfileId.trim().toLowerCase().replace(/^@/, "");
+    if (!cleanProfileId || cleanProfileId.length < 3) {
+      setErrorMsg("Please choose a unique Profile ID (at least 3 characters, e.g. ramesh.patel).");
+      return;
+    }
+
+    if (isProfileIdTaken(cleanProfileId)) {
+      setErrorMsg(`Profile ID "@${cleanProfileId}" is already taken by another registered member. Please pick a unique handle.`);
+      return;
+    }
+
+    if (!regPassword || regPassword.length < 6) {
+      setErrorMsg("Please choose a secure password of at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const regResult = registerNewUserAccount({
+        name: regName,
+        role: authRole,
+        profileId: cleanProfileId,
+        password: regPassword,
+        phone: regPhone,
+        email: regEmail,
+        location: regLocation,
+        crops: regCrops,
+        farmSizeAcres: parseFloat(regFarmSize) || undefined,
+        procurementCapacity: authRole === "buyer" ? regCapacity : undefined,
+        businessName: authRole === "buyer" ? (regBusinessName || regName) : undefined,
+        fpoName: authRole === "fpo" ? (regFpoName || regName) : regFpoName,
+        headline: regHeadline,
+        about: regAbout,
+      });
+
+      if (!regResult.success || !regResult.account) {
+        setErrorMsg(regResult.error || "Registration failed. Please review your details.");
+        setLoading(false);
+        return;
       }
+
+      // Automatically log the user in with their newly created credentials
+      const logResult = loginWithCredentials(cleanProfileId, regPassword);
+      setSuccessMsg(`Account @${cleanProfileId} created successfully! Logging you in...`);
+
+      setTimeout(() => {
+        setAuthModalOpen(false);
+        router.push(getRoleHome(regResult.account?.role));
+      }, 700);
+    } catch (err: any) {
+      setErrorMsg(err.message || "An unexpected error occurred during registration.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFarmerRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetFeedback();
-    if (!farmerName.trim()) {
-      setErrorMsg("Please enter your name.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.registerFarmer({
-        phone: farmerPhone,
-        name: farmerName,
-        language_pref: "en",
-        location: farmerLocation,
-        lat: 22.7196,
-        lng: 75.8577,
-        fpo_name: farmerFpo || undefined,
-      });
-      setUser(res.user);
-      setSuccessMsg("Registration complete!");
-      setAuthModalOpen(false);
-      router.push("/farmer");
-    } catch {
-      // Demo fallback user
-      const demoUser: UserProfile = {
-        id: `farmer-${Date.now()}`,
-        name: farmerName,
-        phone: farmerPhone,
-        role: "farmer",
-        language_pref: "en",
-        verified: true,
-        created_at: new Date().toISOString(),
-        farmer_profile: {
-          location: farmerLocation || "Indore, Madhya Pradesh",
-          lat: 22.7196,
-          lng: 75.8577,
-          fpo_name: farmerFpo || "Malwa Kisan Samriddhi FPO",
-        },
-      };
-      setUser(demoUser, "demo");
-      setAuthModalOpen(false);
-      router.push("/farmer");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBuyerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetFeedback();
-    setLoading(true);
-    try {
-      const res = await api.loginBuyer(buyerEmail, buyerPassword);
-      setUser(res.user);
-      setSuccessMsg(`Welcome, ${res.user?.name || "Buyer"}!`);
-      setAuthModalOpen(false);
-      router.push("/buyer");
-    } catch {
-      // Demo fallback buyer
-      switchDemoRole("buyer");
-      setAuthModalOpen(false);
-      router.push("/buyer");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBuyerRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetFeedback();
-    if (!businessName.trim() || !buyerName.trim()) {
-      setErrorMsg("Please provide your business and contact name.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.registerBuyer({
-        email: buyerEmail,
-        password: buyerPassword,
-        name: buyerName,
-        business_name: businessName,
-        language_pref: "en",
-        location: buyerLocation,
-        lat: 22.9676,
-        lng: 76.0534,
-      });
-      setUser(res.user);
-      setSuccessMsg("Buyer registration complete!");
-      setAuthModalOpen(false);
-      router.push("/buyer");
-    } catch {
-      // Demo fallback buyer
-      const demoUser: UserProfile = {
-        id: `buyer-${Date.now()}`,
-        name: buyerName,
-        email: buyerEmail,
-        role: "buyer",
-        language_pref: "en",
-        verified: true,
-        created_at: new Date().toISOString(),
-        buyer_profile: {
-          business_name: businessName,
-          gst_verified: true,
-          location: buyerLocation || "Dewas Industrial Area, Madhya Pradesh",
-          lat: 22.9676,
-          lng: 76.0534,
-        },
-      };
-      setUser(demoUser, "demo");
-      setAuthModalOpen(false);
-      router.push("/buyer");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Preview data from actual demo fixtures
   const previewProduce = demoListings.slice(0, 3);
   const previewRequirements = demoDemands.slice(0, 3);
 
   return (
-    <div className="w-full space-y-16 sm:space-y-24">
-      {/* ========================================================================= */}
-      {/* 1. VISUAL HERO SECTION (DOMINANT AGRICULTURAL PHOTOGRAPHY) */}
-      {/* ========================================================================= */}
-      <section className="relative min-h-[85vh] lg:min-h-[88vh] flex items-center justify-center overflow-hidden bg-zinc-950">
-        {/* Dominant Agricultural Hero Image */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/hero-farm.jpg"
-            alt="Vast Indian agricultural farmlands during golden hour morning harvest"
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-          />
-          {/* Elegant dark green cinematic overlay to ensure razor-sharp text readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/75 to-zinc-950/40" />
-          <div className="absolute inset-0 bg-emerald-950/20 mix-blend-multiply" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
-        </div>
+    <div className="min-h-screen bg-[#F9FAFB] text-zinc-900 antialiased selection:bg-emerald-200">
+      {/* ------------------------------------------------------------------------- */}
+      {/* 1. TOP NAVIGATION (SMOOTH GLASSBAR WITH DIRECT AUTH & ROUTING) */}
+      {/* ------------------------------------------------------------------------- */}
+      <nav
+        className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${
+          scrolled
+            ? "bg-white/95 backdrop-blur-xl border-zinc-200 shadow-[0_8px_32px_-16px_rgba(0,0,0,0.12)]"
+            : "bg-transparent border-transparent lg:bg-[linear-gradient(to_bottom,rgba(0,0,0,0.4),transparent)]"
+        }`}
+      >
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 h-[72px] flex items-center justify-between gap-4 sm:gap-6">
+          {/* Logo */}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex items-center gap-2.5 shrink-0 group text-left"
+          >
+            <div className="w-9 h-9 rounded-[10px] bg-emerald-500 flex items-center justify-center shadow-[0_2px_8px_rgba(16,185,129,0.35)] group-hover:scale-105 transition-transform">
+              <Sprout className="w-5 h-5 text-white" />
+            </div>
+            <span className={`font-extrabold tracking-tight text-[20px] ${scrolled ? "text-zinc-900" : "text-white"} transition-colors`}>
+              FarmNex
+            </span>
+            <span className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-widest ${scrolled ? "bg-zinc-900 text-white" : "bg-white text-zinc-900"} transition-colors`}>
+              V3
+            </span>
+          </button>
 
-        {/* Hero Content Container */}
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20 w-full">
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-            {/* Left Hero Message (Short, Powerful, Non-editorial) */}
-            <div className="lg:col-span-7 space-y-6 text-left">
-              {/* Clean Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-emerald-300 text-xs font-semibold tracking-wide">
-                <Sprout className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Direct Agricultural Commerce</span>
+          {/* Center Links */}
+          <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+            {[
+              { label: "Platform", id: "platform" },
+              { label: "For Farmers", id: "for-farmers" },
+              { label: "For Buyers", id: "for-buyers" },
+              { label: "How it Works", id: "how-it-works" },
+            ].map((link) => (
+              <button
+                key={link.id}
+                onClick={() => scrollToSection(link.id)}
+                className={`px-3.5 h-8 rounded-full text-[13.5px] font-medium transition ${
+                  scrolled
+                    ? "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Right Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => showToast("Language: English · Hindi & Marathi coming soon")}
+              className={`hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-full border text-[13px] font-medium transition ${
+                scrolled
+                  ? "bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100"
+                  : "bg-white/10 border-white/20 text-white/90 hover:bg-white/15 backdrop-blur"
+              }`}
+            >
+              <Globe className="w-4 h-4" /> EN
+            </button>
+
+            <button
+              onClick={() => openAuth("farmer", "login")}
+              className={`inline-flex h-9 px-4 rounded-full text-[14px] font-medium transition items-center ${
+                scrolled ? "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100" : "text-white/90 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              Log in
+            </button>
+
+            <button
+              onClick={() => openAuth("farmer", "register")}
+              className="inline-flex items-center gap-1.5 h-[42px] px-5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[14px] font-semibold shadow-[0_8px_20px_rgba(16,185,129,0.35)] hover:shadow-[0_12px_28px_rgba(16,185,129,0.45)] hover:-translate-y-[1px] transition-all"
+            >
+              <span>Join FarmNex</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ------------------------------------------------------------------------- */}
+      {/* 2. HERO SECTION WITH AGRICULTURAL PHOTOGRAPHY & COOL MODERN TAGLINE */}
+      {/* ------------------------------------------------------------------------- */}
+      <section id="platform" className="relative w-full overflow-hidden bg-zinc-950 min-h-[92vh] flex items-center">
+        {/* Background photo & rich visual gradients */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2000"
+            alt="Green agricultural farmlands during golden hour"
+            className="absolute inset-0 w-full h-full object-cover opacity-65"
+            onError={handleImageError}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-zinc-950/85 to-zinc-950 hidden" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_30%_20%,rgba(16,185,129,0.22),transparent)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-[28%] bg-gradient-to-t from-[#F9FAFB] via-[#F9FAFB]/80 to-transparent" />
+
+        <div className="relative z-10 mx-auto max-w-[1280px] px-5 lg:px-6 pt-[112px] lg:pt-[132px] pb-[88px] lg:pb-[128px] w-full">
+          <div className="w-full max-w-[760px]">
+            {/* Direct Commerce Live Badge */}
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-white/[0.08] backdrop-blur-xl border border-white/15 text-[11px] tracking-[0.14em] font-bold text-white/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]" />
+              DIRECT AGRICULTURAL NETWORK
+            </div>
+
+            {/* Hero Title */}
+            <h1 className="mt-6 text-[42px] sm:text-[52px] lg:text-[72px] font-[800] leading-[0.95] tracking-[-0.04em] text-white">
+              Where India Grows,
+              <br />
+              <span className="text-emerald-300 italic font-[800]">Business Connects.</span>
+            </h1>
+
+            {/* Sub-headline */}
+            <p className="mt-6 text-[16px] lg:text-[18px] leading-[1.65] text-zinc-200/90 max-w-[580px] font-normal">
+              FarmNex connects verified farmers, FPOs and bulk buyers on one trusted agricultural network — helping real produce find real buyers through direct connections.{" "}
+              <span className="text-white font-medium">Fewer intermediaries. More direct connections.</span>
+            </p>
+
+            {/* Call to action buttons */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                onClick={() => openAuth("farmer", "register")}
+                className="group inline-flex items-center gap-2 h-[52px] px-7 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-[15px] shadow-[0_12px_32px_rgba(16,185,129,0.4)] hover:shadow-[0_16px_40px_rgba(16,185,129,0.5)] hover:-translate-y-[1px] transition-all"
+              >
+                <span>Connect with FarmNex</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                onClick={() => scrollToSection("how-it-works")}
+                className="inline-flex items-center gap-2.5 h-[52px] px-7 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white font-medium text-[15px] hover:bg-white/15 hover:border-white/30 transition-all"
+              >
+                <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
+                  <Play className="w-3.5 h-3.5 text-zinc-900 fill-zinc-900 ml-[1px]" />
+                </span>
+                <span>See How It Works</span>
+              </button>
+            </div>
+
+            {/* Network tagline strip */}
+            <div className="mt-7 flex flex-wrap items-center gap-2 text-[13px] text-emerald-200/90 font-medium">
+              <span className="text-white font-semibold">Farmers</span>
+              <span className="text-emerald-400">•</span>
+              <span className="text-white font-semibold">FPOs</span>
+              <span className="text-emerald-400">•</span>
+              <span className="text-white font-semibold">Bulk Buyers</span>
+              <span className="hidden sm:inline text-white/40 ml-1.5">—</span>
+              <span className="text-zinc-300 ml-1">One network. Direct connections. Better opportunities.</span>
+            </div>
+
+            {/* Social Network Member Avatars Proof */}
+            <div className="mt-10 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex -space-x-2">
+                  {[
+                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100",
+                    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100",
+                    "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=100",
+                    "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?q=80&w=100",
+                  ].map((src, idx) => (
+                    <img
+                      key={idx}
+                      src={src}
+                      alt="Verified Member"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-sm"
+                      onError={handleImageError}
+                    />
+                  ))}
+                </div>
+                <span className="text-[13px] font-medium text-white/90">
+                  <span className="text-white font-bold">4,200+</span> farmers ·{" "}
+                  <span className="text-white font-bold">380+</span> FPO clusters ·{" "}
+                  <span className="text-white font-bold">210+</span> commercial processors active
+                </span>
               </div>
 
-              {/* Headline: Clean, bold, sans-serif */}
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.05]">
-                From Farm<br />
-                to Market.{" "}
-                <span className="text-emerald-400">Directly.</span>
-              </h1>
+              <div className="flex items-center gap-3 text-[11.5px] text-white/60">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live in 12 central mandi corridors
+                </span>
+                <span className="opacity-30">•</span>
+                <span>ICICI Escrow Rails · NABL Lab Assays · GST Verified</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              {/* Short Supporting Text (Max 2 lines, no technical jargon) */}
-              <p className="text-base sm:text-lg text-zinc-300 max-w-xl leading-relaxed font-normal">
-                FarmNex connects farmers and FPOs directly with consumers and bulk buyers, making agricultural trade more transparent and efficient.
+      {/* ------------------------------------------------------------------------- */}
+      {/* 3. FOR FARMERS & FPOS (PRODUCT POINTS + HARVEST VISUAL) */}
+      {/* ------------------------------------------------------------------------- */}
+      <div className="mx-auto max-w-[1280px] px-5 lg:px-6 py-12 lg:py-20 space-y-16 lg:space-y-24">
+        <div
+          id="for-farmers"
+          className="scroll-mt-24 rounded-[28px] bg-white border border-zinc-200 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col lg:flex-row group"
+        >
+          <div className="relative lg:w-[52%] min-h-[360px] lg:min-h-[560px] overflow-hidden bg-zinc-100">
+            <img
+              src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1200&auto=format&fit=crop"
+              alt="Indian farmer in farm field holding harvested crop"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-700"
+              onError={handleImageError}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <span className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur text-white text-[11px] font-semibold border border-white/10 flex items-center gap-1.5">
+              <Sprout className="w-3.5 h-3.5 text-emerald-400" />
+              Direct Farm-Gate Procurement
+            </span>
+          </div>
+
+          <div className="lg:w-[48%] p-6 sm:p-8 lg:p-12 flex flex-col justify-center">
+            <div className="text-[11px] font-extrabold tracking-[0.18em] text-emerald-600 uppercase">
+              FOR FARMERS &amp; FPOS
+            </div>
+            <h2 className="mt-3 text-[28px] sm:text-[32px] lg:text-[36px] font-[800] leading-[1.05] tracking-[-0.02em] text-zinc-900">
+              List your produce.
+              <br />
+              Reach relevant buyers.
+            </h2>
+            <p className="mt-4 text-[14px] sm:text-[15px] leading-[1.6] text-zinc-500 max-w-[420px]">
+              Stop depending on informal middlemen. Create assay-backed lots, join FPO aggregation clusters, and receive payout via digital bank escrow.
+            </p>
+
+            <div className="mt-8 space-y-5">
+              {[
+                ["List Lots with Lab Moisture Assays", "Attach certified moisture & foreign matter parameters to prevent arbitrary mill-gate dockage deductions."],
+                ["Algorithmic Net Realization Ranking", "We calculate nearby buyer offers minus true transport freight—showing your exact pocket realization."],
+                ["FPO Volume Consolidation", "Aggregate 32T+ community lots to unlock high-margin direct institutional contracts."],
+                ["Unique Profile & Security", "Every cultivator gets an authenticated Profile ID and secure password for safe commercial trading."],
+              ].map(([title, desc]) => (
+                <div key={title} className="flex gap-3 items-start">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-bold text-zinc-900">{title}</div>
+                    <div className="text-[13px] text-zinc-500 leading-relaxed">{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 items-start sm:items-center">
+              <button
+                onClick={() => openAuth("farmer", "register")}
+                className="h-11 px-6 rounded-full bg-zinc-900 hover:bg-black text-white text-[14px] font-bold inline-flex items-center gap-2 transition"
+              >
+                <span>Join as a Farmer</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <span className="text-[13px] text-zinc-500">
+                Free to list · Escrow settled · No broker cut
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* 4. FOR FOOD PROCESSORS & BULK BUYERS */}
+        {/* ------------------------------------------------------------------------- */}
+        <div
+          id="for-buyers"
+          className="scroll-mt-24 rounded-[28px] bg-white border border-zinc-200 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col lg:flex-row-reverse group"
+        >
+          <div className="relative lg:w-[52%] min-h-[360px] lg:min-h-[560px] overflow-hidden bg-zinc-100">
+            <img
+              src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1200&auto=format&fit=crop"
+              alt="Industrial Grain Quality Testing Lab"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-700"
+              onError={handleImageError}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <span className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-zinc-900 text-[11px] font-bold border border-white flex items-center gap-1.5 shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              Industrial Grain Quality Testing
+            </span>
+          </div>
+
+          <div className="lg:w-[48%] p-6 sm:p-8 lg:p-12 flex flex-col justify-center">
+            <div className="text-[11px] font-extrabold tracking-[0.18em] text-blue-600 uppercase">
+              FOR FOOD PROCESSORS &amp; BULK BUYERS
+            </div>
+            <h2 className="mt-3 text-[28px] sm:text-[32px] lg:text-[36px] font-[800] leading-[1.05] tracking-[-0.02em] text-zinc-900">
+              Source verified lots.
+              <br />
+              At scale, with rails.
+            </h2>
+            <p className="mt-4 text-[14px] sm:text-[15px] leading-[1.6] text-zinc-500 max-w-[440px]">
+              Specify moisture, foreign matter, and test weight. Discover verified FPO clusters ready to fulfill contracts and settle safely via weighbridge slips.
+            </p>
+
+            <div className="mt-8 space-y-5">
+              {[
+                ["Broadcast Procurement Tenders", "Post 100–500T seasonal requirements directly to high-density producer belts."],
+                ["Define Exact Quality Tolerances", "Set lab moisture, FM, black spots, and splits cutoffs upfront."],
+                ["Direct Producer Cluster Sourcing", "Source directly from Malwa, Nimar, Bundelkhand, and Vidarbha verified cooperatives."],
+                ["Weighbridge & Escrow Rails", "Deposit into secure escrow; funds are released automatically on digital weighbridge receipt."],
+              ].map(([title, desc]) => (
+                <div key={title} className="flex gap-3 items-start">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-bold text-zinc-900">{title}</div>
+                    <div className="text-[13px] text-zinc-500 leading-relaxed">{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 items-start sm:items-center">
+              <button
+                onClick={() => openAuth("buyer", "register")}
+                className="h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-bold inline-flex items-center gap-2 transition shadow-md shadow-blue-500/20"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Register as Commercial Buyer</span>
+              </button>
+              <span className="text-[13px] text-zinc-500">
+                GST verified · Assay backed · Pan-India delivery
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* 5. HOW IT WORKS (POST -> MATCH -> SETTLE) */}
+        {/* ------------------------------------------------------------------------- */}
+        <section id="how-it-works" className="scroll-mt-24 rounded-[28px] bg-zinc-900 text-white p-6 sm:p-10 lg:p-12">
+          <div className="flex flex-col lg:flex-row justify-between gap-8">
+            <div className="max-w-[440px]">
+              <div className="text-[11px] font-bold tracking-[0.18em] text-emerald-400 uppercase">
+                HOW IT WORKS
+              </div>
+              <h2 className="mt-3 text-[28px] lg:text-[36px] font-[800] leading-[1.05]">
+                Post. Match. <span className="text-emerald-300">Settle.</span>
+              </h2>
+              <p className="mt-3 text-[14px] leading-[1.6] text-zinc-400 font-normal">
+                Engineered like a modern social network, not an outdated mandi paper register. Every lot has a digital assay; every buyer has verified settlement credentials.
               </p>
+              <button
+                onClick={() => openAuth("farmer", "register")}
+                className="mt-6 h-11 px-6 rounded-full bg-white text-zinc-900 text-[14px] font-bold inline-flex items-center gap-2 hover:bg-zinc-100 transition"
+              >
+                <span>Create Account — Free</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
 
-              {/* Action Buttons */}
-              {user ? (
-                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
-                  <Button size="lg" className="font-bold px-8 h-12 rounded-xl text-base shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white" asChild>
-                    <Link href={getRoleHome(user?.role)}>
-                      Enter {user?.name || "User"}&apos;s Workspace
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline" className="font-bold px-6 h-12 rounded-xl text-base bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md" asChild>
-                    <Link href="/marketplace">Open Live Marketplace</Link>
-                  </Button>
+            <div className="grid sm:grid-cols-3 gap-4 flex-1">
+              {[
+                {
+                  step: "01",
+                  title: "Create Lot",
+                  desc: "Farmer or FPO posts crop, quantity, and moisture assay. Verified automatically with NABL lab partners.",
+                },
+                {
+                  step: "02",
+                  title: "Get Matched",
+                  desc: "Our algorithm calculates net realization, factoring distance & freight against nearby processing mills.",
+                },
+                {
+                  step: "03",
+                  title: "Escrow Settle",
+                  desc: "Weighbridge entry slip verifies physical lot weight; digital escrow releases instant payout safely.",
+                },
+              ].map((item) => (
+                <div key={item.step} className="rounded-[18px] bg-white/[0.06] border border-white/10 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="text-[13px] font-black tracking-widest text-emerald-400">
+                      {item.step}
+                    </div>
+                    <div className="mt-3 text-[16px] font-bold text-white">
+                      {item.title}
+                    </div>
+                    <div className="mt-2 text-[13px] leading-[1.55] text-zinc-400 font-normal">
+                      {item.desc}
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 text-[11px] font-semibold text-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Direct digital rails
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* 6. REAL SOCIAL FEED PREVIEW (HARVEST POSTS, FPO CLUSTERS & TENDERS) */}
+        {/* ------------------------------------------------------------------------- */}
+        <section id="social-feed" className="scroll-mt-24 space-y-10">
+          <div className="text-center max-w-[720px] mx-auto">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold tracking-widest uppercase">
+              SOCIAL FEED PREVIEW
+            </div>
+            <h2 className="mt-4 text-[28px] lg:text-[40px] font-[800] leading-[1.05] tracking-[-0.02em] text-zinc-900">
+              The network where harvest meets demand
+            </h2>
+            <p className="mt-3 text-[15px] text-zinc-500 font-normal">
+              Real posts from farm gates, cooperative aggregations, and industrial tenders — authentic commercial social networking.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+            {/* Post 1: Farmer Harvest Post */}
+            <div className="rounded-[20px] bg-white border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col justify-between">
+              <div>
+                <div className="p-4 flex items-center gap-3 border-b border-zinc-100">
+                  <img
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200"
+                    className="w-10 h-10 rounded-full object-cover border border-zinc-200"
+                    alt="Farmer Ramesh"
+                    onError={handleImageError}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13.5px] font-bold text-zinc-900 truncate">
+                      Ramesh Patel · <span className="text-emerald-600 font-semibold">Verified</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 truncate">
+                      Malwa Kisan Samriddhi FPO • 2h ago • Sanwer
+                    </div>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+
+                <div className="relative w-full h-[220px] bg-zinc-100 overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?q=80&w=800&auto=format&fit=crop"
+                    alt="Soybean crop lot"
+                    className="w-full h-full object-cover"
+                    onError={handleImageError}
+                  />
+                </div>
+
+                <div className="p-4">
+                  <div className="flex gap-4 text-zinc-500 text-[12px] font-semibold pb-2 border-b border-zinc-100">
+                    <span>❤️ 84 likes</span>
+                    <span>💬 12 comments</span>
+                    <span>↗ Share</span>
+                  </div>
+                  <p className="mt-2.5 text-[13.5px] leading-[1.55] text-zinc-700">
+                    <span className="font-bold text-zinc-900">Just harvested JS-335 Soybean.</span> Lab moisture 10.4% — Grade A. 32T lot ready for dispatch from Sanwer yard. Looking for buyers paying net +400 over mandi spot. Escrow terms only.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-[11px] font-bold text-zinc-700">
+                      320 Qtl
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                      Grade A Assayed
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-[11px] font-medium text-zinc-600">
+                      ₹5,380 / Qtl
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 pt-0">
+                <button
+                  onClick={() => openAuth("buyer", "login")}
+                  className="w-full h-9 rounded-full bg-zinc-900 hover:bg-black text-white text-[12.5px] font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <span>Connect &amp; Negotiate</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Post 2: FPO Cluster Aggregation Drop */}
+            <div className="rounded-[20px] bg-white border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col justify-between">
+              <div>
+                <div className="p-4 flex items-center gap-3 border-b border-zinc-100">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center font-black text-amber-800 text-[13px]">
+                    MK
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13.5px] font-bold text-zinc-900 truncate">
+                      Malwa Kisan FPO · <span className="text-amber-700 font-semibold">Cluster Drop</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 truncate">
+                      12 farmers • 4 villages • Live Pooling
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold tracking-wider">
+                    POOLING
+                  </span>
+                </div>
+
+                <div className="p-4">
+                  <div className="rounded-[14px] bg-[#FFF8E1] border border-amber-200/80 p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[12px] font-bold text-amber-900">
+                        Cluster Target: 500 Qtl
+                      </span>
+                      <span className="text-[11px] font-extrabold text-amber-700">
+                        84% Consolidated
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2.5 rounded-full bg-amber-100 overflow-hidden">
+                      <div className="h-full w-[84%] bg-amber-500 rounded-full" />
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-white border border-amber-200 text-center">
+                        <span className="text-zinc-500 block">Ramesh P.</span>
+                        <b className="text-zinc-900">80 Qtl</b>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-amber-200 text-center">
+                        <span className="text-zinc-500 block">Sunita V.</span>
+                        <b className="text-zinc-900">120 Qtl</b>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-amber-200 text-center">
+                        <span className="text-zinc-500 block">Aarti D.</span>
+                        <b className="text-zinc-900">60 Qtl</b>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="mt-3.5 text-[13.5px] leading-[1.55] text-zinc-700">
+                    Consolidating Malwa belt lots for 400T industrial tender. Moisture &lt;11%, FM &lt;2%. Join before 6 PM — shared pooled transport available to Dewas mill.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 pt-0">
+                <button
+                  onClick={() => openAuth("farmer", "login")}
+                  className="w-full h-9 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-[12.5px] font-bold transition"
+                >
+                  Join Supply Cluster →
+                </button>
+              </div>
+            </div>
+
+            {/* Post 3: Commercial Processor Tender */}
+            <div className="rounded-[20px] bg-[#0F172A] border border-zinc-800 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition text-white flex flex-col justify-between">
+              <div>
+                <div className="p-4 flex items-center gap-3 border-b border-zinc-800">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13.5px] font-bold truncate">
+                      Agrocorp Processing · <span className="text-blue-400 font-semibold">Tender</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-400 truncate">
+                      Solvent Extraction Plant • Dewas
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold tracking-wider">
+                    TENDER
+                  </span>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  <h4 className="text-[16px] font-bold text-white">
+                    Need 300T Soybean JS-335
+                  </h4>
+
+                  <div className="space-y-2 text-[12px]">
+                    <div className="flex justify-between p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-zinc-400">Moisture Limit:</span>
+                      <span className="font-bold text-white">&lt;11% NABL Assayed</span>
+                    </div>
+                    <div className="flex justify-between p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-zinc-400">Foreign Matter / Splits:</span>
+                      <span className="font-bold text-white">&lt;2% FM / &lt;4% Splits</span>
+                    </div>
+                    <div className="flex justify-between p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-zinc-400">Delivery Yard:</span>
+                      <span className="font-bold text-white">Dewas Industrial Area</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-blue-600/20 border border-blue-500/30">
+                    <div className="text-[11px] font-bold text-blue-300 uppercase tracking-wider">
+                      BUDGET PRICE INDICATOR
+                    </div>
+                    <div className="text-[19px] font-black text-white">
+                      ₹5,420 / Qtl{" "}
+                      <span className="text-[12px] font-normal text-zinc-400">
+                        ex-yard, escrow settled
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 pt-0">
+                <button
+                  onClick={() => openAuth("farmer", "login")}
+                  className="w-full h-10 rounded-full bg-white hover:bg-zinc-100 text-zinc-900 text-[13px] font-bold transition"
+                >
+                  Apply with Your Crop Lot
+                </button>
+                <div className="mt-2 text-center text-[11px] text-zinc-400">
+                  12 verified producers applied · 3 shortlisted
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Social Network Callout */}
+          <div className="rounded-[24px] bg-gradient-to-br from-emerald-600 to-emerald-500 p-[1px]">
+            <div className="rounded-[23px] bg-gradient-to-br from-emerald-600 to-emerald-500 px-6 lg:px-10 py-8 flex flex-col lg:flex-row items-center justify-between gap-6 text-white">
+              <div>
+                <h3 className="text-[22px] lg:text-[26px] font-bold leading-tight">
+                  Join 20,000+ farmers &amp; processors building direct trade
+                </h3>
+                <p className="mt-2 text-[14px] text-emerald-50/90 max-w-[540px]">
+                  From Indore to Kota and Vidarbha — view live lots, pool cluster tenders, and transact via protected bank escrow.
+                </p>
+              </div>
+              <div className="flex gap-3 shrink-0">
+                <button
+                  onClick={() => openAuth("farmer", "register")}
+                  className="h-11 px-6 rounded-full bg-white text-emerald-700 font-bold text-[14px] shadow-sm hover:bg-zinc-50 transition"
+                >
+                  Create Free Account
+                </button>
+                <button
+                  onClick={() => openAuth("buyer", "login")}
+                  className="h-11 px-6 rounded-full bg-emerald-950/30 border border-white/20 text-white font-semibold text-[14px] hover:bg-emerald-950/40 transition"
+                >
+                  Log In
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* 7. LIVE MARKETPLACE TABBED PREVIEW */}
+        {/* ------------------------------------------------------------------------- */}
+        <section className="space-y-6 pt-4">
+          <div className="rounded-[24px] border border-zinc-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-zinc-100 bg-zinc-50/70 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">
+                  REAL-TIME CATALOG
+                </span>
+                <h3 className="text-lg font-bold text-zinc-900">
+                  Live Agricultural Marketplace
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-1.5 p-1 rounded-full bg-zinc-100 border border-zinc-200 text-xs font-bold">
+                <button
+                  onClick={() => setPreviewTab("produce")}
+                  className={`px-3.5 py-1.5 rounded-full transition-colors ${
+                    previewTab === "produce"
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-600 hover:text-zinc-900"
+                  }`}
+                >
+                  🌾 Available Lots ({previewProduce.length})
+                </button>
+                <button
+                  onClick={() => setPreviewTab("requirements")}
+                  className={`px-3.5 py-1.5 rounded-full transition-colors ${
+                    previewTab === "requirements"
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-600 hover:text-zinc-900"
+                  }`}
+                >
+                  🏭 Mill Tenders ({previewRequirements.length})
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              {previewTab === "produce" ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {previewProduce.map((lot) => (
+                    <CropLotCard key={lot.id} listing={lot} showActions={true} />
+                  ))}
                 </div>
               ) : (
-                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
-                  <Button
-                    size="lg"
-                    className="font-bold px-8 h-12 rounded-xl text-base shadow-lg bg-emerald-600 hover:bg-emerald-500 text-white group"
-                    asChild
-                  >
-                    <Link href="/marketplace">
-                      Explore Marketplace
-                      <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="font-semibold px-6 h-12 rounded-xl text-base bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md shadow-xs"
-                    asChild
-                  >
-                    <a href="#how-it-works">How It Works</a>
-                  </Button>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {previewRequirements.map((demand) => (
+                    <BuyerRequirementCard key={demand.id} demand={demand} showActions={true} />
+                  ))}
                 </div>
               )}
 
-              {/* Subtle Testing Personas Strip */}
-              <div className="pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                <span className="font-bold uppercase tracking-wider text-[10px] text-zinc-400">Quick Demo Access:</span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin("farmer")}
-                  className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors border border-white/10 text-xs font-medium"
+              <div className="pt-8 text-center border-t border-zinc-100 mt-8">
+                <Link
+                  href="/marketplace"
+                  className="inline-flex items-center gap-2 h-11 px-8 rounded-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-[13.5px] font-bold transition shadow-xs"
                 >
-                  🌾 Ramesh (Farmer)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin("buyer")}
-                  className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors border border-white/10 text-xs font-medium"
-                >
-                  🏭 Agrocorp (Buyer)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin("fpo")}
-                  className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors border border-white/10 text-xs font-medium"
-                >
-                  🏢 Malwa FPO
-                </button>
-              </div>
-            </div>
-
-            {/* Right Side: Sophisticated Floating Product Card (Real FarmNex Data Storytelling) */}
-            <div className="lg:col-span-5 flex justify-center lg:justify-end">
-              <div className="w-full max-w-md rounded-2xl border border-white/20 bg-zinc-950/80 backdrop-blur-xl p-5 sm:p-6 text-white shadow-2xl space-y-4">
-                {/* Header status */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                      Live Verified Lot
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                    <MapPin className="h-3 w-3 text-emerald-400" />
-                    Sanwer, Indore (MP)
-                  </span>
-                </div>
-
-                {/* Produce & Producer */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-black text-white">Soybean (JS-335)</h3>
-                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950 border border-emerald-500/40 text-emerald-300">
-                      Grade A Assayed
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Producer: Ramesh Patel · Malwa Kisan FPO</span>
-                  </p>
-                </div>
-
-                {/* Real Metrics Grid */}
-                <div className="grid grid-cols-2 gap-3 py-3 px-3.5 rounded-xl bg-white/5 border border-white/10 text-xs">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Quantity</span>
-                    <span className="text-base font-black text-white">320 Quintals</span>
-                    <span className="text-[10px] text-zinc-400 block">(32 Tonnes lot)</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Lab Moisture</span>
-                    <span className="text-base font-black text-emerald-400">10.4% Assayed</span>
-                    <span className="text-[10px] text-zinc-400 block">(Within mill tolerance)</span>
-                  </div>
-                </div>
-
-                {/* Price & Realization */}
-                <div className="flex items-center justify-between pt-1">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Asking Rate</span>
-                    <p className="text-xl font-black text-white">
-                      ₹5,380 <span className="text-xs font-normal text-zinc-400">/ Quintal</span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Net Realization</span>
-                    <p className="text-xs font-bold text-emerald-300">
-                      +₹488 vs Mandi Spot
-                    </p>
-                  </div>
-                </div>
-
-                {/* Trust Footer */}
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-300">
-                  <span className="flex items-center gap-1.5">
-                    <Shield className="h-3.5 w-3.5 text-emerald-400" />
-                    Bank Escrow Protected
-                  </span>
-                  <Link
-                    href="/marketplace"
-                    className="text-emerald-400 font-bold hover:text-emerald-300 flex items-center gap-1"
-                  >
-                    View in Market <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 6. FARMER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
-      {/* ========================================================================= */}
-      <section id="for-farmers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
-          {/* Left Visual: Indian Farmer Harvest Photography */}
-          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px]">
-            <Image
-              src="/images/farmer-harvest.jpg"
-              alt="Indian farmer holding freshly harvested crop produce in farm field"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/30" />
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
-                Direct Farm-Gate Procurement
-              </span>
-            </div>
-          </div>
-
-          {/* Right Content */}
-          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6">
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                For Farmers &amp; FPOs
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                List your produce. Reach relevant buyers.
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Empowering smallholders and collectives to take charge of their agricultural harvest with transparent pocket pricing.
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">List Lots with Lab Moisture Assays</strong>
-                  <span className="text-muted-foreground">Attach certified moisture and foreign matter parameters to prevent arbitrary mill-gate deductions.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Algorithmic Net Realization Ranking</strong>
-                  <span className="text-muted-foreground">Compare offers from nearby mills with freight and transport tariffs calculated upfront.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">FPO Volume Consolidation</strong>
-                  <span className="text-muted-foreground">Pool member supplies to fulfill multi-ton industrial contracts at premium wholesale rates.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Frictionless Mobile OTP Access</strong>
-                  <span className="text-muted-foreground">Sign in instantly via 6-digit phone OTP—no complicated passwords or paperwork.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Button
-                size="lg"
-                className="font-bold px-6 rounded-xl shadow-xs"
-                onClick={() => openAuth("farmer", "login")}
-              >
-                Join as a Farmer
-              </Button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("farmer")}
-                className="text-xs font-bold text-primary hover:underline text-left sm:text-center"
-              >
-                Quick Demo: Ramesh Patel →
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 7. BUYER EXPERIENCE (IMAGE + PRODUCT POINTS) */}
-      {/* ========================================================================= */}
-      <section id="for-buyers" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs grid lg:grid-cols-12 items-center">
-          {/* Left Content */}
-          <div className="lg:col-span-6 p-6 sm:p-10 space-y-6 order-2 lg:order-1">
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                For Food Processors &amp; Bulk Buyers
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                Discover verified supply. Source in bulk.
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Connect directly with vetted producer collectives and farm-gate lots with certified quality standards.
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Broadcast Procurement Tenders</strong>
-                  <span className="text-muted-foreground">Post volume requirements with target rates, moisture limits, and desired delivery timelines.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Define Exact Quality Tolerances</strong>
-                  <span className="text-muted-foreground">Filter produce by certified moisture cutoff and grain grade needed for commercial milling.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Direct Producer Cluster Sourcing</strong>
-                  <span className="text-muted-foreground">Procure directly from vetted smallholders and FPOs across Madhya Pradesh.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-foreground font-bold block">Weighbridge &amp; Escrow Rails</strong>
-                  <span className="text-muted-foreground">Funds are held safely in escrow and released digitally upon certified weighbridge receipt.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Button
-                size="lg"
-                variant="outline"
-                className="font-bold px-6 rounded-xl border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                onClick={() => openAuth("buyer", "login")}
-              >
-                Explore as a Buyer
-              </Button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin("buyer")}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline text-left sm:text-center"
-              >
-                Quick Demo: Agrocorp Mills →
-              </button>
-            </div>
-          </div>
-
-          {/* Right Visual: Quality Grain Procurement & Laboratory Assay */}
-          <div className="lg:col-span-6 relative h-72 sm:h-96 lg:h-full min-h-[380px] order-1 lg:order-2">
-            <Image
-              src="/images/grain-procurement.jpg"
-              alt="Agricultural grain quality testing and modern processing facility"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:to-black/30" />
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <span className="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-bold border border-white/20 inline-block">
-                Industrial Grain Quality Testing
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 2. TWO AUDIENCES (LIGHT & COMPACT INTEGRATION) */}
-      {/* ========================================================================= */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 relative z-20">
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="text-center max-w-xl mx-auto space-y-1">
-            <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              Built for both sides of the farm-to-market network
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              A transparent operating platform connecting producers directly with bulk commercial demand.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Farmers & FPOs */}
-            <div className="p-5 rounded-xl border border-border/80 bg-muted/20 hover:border-emerald-500/40 transition-colors flex flex-col justify-between space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold">
-                      <Sprout className="h-4 w-4" />
-                    </span>
-                    <span className="text-xs font-black text-foreground">For Farmers &amp; FPOs</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded">
-                    Sellers
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  List harvest lots with lab moisture assays, compare mill demand by net pocket realization after freight, and eliminate broker markups.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={() => openAuth("farmer", "login")}
-                  className="inline-flex items-center text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300"
-                >
-                  <span>Join as Farmer / FPO</span>
-                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
-                </button>
-              </div>
-            </div>
-
-            {/* Buyers & Processors */}
-            <div className="p-5 rounded-xl border border-border/80 bg-muted/20 hover:border-blue-500/40 transition-colors flex flex-col justify-between space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white font-bold">
-                      <Building2 className="h-4 w-4" />
-                    </span>
-                    <span className="text-xs font-black text-foreground">For Food Processors &amp; Mills</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950 px-2 py-0.5 rounded">
-                    Buyers
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Broadcast procurement tenders, specify moisture tolerances, source from verified producer clusters, and settle via protected escrow.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={() => openAuth("buyer", "login")}
-                  className="inline-flex items-center text-xs font-bold text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                >
-                  <span>Explore as a Buyer</span>
-                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 3. BELOW HERO: CLEAN TRANSITION & 4 PILLARS */}
-      {/* ========================================================================= */}
-      <section id="how-it-works" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="text-center max-w-xl mx-auto space-y-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Direct Value</span>
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            One platform. Direct trade.
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            A transparent agricultural workflow designed for clear origin, verified quality, and secure settlement.
-          </p>
-        </div>
-
-        {/* Visual Flow Indicator */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4 py-3 px-4 rounded-xl bg-card border border-border text-xs font-bold text-muted-foreground max-w-2xl mx-auto shadow-2xs">
-          <span className="text-foreground">FARMER / FPO</span>
-          <ArrowRight className="h-3.5 w-3.5 text-primary" />
-          <span className="text-primary font-black bg-primary/10 px-2.5 py-1 rounded">FARMNEX</span>
-          <ArrowRight className="h-3.5 w-3.5 text-primary" />
-          <span className="text-foreground">BUYER / CONSUMER</span>
-        </div>
-
-        {/* 4 Short Benefits */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Truck className="h-4 w-4" />
-            </div>
-            <h3 className="text-xs font-black text-foreground">Direct Connections</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Bypass informal village brokers. Farmers and FPOs contract directly with food processing plants.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Scale className="h-4 w-4" />
-            </div>
-            <h3 className="text-xs font-black text-foreground">Transparent Net Realization</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Transport freight calculated upfront so farmers know exact pocket earnings per quintal.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <FileCheck2 className="h-4 w-4" />
-            </div>
-            <h3 className="text-xs font-black text-foreground">Lab-Assayed Quality</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Calibrated moisture and impurity assays attached to every lot prevent mill-gate dockage disputes.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <h3 className="text-xs font-black text-foreground">Protected Bank Escrow</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Payments secured in escrow prior to truck dispatch and released upon weighbridge receipt.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 4. PROBLEM -> SOLUTION VISUAL DIAGRAM */}
-      {/* ========================================================================= */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-xs">
-          <div className="max-w-xl space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Supply Chain Contrast</span>
-            <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              The problem with traditional agricultural trade
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Multi-tiered broker markups reduce farmer income while adding cost and quality uncertainty for buyers.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* TRADITIONAL CHAIN */}
-            <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-rose-200/80 dark:border-rose-900/60 pb-2.5">
-                <span className="text-xs font-bold text-rose-800 dark:text-rose-300">
-                  Traditional Intermediary Model
-                </span>
-                <span className="text-[10px] font-bold text-rose-700 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded">
-                  4–6 Intermediaries
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs">
-                <div className="flex items-center gap-2.5 font-semibold text-foreground">
-                  <span className="flex h-5 w-5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                  <span>Farmer harvests crop (local price taker)</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground pl-1">
-                  <span className="text-xs font-bold text-rose-500">↓</span>
-                  <span>Village Aggregator (takes ₹120–₹180/Q margin)</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground pl-1">
-                  <span className="text-xs font-bold text-rose-500">↓</span>
-                  <span>Mandi Commission Broker (dockage &amp; 2–3% fee)</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground pl-1">
-                  <span className="text-xs font-bold text-rose-500">↓</span>
-                  <span>Regional Commodity Wholesaler (marks up price)</span>
-                </div>
-                <div className="flex items-center gap-2.5 font-semibold text-foreground">
-                  <span className="flex h-5 w-5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                  <span>Processor receives crop at inflated price</span>
-                </div>
-              </div>
-
-              <div className="pt-2.5 border-t border-rose-200/80 dark:border-rose-900/60 flex items-center justify-between text-[11px] font-bold text-rose-800 dark:text-rose-300">
-                <span>⚠ 20–35% margin lost</span>
-                <span>⚠ 15–45 day payment delays</span>
-              </div>
-            </div>
-
-            {/* FARMNEX DIRECT CHAIN */}
-            <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-emerald-200 dark:border-emerald-900 pb-2.5">
-                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                  FarmNex Direct Model
-                </span>
-                <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
-                  Direct Trade
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs">
-                <div className="flex items-center gap-2.5 font-semibold text-foreground">
-                  <span className="flex h-5 w-5 rounded-full bg-emerald-600 text-white items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                  <span>Farmer / FPO lists lot with certified moisture assay</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 font-semibold pl-1">
-                  <span className="text-xs font-black text-emerald-600">⚡</span>
-                  <span>FarmNex ranks buyers based on true pocket net realization</span>
-                </div>
-                <div className="flex items-center gap-2.5 font-semibold text-foreground">
-                  <span className="flex h-5 w-5 rounded-full bg-emerald-600 text-white items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                  <span>Buyer contracts directly with digital weighbridge &amp; escrow terms</span>
-                </div>
-              </div>
-
-              <div className="pt-2.5 border-t border-emerald-200 dark:border-emerald-900 flex items-center justify-between text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
-                <span>✓ Zero broker cuts</span>
-                <span>✓ Escrow released upon weighbridge slip</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 5. MARKETPLACE PRODUCT PREVIEW (REAL PRODUCT PREVIEW) */}
-      {/* ========================================================================= */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-          {/* Browser / App Header */}
-          <div className="border-b border-border bg-muted/40 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-                <span className="h-2.5 w-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-              </div>
-              <span className="text-xs font-black text-foreground">FarmNex Live Marketplace</span>
-            </div>
-
-            {/* Product Tabs */}
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-background border border-border text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setPreviewTab("produce")}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  previewTab === "produce"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🌾 Available Lots ({previewProduce.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewTab("requirements")}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  previewTab === "requirements"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🏭 Active Buyer Tenders ({previewRequirements.length})
-              </button>
-            </div>
-          </div>
-
-          {/* Cards Content */}
-          <div className="p-6 sm:p-8">
-            {previewTab === "produce" ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {previewProduce.map((lot) => (
-                  <CropLotCard key={lot.id} listing={lot} showActions={true} />
-                ))}
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {previewRequirements.map((demand) => (
-                  <BuyerRequirementCard key={demand.id} demand={demand} showActions={true} />
-                ))}
-              </div>
-            )}
-
-            <div className="pt-6 text-center border-t border-border mt-6">
-              <Button asChild size="lg" className="font-bold px-8 rounded-xl shadow-xs" variant="outline">
-                <Link href="/marketplace">
-                  View Full Live Marketplace
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <span>Explore All Live Listings</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
-              </Button>
+              </div>
             </div>
           </div>
+        </section>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* 8. FOOTER */}
+        {/* ------------------------------------------------------------------------- */}
+        <footer className="pt-10 border-t border-zinc-200 flex flex-col lg:flex-row justify-between gap-4 text-[12px] text-zinc-500 pb-12">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
+              <Sprout className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span>FarmNex V3 • The Pulse of Agri Commerce • © 2026</span>
+          </div>
+          <div className="flex flex-wrap gap-4 items-center">
+            <span>Escrow Partner: ICICI Bank</span>
+            <span>•</span>
+            <span>Assay Standard: NABL Accredited Labs</span>
+            <span>•</span>
+            <span>State Corridors: MP &amp; Rajasthan</span>
+          </div>
+        </footer>
+      </div>
+
+      {/* ------------------------------------------------------------------------- */}
+      {/* 9. FLOATING TOAST NOTIFICATION */}
+      {/* ------------------------------------------------------------------------- */}
+      {toastMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 h-11 rounded-full bg-zinc-900 text-white text-[13px] font-medium shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>{toastMsg}</span>
         </div>
-      </section>
+      )}
 
-      {/* ========================================================================= */}
-      {/* 8. TRUST & VERIFICATION SECTION */}
-      {/* ========================================================================= */}
-      <section id="trust" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-xs">
-          <div className="text-center max-w-xl mx-auto space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Verification</span>
-            <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              Know where your produce comes from
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Direct trade backed by verified participant identities, calibrated lab assays, and protected banking rails.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-muted/20 border border-border/80 space-y-2.5">
-              <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-                <BadgeCheck className="h-4 w-4" />
-              </div>
-              <h3 className="text-sm font-black text-foreground">Verified Producer &amp; FPO Identity</h3>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Farmer profiles feature validated village locations, crop cultivation history, and FPO aggregation affiliations.
-              </p>
-              <div className="pt-1">
-                <TrustBadge type="producer" size="sm" showPopover={true} />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-muted/20 border border-border/80 space-y-2.5">
-              <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center">
-                <Building2 className="h-4 w-4" />
-              </div>
-              <h3 className="text-sm font-black text-foreground">Audited Buyer Credentials</h3>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Commercial mills and processing plants have verified factory locations, business registration records, and weighbridge facilities.
-              </p>
-              <div className="pt-1">
-                <TrustBadge type="buyer" size="sm" showPopover={true} />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-muted/20 border border-border/80 space-y-2.5">
-              <div className="h-8 w-8 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 flex items-center justify-center">
-                <Shield className="h-4 w-4" />
-              </div>
-              <h3 className="text-sm font-black text-foreground">Escrow Protected Settlements</h3>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                No delayed cheques. Payouts are secured in escrow prior to dispatch and released digitally upon weighbridge confirmation.
-              </p>
-              <div className="pt-1">
-                <TrustBadge type="fpo" size="sm" showPopover={true} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 9. FINAL CALL TO ACTION (VISUAL BANNER) */}
-      {/* ========================================================================= */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-2xl overflow-hidden shadow-xl min-h-[320px] flex items-center justify-center text-center p-8 sm:p-12">
-          {/* Background Agricultural Visual */}
-          <div className="absolute inset-0 z-0">
-            <Image
-              src="/images/cta-agriculture.jpg"
-              alt="Panoramic Indian agricultural farmland at twilight"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1280px) 100vw, 1280px"
-            />
-            <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-[1px]" />
-          </div>
-
-          <div className="relative z-10 max-w-2xl mx-auto space-y-5 text-white">
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight">
-              Make agricultural trade more direct.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-lg mx-auto">
-              Whether you are a farmer with a harvested lot, an FPO pooling member produce, or an oilseed mill—FarmNex connects you directly.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button
-                size="lg"
-                className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black px-6 h-11 rounded-xl text-xs shadow-md"
-                onClick={() => openAuth("farmer", "login")}
-              >
-                Get Started as Farmer
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-bold px-6 h-11 rounded-xl text-xs backdrop-blur-xs"
-                onClick={() => openAuth("buyer", "login")}
-              >
-                Join as Buyer
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                className="text-white hover:bg-white/10 font-semibold px-4 h-11 rounded-xl text-xs"
-                asChild
-              >
-                <Link href="/marketplace">Explore Marketplace →</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 10. MODAL AUTHENTICATION DIALOG (Farmer OTP & Buyer Email Login) */}
-      {/* ========================================================================= */}
+      {/* ------------------------------------------------------------------------- */}
+      {/* 10. UNIFIED SECURE AUTHENTICATION MODAL (PROFILE ID + PASSWORD) */}
+      {/* ------------------------------------------------------------------------- */}
       {authModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-50">
-          <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setAuthModalOpen(false)}
+          />
+
+          <div className="relative w-full sm:max-w-[480px] max-h-[92vh] flex flex-col bg-white rounded-t-[28px] sm:rounded-[24px] shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Close Button */}
             <button
-              type="button"
               onClick={() => setAuthModalOpen(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted/40 transition-colors"
-              aria-label="Close dialog"
+              className="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 transition"
             >
-              <X className="h-5 w-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            {/* Modal Header */}
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                  <Sprout className="h-4 w-4" />
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                  FarmNex Authentication
+            {/* Header */}
+            <div className="p-6 sm:p-7 pb-4 border-b border-zinc-100">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
+                  <Sprout className="w-4 h-4" />
+                </div>
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-700">
+                  FARMNEX AUTHENTICATION
                 </span>
               </div>
-              <h3 className="text-xl font-black text-foreground">
-                {authRole === "farmer" ? "Farmer & Producer Access" : "Processor & Bulk Buyer Access"}
+              <h3 className="text-[22px] font-black tracking-tight text-zinc-900">
+                {authMode === "login" ? "Sign In to Your Account" : "Create Real-World Agri Account"}
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {authRole === "farmer"
-                  ? "Fast mobile OTP verification for farm-gate sales."
-                  : "Commercial account for oil mills, traders, and institutional buyers."}
+              <p className="text-[12.5px] text-zinc-500 mt-0.5">
+                {authMode === "login"
+                  ? "Access your farm lots, contracts, and negotiation channels with your Profile ID."
+                  : "Fill your verified details, pick a unique Profile ID, and set your secure password."}
               </p>
+
+              {/* Mode Switch Tabs (Log In vs Register) */}
+              <div className="mt-4 flex p-1 rounded-full bg-zinc-100 border border-zinc-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    resetFeedback();
+                  }}
+                  className={`flex-1 h-8 rounded-full text-[12.5px] font-bold transition ${
+                    authMode === "login"
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-800"
+                  }`}
+                >
+                  Log In (Existing User)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    resetFeedback();
+                  }}
+                  className={`flex-1 h-8 rounded-full text-[12.5px] font-bold transition ${
+                    authMode === "register"
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-800"
+                  }`}
+                >
+                  Register First Time
+                </button>
+              </div>
             </div>
 
-            {/* Role switch toggle */}
-            <div className="grid grid-cols-2 gap-1 p-1 bg-muted/40 rounded-xl text-xs font-bold border border-border/60">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthRole("farmer");
-                  resetFeedback();
-                }}
-                className={`py-2 rounded-lg transition-all ${
-                  authRole === "farmer" ? "bg-card text-foreground shadow-xs font-black" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🌾 Farmer / FPO
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthRole("buyer");
-                  resetFeedback();
-                }}
-                className={`py-2 rounded-lg transition-all ${
-                  authRole === "buyer" ? "bg-card text-foreground shadow-xs font-black" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🏭 Bulk Buyer / Mill
-              </button>
-            </div>
+            {/* Modal Body (Scrollable for full registration form) */}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-7 pt-4 space-y-4">
+              {/* Alert Feedback Messages */}
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[12px] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
-            {errorMsg && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 rounded-xl text-xs flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-rose-700 shrink-0 mt-0.5" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+              {successMsg && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12px] flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
 
-            {successMsg && (
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            {/* FARMER FORM */}
-            {authRole === "farmer" && (
-              <div className="space-y-4">
-                {!otpSent && authMode === "login" ? (
-                  <form onSubmit={handleSendFarmerOtp} className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Mobile Number</label>
-                      <div className="relative">
-                        <Phone className="h-4 w-4 text-muted-foreground absolute left-3 top-3" />
-                        <input
-                          type="tel"
-                          value={farmerPhone}
-                          onChange={(e) => setFarmerPhone(e.target.value)}
-                          placeholder="e.g. 9876543210"
-                          maxLength={10}
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">We will send a 6-digit verification code.</p>
+              {/* ---------------- TAB 1: LOGIN FORM ---------------- */}
+              {authMode === "login" ? (
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                      Unique Profile ID / Mobile / Email *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-[14px]">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="e.g. ramesh.patel or 9876543210"
+                        className="w-full h-11 pl-8 pr-4 rounded-xl bg-zinc-50 border border-zinc-200 text-[14px] text-zinc-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      />
                     </div>
+                    <p className="text-[11px] text-zinc-400 mt-1">
+                      Login requires your unique Profile ID and password.
+                    </p>
+                  </div>
 
-                    <Button type="submit" className="w-full font-bold h-10 rounded-lg" disabled={loading}>
-                      {loading ? "Sending OTP..." : "Send OTP"}
-                    </Button>
-
-                    <div className="pt-2 text-center text-xs text-muted-foreground border-t border-border/60">
-                      <span>Quick testing persona: </span>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600">
+                        Account Password *
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full h-11 pl-10 pr-10 rounded-xl bg-zinc-50 border border-zinc-200 text-[14px] text-zinc-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      />
                       <button
                         type="button"
-                        onClick={() => handleQuickDemoLogin("farmer")}
-                        className="text-primary font-bold hover:underline ml-1"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
                       >
-                        Auto-login as Ramesh Patel
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                  </form>
-                ) : authMode === "register" ? (
-                  <form onSubmit={handleFarmerRegister} className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Full Name</label>
-                      <input
-                        type="text"
-                        value={farmerName}
-                        onChange={(e) => setFarmerName(e.target.value)}
-                        placeholder="Ramesh Patel"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Farm Location / Mandi</label>
-                      <input
-                        type="text"
-                        value={farmerLocation}
-                        onChange={(e) => setFarmerLocation(e.target.value)}
-                        placeholder="Indore, MP"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">FPO Name (Optional)</label>
-                      <input
-                        type="text"
-                        value={farmerFpo}
-                        onChange={(e) => setFarmerFpo(e.target.value)}
-                        placeholder="Malwa Kisan Samriddhi FPO"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full font-bold h-10 rounded-lg" disabled={loading}>
-                      {loading ? "Registering..." : "Complete Registration"}
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleVerifyFarmerOtp} className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Enter 6-Digit OTP</label>
-                      <input
-                        type="text"
-                        value={farmerOtp}
-                        onChange={(e) => setFarmerOtp(e.target.value)}
-                        placeholder="123456"
-                        maxLength={6}
-                        className="w-full px-3 py-2 text-center tracking-widest text-lg font-black border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                      <p className="text-[11px] text-muted-foreground mt-1 text-center">
-                        Development OTP code is <strong>123456</strong>
-                      </p>
-                    </div>
+                  </div>
 
-                    <Button type="submit" className="w-full font-bold h-10 rounded-lg" disabled={loading}>
-                      {loading ? "Verifying..." : "Verify & Sign In"}
-                    </Button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 rounded-full bg-zinc-900 hover:bg-black text-white text-[14px] font-bold shadow-md transition flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? "Verifying Credentials..." : "Sign In with Profile ID"}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
 
+                  <div className="pt-2 text-center text-[12px] text-zinc-500 border-t border-zinc-100">
+                    <span>Don&apos;t have an account yet? </span>
                     <button
                       type="button"
-                      onClick={() => setOtpSent(false)}
-                      className="text-xs text-muted-foreground hover:text-foreground block w-full text-center"
+                      onClick={() => {
+                        setAuthMode("register");
+                        resetFeedback();
+                      }}
+                      className="font-bold text-emerald-600 hover:underline"
                     >
-                      Use a different number
+                      Register here →
                     </button>
-                  </form>
-                )}
-              </div>
-            )}
+                  </div>
+                </form>
+              ) : (
+                /* ---------------- TAB 2: REGISTRATION FORM ---------------- */
+                <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                  {/* Role Selection */}
+                  <div>
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                      Select Your Role in Agriculture *
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-zinc-100 border border-zinc-200 text-[12px] font-bold">
+                      {[
+                        { role: "farmer", label: "Farmer (Kisan)", icon: Sprout },
+                        { role: "fpo", label: "FPO Collective", icon: UsersRound },
+                        { role: "buyer", label: "Processor / Mill", icon: Building2 },
+                        { role: "consumer", label: "Consumer / Bulk", icon: ShoppingBag },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        const active = authRole === item.role;
+                        return (
+                          <button
+                            key={item.role}
+                            type="button"
+                            onClick={() => setAuthRole(item.role as any)}
+                            className={`h-8 rounded-lg flex items-center justify-center gap-1.5 transition ${
+                              active
+                                ? "bg-white text-zinc-900 shadow-sm font-black"
+                                : "text-zinc-600 hover:text-zinc-900"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-            {/* BUYER FORM */}
-            {authRole === "buyer" && (
-              <div className="space-y-4">
-                {authMode === "login" ? (
-                  <form onSubmit={handleBuyerLogin} className="space-y-3">
+                  {/* Name & Unique Profile ID */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Business Email</label>
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={regName}
+                        onChange={(e) => {
+                          setRegName(e.target.value);
+                          if (!regProfileId) {
+                            setRegProfileId(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "."));
+                          }
+                        }}
+                        placeholder="e.g. Ramesh Patel"
+                        className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                        Unique Profile ID *
+                      </label>
                       <div className="relative">
-                        <Mail className="h-4 w-4 text-muted-foreground absolute left-3 top-3" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-[13px]">
+                          @
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          value={regProfileId}
+                          onChange={(e) => setRegProfileId(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
+                          placeholder="ramesh.patel"
+                          className="w-full h-10 pl-7 pr-3 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] font-semibold text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Password & Mobile Number */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                        Create Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          required
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          className="w-full h-10 px-3.5 pr-8 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                        >
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                        Mobile Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="9876543210"
+                        className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Location & Mandi */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                        Location / Mandi Belt *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={regLocation}
+                        onChange={(e) => setRegLocation(e.target.value)}
+                        placeholder="e.g. Sanwer, Indore, MP"
+                        className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    {authRole === "farmer" ? (
+                      <div>
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                          Farm Size (Acres)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={regFarmSize}
+                          onChange={(e) => setRegFarmSize(e.target.value)}
+                          placeholder="12"
+                          className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    ) : authRole === "buyer" ? (
+                      <div>
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                          Monthly Capacity
+                        </label>
+                        <input
+                          type="text"
+                          value={regCapacity}
+                          onChange={(e) => setRegCapacity(e.target.value)}
+                          placeholder="e.g. 5,000 Qtl/month"
+                          className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                          Email Address
+                        </label>
                         <input
                           type="email"
-                          value={buyerEmail}
-                          onChange={(e) => setBuyerEmail(e.target.value)}
-                          placeholder="buyer1@agrocorp.in"
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                          placeholder="contact@email.com"
+                          className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
                         />
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Password</label>
-                      <div className="relative">
-                        <Lock className="h-4 w-4 text-muted-foreground absolute left-3 top-3" />
-                        <input
-                          type="password"
-                          value={buyerPassword}
-                          onChange={(e) => setBuyerPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                        />
-                      </div>
+                  {/* Primary Crops / Commodities */}
+                  <div>
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                      Primary Crops / Commodities
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Soybean", "Wheat", "Cotton", "Gram (Chana)", "Mustard", "Garlic", "Maize", "Onion"].map((crop) => {
+                        const active = regCrops.includes(crop);
+                        return (
+                          <button
+                            key={crop}
+                            type="button"
+                            onClick={() => {
+                              if (active) {
+                                setRegCrops(regCrops.filter((c) => c !== crop));
+                              } else {
+                                setRegCrops([...regCrops, crop]);
+                              }
+                            }}
+                            className={`px-2.5 py-1 text-[11px] rounded-md font-bold transition border ${
+                              active
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                            }`}
+                          >
+                            {active ? "✓ " : "+ "}{crop}
+                          </button>
+                        );
+                      })}
                     </div>
+                  </div>
 
-                    <Button type="submit" className="w-full font-bold h-10 rounded-lg" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign in to Procurement"}
-                    </Button>
+                  {/* Profile Headline */}
+                  <div>
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-600 block mb-1">
+                      Headline / Specialization
+                    </label>
+                    <input
+                      type="text"
+                      value={regHeadline}
+                      onChange={(e) => setRegHeadline(e.target.value)}
+                      placeholder="e.g. Certified Soybean & Sharbati Wheat Producer"
+                      className="w-full h-10 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-[13.5px] text-zinc-900 focus:bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-border/60">
-                      <button
-                        type="button"
-                        onClick={() => handleQuickDemoLogin("buyer")}
-                        className="text-primary font-bold hover:underline"
-                      >
-                        Auto-login as Agrocorp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAuthMode("register");
-                          resetFeedback();
-                        }}
-                        className="text-muted-foreground hover:text-foreground font-semibold"
-                      >
-                        Register new mill
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleBuyerRegister} className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Business / Mill Name</label>
-                      <input
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="Agrocorp Central Processing"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Contact Person</label>
-                      <input
-                        type="text"
-                        value={buyerName}
-                        onChange={(e) => setBuyerName(e.target.value)}
-                        placeholder="Anita Sharma"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Business Email</label>
-                      <input
-                        type="email"
-                        value={buyerEmail}
-                        onChange={(e) => setBuyerEmail(e.target.value)}
-                        placeholder="procurement@agrocorp.in"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">Password</label>
-                      <input
-                        type="password"
-                        value={buyerPassword}
-                        onChange={(e) => setBuyerPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:border-primary"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full font-bold h-10 rounded-lg" disabled={loading}>
-                      {loading ? "Registering..." : "Create Buyer Account"}
-                    </Button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[14px] font-bold shadow-md transition flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? "Registering Account..." : "Create Account & Sign In"}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div className="pt-2 text-center text-[11.5px] text-zinc-500 border-t border-zinc-100">
+                    <span>Already have an account? </span>
                     <button
                       type="button"
-                      onClick={() => setAuthMode("login")}
-                      className="text-xs text-muted-foreground hover:text-foreground block w-full text-center pt-1"
+                      onClick={() => {
+                        setAuthMode("login");
+                        resetFeedback();
+                      }}
+                      className="font-bold text-zinc-900 hover:underline"
                     >
-                      Already registered? Sign in
+                      Sign In here →
                     </button>
-                  </form>
-                )}
-              </div>
-            )}
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Modal Trust Bar */}
+            <div className="px-6 py-2.5 bg-zinc-50 border-t border-zinc-100 flex items-center justify-center gap-2 text-[11px] text-zinc-500">
+              <Shield className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Direct Bank Escrow · Real-World Agri Network · Encrypted Passwords</span>
+            </div>
           </div>
         </div>
       )}

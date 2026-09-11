@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.api import auth, marketplace, matching, intelligence, community, admin, reliability, heatmap, agreements_expanded, verification, messaging
+from app.api import auth, marketplace, matching, intelligence, community, admin, reliability, heatmap, agreements_expanded, verification, messaging, user_search
 
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
@@ -52,6 +52,7 @@ app.include_router(agreements_expanded.router, prefix=settings.API_V1_STR)
 app.include_router(heatmap.router, prefix=settings.API_V1_STR)
 app.include_router(verification.router, prefix=settings.API_V1_STR)
 app.include_router(messaging.router, prefix=settings.API_V1_STR)
+app.include_router(user_search.router, prefix=settings.API_V1_STR)
 
 
 import asyncio

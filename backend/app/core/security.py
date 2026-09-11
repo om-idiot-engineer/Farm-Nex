@@ -5,7 +5,6 @@ from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
-from app.core.database import db
 from app.models.schemas import UserOut, UserRole, FarmerProfileOut, BuyerProfileOut
 
 security_bearer = HTTPBearer(auto_error=False)
@@ -71,13 +70,28 @@ def refresh_access_token(refresh_token: str) -> str:
 def decode_access_token(token: str) -> Dict[str, Any]:
     # Handle demo / dev mode tokens gracefully
     if token.startswith("demo_token_") or token.startswith("demo-"):
-        role_part = token.replace("demo_token_", "").replace("demo-", "").lower()
-        if "farmer" in role_part:
-            return {"sub": "f0000000-0000-0000-0000-000000000001", "role": "farmer"}
-        elif "buyer" in role_part:
+        from app.core.database import db
+        cleaned_id = token.replace("demo_token_", "").replace("demo-", "")
+        # 1. Direct ID match in seeded/registered users
+        if cleaned_id in db.users:
+            return {"sub": cleaned_id, "role": db.users[cleaned_id]["role"]}
+        # 2. Check if token itself (without prefix) matches a user ID
+        token_sub = token.replace("demo_token_", "")
+        if token_sub in db.users:
+            return {"sub": token_sub, "role": db.users[token_sub]["role"]}
+
+        # 3. Fallback by role keyword
+        role_part = cleaned_id.lower()
+        if "buyer" in role_part:
             return {"sub": "b0000000-0000-0000-0000-000000000001", "role": "buyer"}
+        elif "fpo" in role_part:
+            return {"sub": "fpo00000-0000-0000-0000-000000000001", "role": "fpo"}
         elif "admin" in role_part:
             return {"sub": "a0000000-0000-0000-0000-000000000001", "role": "admin"}
+        elif "expert" in role_part:
+            return {"sub": "exp00000-0000-0000-0000-000000000001", "role": "expert"}
+        elif "consumer" in role_part:
+            return {"sub": "con00000-0000-0000-0000-000000000001", "role": "consumer"}
         else:
             return {"sub": "f0000000-0000-0000-0000-000000000001", "role": "farmer"}
 
@@ -100,6 +114,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
 
 def get_user_out_from_id(user_id: str) -> Optional[UserOut]:
     """Helper to construct UserOut with profile data."""
+    from app.core.database import db
     # Check in-memory store or supabase
     user_data = db.users.get(user_id)
     if not user_data:
@@ -114,6 +129,11 @@ def get_user_out_from_id(user_id: str) -> Optional[UserOut]:
             lat=fp_data["lat"],
             lng=fp_data["lng"],
             fpo_name=fp_data.get("fpo_name"),
+            headline=fp_data.get("headline") or user_data.get("headline"),
+            about=fp_data.get("about") or user_data.get("about"),
+            crops=fp_data.get("crops"),
+            farm_size_acres=fp_data.get("farm_size_acres"),
+            soil_type=fp_data.get("soil_type"),
             updated_at=fp_data.get("updated_at"),
         )
 
@@ -127,6 +147,11 @@ def get_user_out_from_id(user_id: str) -> Optional[UserOut]:
             location=bp_data.get("location"),
             lat=bp_data.get("lat"),
             lng=bp_data.get("lng"),
+            headline=bp_data.get("headline") or user_data.get("headline"),
+            about=bp_data.get("about") or user_data.get("about"),
+            procurement_capacity=bp_data.get("procurement_capacity"),
+            gst_number=bp_data.get("gst_number"),
+            commodities=bp_data.get("commodities"),
             updated_at=bp_data.get("updated_at"),
         )
 
@@ -138,6 +163,8 @@ def get_user_out_from_id(user_id: str) -> Optional[UserOut]:
         email=user_data.get("email"),
         language_pref=user_data.get("language_pref", "hi"),
         verified=user_data.get("verified", False),
+        headline=user_data.get("headline"),
+        about=user_data.get("about"),
         created_at=user_data.get("created_at", datetime.now()),
         farmer_profile=farmer_prof,
         buyer_profile=buyer_prof,

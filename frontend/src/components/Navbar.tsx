@@ -5,19 +5,28 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth/UserContext";
 import { getRoleNavigation, getRolePrimaryAction } from "@/lib/navigation";
-import { Menu, X, Leaf, Bell, Search, Sprout, Store, ArrowRight, CheckCircle2, Check } from "lucide-react";
+import { Menu, X, Leaf, Bell, Search, Sprout, Store, ArrowRight, CheckCircle2, Check, Sparkles, Shield, User, Pencil, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlobalSearch from "@/components/GlobalSearch";
+import EditProfileModal from "@/components/EditProfileModal";
+import { getProfile } from "@/lib/services/domain";
+import type { DemoProfile } from "@/lib/data/demo";
 import { DEMO_MODE } from "@/lib/api";
 
 export default function Navbar() {
-  const { user, switchDemoRole } = useUser();
+  const { user, switchDemoRole, logout } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [activeProfile, setActiveProfile] = useState<DemoProfile | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const notifRef = React.useRef<HTMLDivElement>(null);
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
+  // Secret dev key sequence: type "dev" (d → e → v) to open developer page
+  const [devKeySeq, setDevKeySeq] = useState("");
 
   const fetchNotifs = React.useCallback(async () => {
     try {
@@ -35,22 +44,50 @@ export default function Navbar() {
     }
   }, [user, fetchNotifs, pathname]);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setNotifOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
     }
-    if (notifOpen) {
+    if (notifOpen || userDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [notifOpen]);
+  }, [notifOpen, userDropdownOpen]);
+
+  const openEditProfile = () => {
+    setUserDropdownOpen(false);
+    if (user) {
+      const p = getProfile(user.id).data;
+      setActiveProfile(p);
+      setEditProfileOpen(true);
+    }
+  };
 
   const unreadCount = notifications.filter((n) => n.unread).length;
+
+  // Secret dev shortcut: type "dev" quickly to navigate to /developer
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger when user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const next = (devKeySeq + e.key.toLowerCase()).slice(-3);
+      setDevKeySeq(next);
+      if (next === "dev") {
+        router.push("/developer");
+        setDevKeySeq("");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [devKeySeq, router]);
 
   const handleMarkAllRead = async () => {
     const { markNotificationsRead } = await import("@/lib/services/domain");
@@ -76,6 +113,11 @@ export default function Navbar() {
   const isLandingPage = pathname === "/";
   const isFarmer = user?.role === "farmer";
   const themeClass = isFarmer ? "from-emerald-600 to-green-600" : "from-blue-600 to-indigo-600";
+
+  // Landing page has its own dedicated transparent/scrolled navbar matching the exact artifact
+  if (isLandingPage) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-200/70">
@@ -243,19 +285,85 @@ export default function Navbar() {
                 )}
               </div>
 
-              <Link
-                href={`/profile/${user.id || "demo-farmer-ramesh"}`}
-                title="View My Profile ID & Showcase"
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-300 to-pink-400 border-2 border-white shadow flex items-center justify-center text-white font-bold text-[12px] hover:scale-105 transition-transform"
-              >
-                {user.name ? user.name.substring(0, 2).toUpperCase() : "U"}
-              </Link>
+              {/* User Profile Dropdown */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  title={`Account: ${user.name}`}
+                  className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500 border-2 border-white shadow flex items-center justify-center text-white font-bold text-[12px] hover:scale-105 transition-transform"
+                >
+                  {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                  ) : (
+                    user.name ? user.name.substring(0, 2).toUpperCase() : "U"
+                  )}
+                </button>
+
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-zinc-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in-50 zoom-in-95 p-1.5 space-y-1">
+                    <div className="px-3 py-2 border-b border-zinc-100 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:")) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                        ) : (
+                          user.name ? user.name.substring(0, 2).toUpperCase() : "U"
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-zinc-900 truncate">{user.name}</p>
+                        <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider capitalize truncate">
+                          {user.role} · {user.farmer_profile?.location?.split(",")[0] || user.buyer_profile?.location?.split(",")[0] || "MP, India"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/profile/${user.id || "f0000000-0000-0000-0000-000000000001"}`}
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition"
+                    >
+                      <User className="w-4 h-4 text-zinc-500" />
+                      <span>View Public Profile</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={openEditProfile}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition text-left"
+                    >
+                      <Pencil className="w-4 h-4 text-emerald-600" />
+                      <span>Edit My Profile</span>
+                    </button>
+
+                    <div className="pt-1 border-t border-zinc-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          logout();
+                          router.push("/");
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition text-left"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-500" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
-              <Link href="/marketplace" className="text-sm font-semibold hover:text-primary mr-4 hidden sm:block">Marketplace</Link>
+              <Link href="/marketplace" className="text-sm font-semibold hover:text-primary mr-2 hidden sm:block">Marketplace</Link>
               <Button asChild variant="outline" className="h-9 px-4 rounded-full text-xs font-bold">
                 <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild className="h-9 px-4 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Link href="/login?mode=register">Join FarmNex</Link>
               </Button>
             </>
           )}
@@ -342,6 +450,16 @@ export default function Navbar() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {activeProfile && (
+        <EditProfileModal
+          isOpen={editProfileOpen}
+          onClose={() => setEditProfileOpen(false)}
+          profile={activeProfile}
+          onProfileUpdated={(updated) => setActiveProfile(updated)}
+        />
       )}
     </header>
   );

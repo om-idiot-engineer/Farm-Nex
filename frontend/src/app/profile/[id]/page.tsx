@@ -25,29 +25,66 @@ import {
   UserPlus,
   UsersRound,
   BadgeCheck,
-  Heart
+  Heart,
+  Pencil,
+  Clock,
+  UserCheck,
+  UserX,
+  Sparkles,
+  X,
 } from "lucide-react";
-import { getProfile, getNetworkPosts, type NetworkPost } from "@/lib/services/domain";
+import {
+  getProfile,
+  getNetworkPosts,
+  getConnectionStatus,
+  sendConnectionRequest,
+  acceptConnectionRequest,
+  declineConnectionRequest,
+  getUserAcceptedConnections,
+  type NetworkPost,
+  type ConnectionStatus,
+} from "@/lib/services/domain";
 import type { DemoProfile } from "@/lib/data/demo";
 import EmptyState from "@/components/EmptyState";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
+import EditProfileModal from "@/components/EditProfileModal";
+import { useUser } from "@/lib/auth/UserContext";
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useUser();
   const [profile, setProfile] = useState<DemoProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [activeTab, setActiveTab] = useState<"showcase" | "activity" | "trades" | "credentials">("showcase");
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("none");
+  const [mutualConnections, setMutualConnections] = useState<DemoProfile[]>([]);
+  const [activeTab, setActiveTab] = useState<"showcase" | "activity" | "trades" | "credentials" | "network">("showcase");
   const [userPosts, setUserPosts] = useState<NetworkPost[]>([]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const refreshProfileAndConnection = () => {
+    if (id) {
+      const res = getProfile(id);
+      setProfile(res.data);
+      if (user) {
+        setConnectionStatus(getConnectionStatus(res.data.id, user.id));
+      }
+      setMutualConnections(getUserAcceptedConnections(res.data.id));
+    }
+  };
 
   useEffect(() => {
     if (id) {
       setLoading(true);
       const res = getProfile(id);
       setProfile(res.data);
+      if (user) {
+        setConnectionStatus(getConnectionStatus(res.data.id, user.id));
+      }
+      setMutualConnections(getUserAcceptedConnections(res.data.id));
 
       getNetworkPosts().then((postRes) => {
         const matching = (postRes.data || []).filter(
@@ -58,7 +95,7 @@ export default function ProfilePage() {
 
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
   const copyProfileLink = () => {
     if (typeof window !== "undefined") {
@@ -137,38 +174,143 @@ export default function ProfilePage() {
           {/* Top row: Avatar + Action Buttons */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-5">
             {/* Avatar with clean border and shadow */}
-            <div className={`h-28 w-28 sm:h-36 sm:w-36 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl font-extrabold shadow-xl border-[5px] border-white text-white shrink-0 bg-gradient-to-br ${gradientClass} ring-1 ring-black/5`}>
-              {initials}
+            <div className={`h-28 w-28 sm:h-36 sm:w-36 rounded-3xl overflow-hidden flex items-center justify-center text-3xl sm:text-4xl font-extrabold shadow-xl border-[5px] border-white text-white shrink-0 bg-gradient-to-br ${gradientClass} ring-1 ring-black/5`}>
+              {profile.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
 
             {/* Action Buttons aligned on the right */}
             <div className="flex flex-wrap items-center gap-2.5 pt-2 sm:pt-0">
-              <Button
-                onClick={() => setConnected(!connected)}
-                variant={connected ? "outline" : "default"}
-                size="default"
-                className={`h-10 px-5 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                  connected
-                    ? "border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                    : `text-white bg-gradient-to-br ${gradientClass} hover:opacity-95 hover:shadow`
-                }`}
-              >
-                {connected ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1.5" /> Connected
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-1.5" /> Connect
-                  </>
-                )}
-              </Button>
+              {/* EDIT PROFILE ONLY SHOWN TO THE OWNER */}
+              {user && user.id === profile.id ? (
+                <>
+                  <Button
+                    onClick={() => setEditModalOpen(true)}
+                    size="default"
+                    className="h-10 px-4 rounded-xl font-bold text-sm bg-zinc-900 hover:bg-black text-white shadow-sm flex items-center gap-1.5"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Edit My Profile
+                  </Button>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Your Account
+                  </span>
+                </>
+              ) : (
+                /* OTHER USERS: BILATERAL CONNECTION ACTIONS (CANNOT CONNECT TO SELF) */
+                <>
+                  {connectionStatus === "connected" && (
+                    <Button
+                      variant="outline"
+                      size="default"
+                      className="h-10 px-4 rounded-xl font-bold text-sm border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 flex items-center gap-1.5 shadow-sm"
+                      onClick={() => {
+                        if (confirm(`Do you want to remove connection with ${profile.name}?`)) {
+                          const { removeConnection } = require("@/lib/services/domain");
+                          if (user) {
+                            removeConnection(user.id, profile.id);
+                            refreshProfileAndConnection();
+                          }
+                        }
+                      }}
+                      title="Click to manage or disconnect"
+                    >
+                      <UserCheck className="h-4 w-4" /> Connected
+                    </Button>
+                  )}
 
-              <Button size="default" variant="outline" className="h-10 px-4 rounded-xl font-bold text-sm border-zinc-300 text-zinc-800 shadow-sm hover:bg-zinc-50" asChild>
-                <Link href={`/messages?recipientId=${profile.id}`}>
-                  <MessageSquare className="h-4 w-4 mr-1.5 text-zinc-500" /> Message
-                </Link>
-              </Button>
+                  {connectionStatus === "pending_sent" && (
+                    <Button
+                      variant="outline"
+                      size="default"
+                      disabled
+                      className="h-10 px-4 rounded-xl font-bold text-sm border-amber-300 text-amber-800 bg-amber-50 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <Clock className="h-4 w-4 text-amber-600 animate-pulse" /> Request Pending
+                    </Button>
+                  )}
+
+                  {connectionStatus === "pending_received" && (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="default"
+                        disabled={actionLoading}
+                        onClick={async () => {
+                          setActionLoading(true);
+                          const { getUserPendingRequests } = await import("@/lib/services/domain");
+                          if (user) {
+                            const { incoming } = getUserPendingRequests(user.id);
+                            const req = incoming.find((r) => r.requesterId.toLowerCase() === profile.id.toLowerCase());
+                            if (req) {
+                              acceptConnectionRequest(req.id);
+                            }
+                            refreshProfileAndConnection();
+                          }
+                          setActionLoading(false);
+                        }}
+                        className="h-10 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5"
+                      >
+                        <Check className="h-4 w-4" /> Accept Request
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="default"
+                        disabled={actionLoading}
+                        onClick={async () => {
+                          setActionLoading(true);
+                          const { getUserPendingRequests } = await import("@/lib/services/domain");
+                          if (user) {
+                            const { incoming } = getUserPendingRequests(user.id);
+                            const req = incoming.find((r) => r.requesterId.toLowerCase() === profile.id.toLowerCase());
+                            if (req) {
+                              declineConnectionRequest(req.id);
+                            }
+                            refreshProfileAndConnection();
+                          }
+                          setActionLoading(false);
+                        }}
+                        className="h-10 px-3 rounded-xl font-bold text-sm text-zinc-600 border-zinc-300 hover:bg-zinc-100"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {connectionStatus === "none" && (
+                    <Button
+                      size="default"
+                      disabled={actionLoading}
+                      onClick={() => {
+                        if (!user) {
+                          alert("Please log in to connect with " + profile.name);
+                          return;
+                        }
+                        setActionLoading(true);
+                        try {
+                          sendConnectionRequest(profile, user);
+                          refreshProfileAndConnection();
+                        } catch (err: any) {
+                          alert(err.message || "Failed to send connection request");
+                        } finally {
+                          setActionLoading(false);
+                        }
+                      }}
+                      className={`h-10 px-5 rounded-xl font-bold text-sm transition-all text-white bg-gradient-to-br ${gradientClass} hover:opacity-95 hover:shadow flex items-center gap-1.5`}
+                    >
+                      <UserPlus className="h-4 w-4" /> Connect
+                    </Button>
+                  )}
+
+                  <Button size="default" variant="outline" className="h-10 px-4 rounded-xl font-bold text-sm border-zinc-300 text-zinc-800 shadow-sm hover:bg-zinc-50" asChild>
+                    <Link href={`/messages?recipientId=${profile.id}`}>
+                      <MessageSquare className="h-4 w-4 mr-1.5 text-zinc-500" /> Message
+                    </Link>
+                  </Button>
+                </>
+              )}
 
               <Button
                 onClick={copyProfileLink}
@@ -216,7 +358,7 @@ export default function ProfilePage() {
                 </span>
                 <span className="text-zinc-300">•</span>
                 <span>
-                  Profile ID: <span className="font-mono text-zinc-700 font-semibold">{profile.id}</span>
+                  Unique Profile ID: <span className="font-mono text-zinc-800 font-bold bg-zinc-100 px-1.5 py-0.5 rounded">{profile.id}</span>
                 </span>
               </div>
             </div>
@@ -228,9 +370,18 @@ export default function ProfilePage() {
 
             {/* Key Meta Stats Row */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm font-medium text-zinc-600 pt-1">
-              <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-zinc-400 shrink-0" /> {profile.location}</span>
+              <span className="flex items-center gap-1.5 font-bold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded-md">
+                <MapPin className="h-4 w-4 text-emerald-600 shrink-0" /> {profile.location}
+              </span>
               <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-zinc-400 shrink-0" /> Joined {profile.memberSince || "Jan 2024"}</span>
-              <span className="flex items-center gap-1.5"><UsersRound className="h-4 w-4 text-emerald-600 shrink-0" /> <b className="text-zinc-900 font-bold">{profile.connectionsCount || 1240}</b> Connections</span>
+              <button
+                type="button"
+                onClick={() => setActiveTab("network")}
+                className="flex items-center gap-1.5 hover:underline cursor-pointer"
+              >
+                <UsersRound className="h-4 w-4 text-emerald-600 shrink-0" />
+                <b className="text-zinc-900 font-bold">{profile.connectionsCount || mutualConnections.length}</b> Connections
+              </button>
               {isFarmer ? (
                 <span className="flex items-center gap-1.5"><Sprout className="h-4 w-4 text-emerald-600 shrink-0" /> {profile.farmSizeAcres ? `${profile.farmSizeAcres} Acres` : profile.fpo || "Direct Cultivator"}</span>
               ) : (
@@ -244,6 +395,7 @@ export default function ProfilePage() {
         <div className="px-6 md:px-8 border-t border-zinc-100 flex items-center gap-6 overflow-x-auto no-scrollbar">
           {[
             { id: "showcase", label: "Showcase & Bio" },
+            { id: "network", label: `Connections (${mutualConnections.length})` },
             { id: "activity", label: `Network Posts (${userPosts.length})` },
             { id: "trades", label: isFarmer ? "Produce Listings" : "Procurement RFQs" },
             { id: "credentials", label: "Trust & Compliance" },
@@ -358,6 +510,79 @@ export default function ProfilePage() {
                 </div>
               </div>
             </>
+          )}
+
+          {/* TAB: MUTUAL & ACCEPTED CONNECTIONS */}
+          {activeTab === "network" && (
+            <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                <div>
+                  <h3 className="text-[14px] font-extrabold uppercase tracking-wider text-zinc-900">
+                    Verified Connection Network ({mutualConnections.length})
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Producers, buyers, and partners connected with {profile.name} on FarmNex.
+                  </p>
+                </div>
+                <Link
+                  href="/network/connections"
+                  className="text-xs font-bold text-emerald-700 hover:underline"
+                >
+                  Manage All Network →
+                </Link>
+              </div>
+
+              {mutualConnections.length === 0 ? (
+                <div className="py-12 text-center text-zinc-500 bg-zinc-50/50 rounded-2xl border border-dashed border-zinc-200">
+                  <UsersRound className="w-10 h-10 text-zinc-300 mx-auto mb-2" />
+                  <p className="font-bold text-sm text-zinc-700">No mutual connections accepted yet</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Send a connection request to connect with {profile.name} and unlock direct deal opportunities.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {mutualConnections.map((conn) => (
+                    <div
+                      key={conn.id}
+                      className="p-3.5 rounded-2xl border border-zinc-200 bg-white hover:border-emerald-500/50 hover:shadow-sm transition-all flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-sm shrink-0 border border-zinc-200">
+                          {conn.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={conn.avatarUrl} alt={conn.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{conn.avatar || conn.name.slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/profile/${conn.id}`}
+                            className="font-bold text-sm text-zinc-900 hover:underline truncate block"
+                          >
+                            {conn.name}
+                          </Link>
+                          <p className="text-[11px] text-zinc-500 truncate flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
+                            {conn.location}
+                          </p>
+                          <span className="inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">
+                            {conn.role.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button asChild size="sm" variant="outline" className="h-8 px-2.5 rounded-xl text-xs font-bold shrink-0">
+                        <Link href={`/profile/${conn.id}`}>
+                          View ID
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* TAB 2: NETWORK POSTS & ACTIVITY */}
@@ -618,6 +843,16 @@ export default function ProfilePage() {
         </div>
 
       </div>
+
+      {/* Edit Profile Modal */}
+      {profile && (
+        <EditProfileModal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          profile={profile}
+          onProfileUpdated={(updated) => setProfile(updated)}
+        />
+      )}
     </div>
   );
 }
